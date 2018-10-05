@@ -50,7 +50,7 @@ public class MyPeerDiscoveryBroadcastReceiver extends BroadcastReceiver {
             }
 
             discoverer.discoverDTNServicePeers();
-            discoverer.connectToPeers();
+//            discoverer.connectToPeers();
         }
         else if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
             Log.i(LOG_TAG, "Wifi / WifiDirect OFF (disabled)");
@@ -73,7 +73,7 @@ public class MyPeerDiscoveryBroadcastReceiver extends BroadcastReceiver {
         if (discoverer.getManager() != null) {
             NetworkInfo networkInfo
                     = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
-            Log.i(LOG_TAG, "Network info for connection change: "
+            Log.d(LOG_TAG, "Network info for connection change: "
                     + networkInfo.toString());
 
             if (networkInfo.isConnected()) {

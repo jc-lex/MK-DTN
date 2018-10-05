@@ -52,7 +52,7 @@ public final class RadPeerDiscoverer
             = new WifiP2pManager.ConnectionInfoListener() {
         @Override
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
-            Log.i(LOG_TAG, "Successfully connected to device(s): " + info.toString());
+            Log.d(LOG_TAG, "Successfully connected to device(s): " + info.toString());
         }
     };
 
@@ -61,7 +61,7 @@ public final class RadPeerDiscoverer
         @Override
         public void onGroupInfoAvailable(WifiP2pGroup group) {
             // VERY useful information, make good use of it
-            Log.i(LOG_TAG, "Successfully connected to group: " + group.toString());
+            Log.d(LOG_TAG, "Successfully connected to group: " + group.toString());
         }
     };
 
@@ -164,7 +164,8 @@ public final class RadPeerDiscoverer
                 }
                 Log.i(LOG_TAG, "DNS Record available: "
                         + fullDomainName + ", "
-                        + txtRecordMap.toString()
+                        + txtRecordMap.toString() + ", "
+                        + srcDevice.deviceAddress
                 );
             }
         };
@@ -178,7 +179,8 @@ public final class RadPeerDiscoverer
                 // I don't know what to do here sincerely
                 Log.i(LOG_TAG, "DNS Service available: "
                         + instanceName + ", "
-                        + registrationType
+                        + registrationType + ", "
+                        + srcDevice.deviceAddress
                 );
             }
         };
@@ -237,7 +239,7 @@ public final class RadPeerDiscoverer
                 WifiP2pConfig config = new WifiP2pConfig();
                 config.deviceAddress = node.device.deviceAddress;
                 config.wps.setup = WpsInfo.PBC; // is already set in the WifiP2pConfig() constructor
-                Log.i(LOG_TAG, "Config info for connecting to "
+                Log.d(LOG_TAG, "Config info for connecting to "
                         + node.device.deviceAddress + " : " + config.toString());
 
                 // connect to only Wifi Direct enabled devices... for now
@@ -315,15 +317,18 @@ public final class RadPeerDiscoverer
                         discoveredDTNNodes.remove(discoveredDevice); // to shrink this long list
             }
         if (peerList != null && !peerList.isEmpty())
-            Log.i(LOG_TAG, "The peer list is: " + peerList.toString());
+            Log.d(LOG_TAG, "The peer list is: " + peerList.toString());
     }
 
     private boolean isAvailable(WifiP2pDevice discoveredDevice) {
         boolean available = false;
-        for (WifiP2pDevice device : availablePeerDevices) {
-            if (discoveredDevice.deviceAddress.equals(device.deviceAddress))
-                available = true;
-        }
+        if (availablePeerDevices != null && !availablePeerDevices.isEmpty()
+                && discoveredDevice != null)
+            for (WifiP2pDevice device : availablePeerDevices)
+                if (discoveredDevice.deviceAddress.equals(device.deviceAddress)) {
+                    available = true;
+                    break;
+                }
         return available;
     }
 

@@ -2,22 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest">
 
-    <!--<uses-permission-->
-        <!--android:name="android.permission.ACCESS_WIFI_STATE"-->
-        <!--android:required="true" />-->
-    <!--<uses-permission-->
-        <!--android:name="android.permission.CHANGE_WIFI_STATE"-->
-        <!--android:required="true" />-->
-    <!--<uses-permission-->
-        <!--android:name="android.permission.INTERNET"-->
-        <!--android:required="true" />-->
-
-    <!--<uses-sdk android:minSdkVersion="14" />-->
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" android:required="true"/>
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" android:required="true"/>
-    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" android:required="true"/>
-    <uses-permission android:name="android.permission.INTERNET" android:required="true"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" android:required="true"/>
+    <!-- Required for Nearby Connections -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -38,13 +28,7 @@
             </intent-filter>
         </activity>
 
-        <!--<service-->
-            <!--android:name=".DoPeerDiscoveryService"-->
-            <!--android:enabled="true"-->
-            <!--android:exported="false" />-->
-
         <!-- Only those who can change the WIFI state can broadcast to this receiver -->
-        <!-- Only listens to WIFI P2P events -->
         <!-- NB: actions got from WifiP2pManager docs & code -->
         <receiver
             android:name=".MyPeerDiscoveryBroadcastReceiver"
@@ -53,9 +37,6 @@
             android:permission="android.permission.CHANGE_WIFI_STATE">
             <intent-filter>
                 <action android:name="android.net.wifi.p2p.STATE_CHANGED" />
-                <action android:name="android.net.wifi.p2p.CONNECTION_STATE_CHANGE" />
-                <action android:name="android.net.wifi.p2p.PEERS_CHANGED" />
-                <action android:name="android.net.wifi.p2p.THIS_DEVICE_CHANGED" />
             </intent-filter>
         </receiver>
 

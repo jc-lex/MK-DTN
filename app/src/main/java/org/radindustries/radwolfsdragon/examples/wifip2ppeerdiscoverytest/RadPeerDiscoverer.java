@@ -25,17 +25,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public final class RadPeerDiscoverer implements PeerDiscoverer {
+public final class RadPeerDiscoverer implements PeerDiscovererToManager, PeerDiscovererToDaemon {
 
     private static final String LOG_TAG
             = Constants.MAIN_LOG_TAG + "_" + RadPeerDiscoverer.class.getSimpleName();
     private static final String SERVICE_ID
             = Constants.DTN_REGISTRATION_TYPE + BuildConfig.APPLICATION_ID;
     private static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
-    private static final String thisNodezHumanReadableName = "DTN node";
-    // TODO find out how to generate persistent EID for this DTN node
+    private static final String thisNodezHumanReadableName = "Bundle Node";
+    // TODO find out how to generate persistent EID for this bundle node
 
-    private List<String> peerList;
+    private List<BundleNode> peerList;
     private ConnectionsClient client;
 
     private final PayloadCallback payloadCallback
@@ -141,7 +141,7 @@ public final class RadPeerDiscoverer implements PeerDiscoverer {
     }
 
     @Override
-    public List<String> getPeerList() {
+    public List<BundleNode> getPeerList() {
         return this.peerList;
     }
 

@@ -17,7 +17,7 @@ import android.widget.Toast;
 public class MainActivity extends AppCompatActivity {
 
     private static final int USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 66;
-    private PeerDiscoverer discoverer;
+    private PeerDiscovererToManager discoverer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
                         USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE);
             }
         } else {
-            discoverer = DependencyInjection.getPeerDiscoverer(this);
+            discoverer = DependencyInjection.getPeerDiscovererToManager(this);
         }
     }
 
@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
                     grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 finish();
             } else {
-                discoverer = DependencyInjection.getPeerDiscoverer(this);
+                discoverer = DependencyInjection.getPeerDiscovererToManager(this);
             }
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);

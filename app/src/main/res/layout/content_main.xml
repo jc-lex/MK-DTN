@@ -13,21 +13,23 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center_vertical"
-        android:padding="30dp">
+        android:padding="@dimen/dtn_btnz_layout_padding">
 
         <Button
             android:id="@+id/start_service_button"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="@dimen/dtn_btn_layout_height"
             android:gravity="center"
-            android:text="START" />
+            android:text="@string/activate_dtn_btn_text"
+            android:textSize="@dimen/dtn_btn_text_size" />
 
         <Button
             android:id="@+id/stop_service_button"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="@dimen/dtn_btn_layout_height"
             android:gravity="center"
-            android:text="STOP" />
+            android:text="@string/deactivate_dtn_btn_text"
+            android:textSize="@dimen/dtn_btn_text_size"/>
     </LinearLayout>
 
 

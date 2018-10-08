@@ -36,7 +36,6 @@ public final class RadPeerDiscoverer implements PeerDiscoverer {
     // TODO find out how to generate persistent EID for this DTN node
 
     private List<String> peerList;
-    private Context context;
     private ConnectionsClient client;
 
     private final PayloadCallback payloadCallback
@@ -137,9 +136,8 @@ public final class RadPeerDiscoverer implements PeerDiscoverer {
 
 
     RadPeerDiscoverer(Context context) {
-        this.context = context;
         this.peerList = new ArrayList<>();
-        this.client = Nearby.getConnectionsClient(this.context);
+        this.client = Nearby.getConnectionsClient(context);
     }
 
     @Override

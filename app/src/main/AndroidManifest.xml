@@ -28,18 +28,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Only those who can change the WIFI state can broadcast to this receiver -->
-        <!-- NB: actions got from WifiP2pManager docs & code -->
-        <receiver
-            android:name=".MyPeerDiscoveryBroadcastReceiver"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="android.permission.CHANGE_WIFI_STATE">
-            <intent-filter>
-                <action android:name="android.net.wifi.p2p.STATE_CHANGED" />
-            </intent-filter>
-        </receiver>
-
     </application>
 
 </manifest>

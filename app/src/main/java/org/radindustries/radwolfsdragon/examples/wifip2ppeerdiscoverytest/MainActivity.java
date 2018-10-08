@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -15,9 +14,11 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity {
 
     private static final int USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 66;
+    private PeerDiscoverer discoverer;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -25,12 +26,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        Button btn = findViewById(R.id.stop_service_button);
-        btn.setOnClickListener(this);
+        Button startBtn = findViewById(R.id.start_service_button);
+        startBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                discoverer.init();
+            }
+        });
 
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(this);
+        Button stopBtn = findViewById(R.id.stop_service_button);
+        stopBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                discoverer.cleanUp();
+            }
+        });
 
+        // request for permissions first
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
@@ -49,6 +61,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                         USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE);
             }
+        } else {
+            discoverer = DependencyInjection.getPeerDiscoverer(this);
         }
     }
 
@@ -59,6 +73,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (grantResults.length > 0 &&
                     grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 finish();
+            } else {
+                discoverer = DependencyInjection.getPeerDiscoverer(this);
             }
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -84,10 +100,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onClick(View v) {
-
     }
 }

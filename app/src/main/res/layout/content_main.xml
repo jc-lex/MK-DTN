@@ -8,11 +8,27 @@
     tools:context=".MainActivity"
     tools:showIn="@layout/activity_main">
 
-    <Button
-        android:id="@+id/stop_service_button"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:text="BUTTON" />
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:padding="30dp">
+
+        <Button
+            android:id="@+id/start_service_button"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:gravity="center"
+            android:text="START" />
+
+        <Button
+            android:id="@+id/stop_service_button"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:gravity="center"
+            android:text="STOP" />
+    </LinearLayout>
+
 
 </android.support.constraint.ConstraintLayout>

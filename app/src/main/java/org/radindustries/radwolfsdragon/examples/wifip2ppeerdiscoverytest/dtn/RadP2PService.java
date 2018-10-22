@@ -22,8 +22,8 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.ConvergenceLayerAdapter;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscovery.PeerDiscovery;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.CLAToRouter;
 
@@ -42,14 +42,16 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
     private Payload payloadToSend;
     private CLAToRouter router;
     private HashMap<String, String> discoveredBundleNodes;
-    private ConnectionsClient client;
+    private HashMap<String, String> connectedBundleNodes;
+    private ConnectionsClient connectionsClient;
 
     private final PayloadCallback payloadCallback
             = new PayloadCallback() {
         @Override
         public void onPayloadReceived(String p2pEndpointId, Payload payload) {
-            if (payload != null && payload.getType() == Payload.Type.BYTES) { // must be stream
-                Log.d(LOG_TAG, "Message from " + discoveredBundleNodes.get(p2pEndpointId));
+            if (payload != null && payload.getType() == Payload.Type.BYTES) {
+                Log.i(LOG_TAG, "Bundle received from "
+                        + connectedBundleNodes.get(p2pEndpointId));
                 DTNBundle receivedBundle = toDTNBundle(payload);
                 if (router != null) router.deliverDTNBundle(receivedBundle);
             }
@@ -68,27 +70,19 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
         public void onConnectionInitiated(String p2pEndPointId, ConnectionInfo connectionInfo) {
             String bundleNodeEID = connectionInfo.getEndpointName();
             if (connectionInfo.isIncomingConnection()) {
-                if (isWellKnownBundleNode(p2pEndPointId, bundleNodeEID)) {
-                    client.acceptConnection(p2pEndPointId, payloadCallback);
+                if (discoveredBundleNodes.containsValue(bundleNodeEID)) { // is well-known
+                    connectionsClient.acceptConnection(p2pEndPointId, payloadCallback);
                     Log.i(LOG_TAG, "Accepting incoming connection to well-known node "
                             + bundleNodeEID);
                 } else {
-                    client.rejectConnection(p2pEndPointId);
+                    connectionsClient.rejectConnection(p2pEndPointId);
                     Log.i(LOG_TAG, "Rejecting incoming connection to unknown node "
                             + bundleNodeEID);
                 }
             } else {
-                client.acceptConnection(p2pEndPointId, payloadCallback);
+                connectionsClient.acceptConnection(p2pEndPointId, payloadCallback);
                 Log.i(LOG_TAG, "Accepting outgoing connection to " + bundleNodeEID);
             }
-        }
-
-        private boolean isWellKnownBundleNode(String p2pEndpointName, String bundleNodeEID) {
-            String knownBundleNode = discoveredBundleNodes.get(p2pEndpointName);
-
-            return discoveredBundleNodes.containsKey(p2pEndpointName) &&
-                    discoveredBundleNodes.containsValue(bundleNodeEID) &&
-                    bundleNodeEID.equals(knownBundleNode);
         }
 
         @Override
@@ -97,18 +91,29 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
             switch (connectionResolution.getStatus().getStatusCode()) {
                 case ConnectionsStatusCodes.STATUS_OK:
                     // We're connected! Can now start sending and receiving data.
-                    Log.i(LOG_TAG, "Connection succeeded. =)");
-                    client.sendPayload(p2pEndpointId, payloadToSend); // bundle forwarding
-                    Log.d(LOG_TAG, "Message sent to "
-                            + discoveredBundleNodes.get(p2pEndpointId));
+                    String newlyConnectedNode = discoveredBundleNodes.get(p2pEndpointId);
+                    Log.i(LOG_TAG, "Connection to " + newlyConnectedNode + " succeeded. =)");
+                    connectedBundleNodes.put(p2pEndpointId, newlyConnectedNode);
+                    Log.d(LOG_TAG, "Currently connected bundle nodes: "
+                            + connectedBundleNodes.toString());
+                    forwardBundle(p2pEndpointId, payloadToSend);
                     break;
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
-                    // The connection was rejected by one or both sides.
-                    Log.i(LOG_TAG, "Connection rejected. :(");
+                    // The connection was rejected by one side
+                    Log.e(LOG_TAG, "Connection rejected :(");
                     break;
                 case ConnectionsStatusCodes.STATUS_ERROR:
                     // The connection broke before it was able to be accepted.
-                    Log.e(LOG_TAG, "Connection error.");
+                    Log.e(LOG_TAG, "Connection error");
+                    break;
+                case ConnectionsStatusCodes.STATUS_BLUETOOTH_ERROR:
+                    Log.e(LOG_TAG, "Bluetooth is not working well");
+                    break;
+                case ConnectionsStatusCodes.STATUS_ALREADY_CONNECTED_TO_ENDPOINT:
+                    // We're already connected! Just send.
+                    Log.i(LOG_TAG, "Already connected to "
+                            + connectedBundleNodes.get(p2pEndpointId));
+                    forwardBundle(p2pEndpointId, payloadToSend);
                     break;
             }
 
@@ -118,7 +123,9 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
         public void onDisconnected(String p2pEndpointId) {
             // We've been disconnected from this endpoint. No more data can be
             // sent or received.
-            Log.i(LOG_TAG, "Disconnected from " + discoveredBundleNodes.get(p2pEndpointId));
+            Log.i(LOG_TAG, "Disconnected from " + connectedBundleNodes.remove(p2pEndpointId));
+            Log.d(LOG_TAG, "Currently connected bundle nodes: "
+                    + connectedBundleNodes.toString());
         }
     };
 
@@ -131,21 +138,18 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
             String foundNodesServiceId = discoveredEndpointInfo.getServiceId();
             String foundNodesBundleEID = discoveredEndpointInfo.getEndpointName();
 
-            if (isBundleNode(foundNodesServiceId)) {
+            if (foundNodesServiceId.equals(SERVICE_ID) && // supports DTN
+                    !discoveredBundleNodes.containsValue(foundNodesBundleEID)) { // not well-known
                 discoveredBundleNodes.put(p2pEndpointId, foundNodesBundleEID);
                 Log.d(LOG_TAG, "Currently discovered bundle nodes: "
                         + discoveredBundleNodes.toString());
             }
         }
 
-        private boolean isBundleNode(String foundEndpointsServiceId) {
-            return foundEndpointsServiceId.equals(SERVICE_ID);
-        }
-
         @Override
         public void onEndpointLost(String p2pEndpointId) {
             // A previously discovered endpoint has gone away.
-            Log.i(LOG_TAG, discoveredBundleNodes.remove(p2pEndpointId) + " has gone away.");
+            Log.i(LOG_TAG, discoveredBundleNodes.remove(p2pEndpointId) + " has gone away");
             Log.d(LOG_TAG, "Currently discovered bundle nodes: "
                     + discoveredBundleNodes.toString());
         }
@@ -153,7 +157,8 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
 
     RadP2PService(Context context) {
         this.discoveredBundleNodes = new HashMap<>();
-        this.client = Nearby.getConnectionsClient(context);
+        this.connectedBundleNodes = new HashMap<>();
+        this.connectionsClient = Nearby.getConnectionsClient(context);
     }
 
     @Override
@@ -174,8 +179,8 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
 
     @Override
     public void init() {
-        Log.i(LOG_TAG, "Starting P2P Service");
         if (thisBundleNodezEndpointId != null) {
+            Log.i(LOG_TAG, "Starting P2P Service");
             advertise();
             discover();
         }
@@ -183,14 +188,17 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
 
     @Override
     public void cleanUp() {
-        client.stopAdvertising();
-        client.stopDiscovery();
-        client.stopAllEndpoints();
+        connectionsClient.stopAdvertising();
+        connectionsClient.stopDiscovery();
+        connectionsClient.stopAllEndpoints();
+        connectedBundleNodes.clear();
+        discoveredBundleNodes.clear();
         Log.i(LOG_TAG, "Stopped P2P Service");
     }
 
     private void advertise() {
-        client.startAdvertising(
+        Log.i(LOG_TAG, "Requesting to advertise this device as a bundle node");
+        connectionsClient.startAdvertising(
                 thisBundleNodezEndpointId,
                 SERVICE_ID,
                 connectionLifecycleCallback,
@@ -199,22 +207,24 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
                     @Override
                     public void onSuccess(Void aVoid) {
                         // We're advertising!
-                        Log.i(LOG_TAG, "Advertise request succeeded.");
+                        Log.i(LOG_TAG, "Advertise request succeeded. Device Bundle EID: "
+                                + thisBundleNodezEndpointId);
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
                         // We were unable to start advertising.
-                        Log.e(LOG_TAG, "Advertise request failed.", e);
-                        client.stopAllEndpoints();
+                        Log.e(LOG_TAG, "Advertise request failed. Retrying...", e);
+                        connectionsClient.stopAllEndpoints();
                         advertise();
                     }
                 });
     }
 
     private void discover() {
-        client.startDiscovery(
+        Log.i(LOG_TAG, "Requesting to discover other bundle nodes");
+        connectionsClient.startDiscovery(
                 SERVICE_ID,
                 endpointDiscoveryCallback,
                 new DiscoveryOptions(STRATEGY))
@@ -222,43 +232,56 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
                     @Override
                     public void onSuccess(Void unusedResult) {
                         // We're discovering!
-                        Log.i(LOG_TAG, "Discovery request succeeded.");
+                        Log.i(LOG_TAG, "Discovery request succeeded");
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
                         // We were unable to start discovering.
-                        Log.e(LOG_TAG, "Discovery request failed.", e);
-                        client.stopAllEndpoints();
+                        Log.e(LOG_TAG, "Discovery request failed. Retrying...", e);
+                        connectionsClient.stopAllEndpoints();
                         discover();
                     }
                 });
     }
 
     @Override
-    public void transmitBundle(DTNBundle dtnBundleToSend, String p2pEndpointId) {
+    public void transmitBundle(DTNBundle dtnBundleToSend, String... p2pEndpointIds) {
         payloadToSend = toPayload(dtnBundleToSend);
 
-        client.requestConnection(
-                thisBundleNodezEndpointId,
-                p2pEndpointId,
-                connectionLifecycleCallback)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        // We successfully requested a connection. Now both sides
-                        // must accept before the connection is established.
-                        Log.i(LOG_TAG, "Connection request succeeded.");
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        // Nearby Connections failed to request the connection.
-                        Log.e(LOG_TAG, "Connection request failed.", e);
-                    }
-                });
+        Log.i(LOG_TAG, "Transmitting bundle to connected bundle nodes");
+        for (final String p2pEID : p2pEndpointIds) {
+            if (connectedBundleNodes.containsKey(p2pEID)) { // is connected
+                forwardBundle(p2pEID, payloadToSend);
+            } else {
+                Log.i(LOG_TAG, "Requesting connection to "
+                        + discoveredBundleNodes.get(p2pEID));
+                connectionsClient.requestConnection(
+                        thisBundleNodezEndpointId,
+                        p2pEID,
+                        connectionLifecycleCallback)
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                // We successfully requested a connection. Now both sides
+                                // must accept before the connection is established.
+                                Log.i(LOG_TAG, "Connection request to "
+                                        + discoveredBundleNodes.get(p2pEID)
+                                        + " succeeded");
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                // Nearby Connections failed to request the connection.
+                                Log.e(LOG_TAG, "Connection request to "
+                                        + discoveredBundleNodes.get(p2pEID)
+                                        + " failed", e);
+                            }
+                        });
+            }
+        }
     }
 
     private DTNBundle toDTNBundle(Payload payload) {
@@ -272,6 +295,12 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
         // payload should be a stream
         byte[] data = dtnDTNBundle.data.getBytes();
         return Payload.fromBytes(data);
+    }
+
+    private void forwardBundle(String p2pEndpointId, Payload payloadToSend) {
+        Log.i(LOG_TAG, "Sending bundle to " + connectedBundleNodes.get(p2pEndpointId));
+        connectionsClient.sendPayload(p2pEndpointId, payloadToSend);
+        Log.i(LOG_TAG, "Bundle sent to " + connectedBundleNodes.get(p2pEndpointId));
     }
 }
 

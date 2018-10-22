@@ -1,11 +1,13 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui;
 
 import android.Manifest;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -13,24 +15,24 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DTNConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DependencyInjection;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.ConvergenceLayerAdapter;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscovery.PeerDiscovery;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.CLAToRouter;
 
 import java.util.HashMap;
+import java.util.Set;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements CLAToRouter /*, Daemon*/ {
 
     private static final int USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 66;
     private static final String LOG_TAG
-            = DTNConstants.MAIN_LOG_TAG + MainActivity.class.getSimpleName();
+            = DTNConstants.MAIN_LOG_TAG + "_" + MainActivity.class.getSimpleName();
 
     private ConvergenceLayerAdapter cla;
     private PeerDiscovery discoverer;
@@ -58,13 +60,13 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
             @Override
             public void onClick(View v) {
                 DTNBundle bundleToSend = generateDummyBundleToSend();
-                HashMap<String, String> recepientBundleNodes
+                Log.i(LOG_TAG, "Bundle to send: " + bundleToSend.data);
+                HashMap<String, String> recipientBundleNodes
                         = discoverer.getDiscoveredBundleNodes();
-                String[] nodesAsArray = (String[]) recepientBundleNodes.keySet().toArray();
-                if (nodesAsArray != null && nodesAsArray.length > 0) { // the first node discovered
-                    cla.transmitBundle(bundleToSend, nodesAsArray[0]);
-                    Log.i(LOG_TAG, "Sending message to " + nodesAsArray[0]);
-                }
+                Set<String> keySet = recipientBundleNodes.keySet();
+                String[] nodes = keySet.toArray(new String[]{}); // NB: never use "set.toArray()"
+                if (nodes.length > 0)
+                    cla.transmitBundle(bundleToSend, nodes);
             }
         });
 
@@ -82,13 +84,27 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.ACCESS_COARSE_LOCATION)) {
                 //explain why you need it
-                Toast.makeText(this, "This app needs this permission to act " +
-                        "as a DTN node to send your text message.", Toast.LENGTH_LONG).show();
-
-                //request for the permission
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                        USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE);
+                new AlertDialog.Builder(this)
+                        .setTitle("Permission Request")
+                        .setMessage("This app needs to know your location" +
+                                " to send your DTN text messages")
+                        .setPositiveButton("Accept", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                //request for the permission
+                                ActivityCompat.requestPermissions(getParent(),
+                                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                                        USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE);
+                            }
+                        })
+                        .setNegativeButton("Reject", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                finish();
+                            }
+                        })
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .show();
             } else {
                 //request for the permission
                 ActivityCompat.requestPermissions(this,
@@ -116,36 +132,28 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
     @Override
     public void deliverDTNBundle(DTNBundle bundle) {
         // use its toString() method when showing in logs
-        Log.d(LOG_TAG, "Received bundle: " + bundle.data);
+        Log.d(LOG_TAG, "Bundle received: " + bundle.data);
     }
 
     private DTNBundle generateDummyBundleToSend() {
-        // TODO ALOOOOTT of code here... Ayi maama
         DTNBundle bundle = new DTNBundle();
-        bundle.data = "Yo, name's " + bundleNodeEndpointId + ". Wassap? B-)";
+        bundle.data = "Yo, Wassap homie? B-)";
         return bundle;
     }
 

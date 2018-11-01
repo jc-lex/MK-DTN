@@ -24,8 +24,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscovery.PeerDiscovery;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.CLAToRouter;
 
-import java.util.HashMap;
-import java.util.Set;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements CLAToRouter /*, Daemon*/ {
@@ -59,14 +57,14 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                DTNBundle bundleToSend = generateDummyBundleToSend();
-                Log.i(LOG_TAG, "Bundle to send: " + bundleToSend.data);
-                HashMap<String, String> recipientBundleNodes
-                        = discoverer.getDiscoveredBundleNodes();
-                Set<String> keySet = recipientBundleNodes.keySet();
-                String[] nodes = keySet.toArray(new String[]{}); // NB: never use "set.toArray()"
-                if (nodes.length > 0)
-                    cla.transmitBundle(bundleToSend, nodes);
+//                DTNBundle bundleToSend = generateDummyBundleToSend();
+//                Log.i(LOG_TAG, "Bundle to send: " + bundleToSend.data);
+//                HashMap<String, String> recipientBundleNodes
+//                        = discoverer.getUpContacts();
+//                Set<String> keySet = recipientBundleNodes.keySet();
+//                String[] nodes = keySet.toArray(new String[]{}); // NB: never use "set.toArray()"
+//                if (nodes.length > 0)
+//                    cla.transmitBundle(bundleToSend, nodes);
             }
         });
 

@@ -10,13 +10,9 @@ import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
 import com.google.android.gms.nearby.connection.ConnectionResolution;
 import com.google.android.gms.nearby.connection.ConnectionsClient;
-import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo;
 import com.google.android.gms.nearby.connection.DiscoveryOptions;
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
-import com.google.android.gms.nearby.connection.Payload;
-import com.google.android.gms.nearby.connection.PayloadCallback;
-import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -24,108 +20,130 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.ConvergenceLayerAdapter;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscovery.PeerDiscovery;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.CLAToRouter;
 
-import java.util.HashMap;
-import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 
 final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
 
     private static final String LOG_TAG
             = DTNConstants.MAIN_LOG_TAG + "_" + RadP2PService.class.getSimpleName();
-    private static final String SERVICE_ID
+    private static final String DTN_SERVICE_ID
             = DTNConstants.DTN_REGISTRATION_TYPE + BuildConfig.APPLICATION_ID;
-    private static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
+    private static final Strategy STRATEGY = Strategy.P2P_POINT_TO_POINT;
+    private static final AdvertisingOptions ADVERTISING_OPTIONS
+            = new AdvertisingOptions.Builder().setStrategy(STRATEGY).build();
+    private static final DiscoveryOptions DISCOVERY_OPTIONS
+            = new DiscoveryOptions.Builder().setStrategy(STRATEGY).build();
 
     private String thisBundleNodezEndpointId;
-    private Payload payloadToSend;
-    private CLAToRouter router;
-    private HashMap<String, String> discoveredBundleNodes;
-    private HashMap<String, String> connectedBundleNodes;
+//    private Payload payloadToSend;
+//    private CLAToRouter router;
+//    private HashMap<String, DTNNode> discoveredDTNNodes;
+//    private HashMap<String, DTNNode> connectedDTNNodes;
+    private Set<DTNNode> potentialContacts;
+//    private Set<DTNNode> upContacts;
     private ConnectionsClient connectionsClient;
 
-    private final PayloadCallback payloadCallback
-            = new PayloadCallback() {
-        @Override
-        public void onPayloadReceived(String p2pEndpointId, Payload payload) {
-            if (payload != null && payload.getType() == Payload.Type.BYTES) {
-                Log.i(LOG_TAG, "Bundle received from "
-                        + connectedBundleNodes.get(p2pEndpointId));
-                DTNBundle receivedBundle = toDTNBundle(payload);
-                if (router != null) router.deliverDTNBundle(receivedBundle);
-            }
-        }
-
-        @Override
-        public void onPayloadTransferUpdate(String p2pEndpointId,
-                                            PayloadTransferUpdate payloadTransferUpdate) {
-            // no UI updates
-        }
-    };
+//    private final PayloadCallback payloadCallback
+//            = new PayloadCallback() {
+//        @Override
+//        public void onPayloadReceived(
+//                @NonNull String nearbyEndpointID,
+//                @NonNull Payload payload
+//        ) {
+////            if (payload.getType() == Payload.Type.BYTES) {
+////                Log.i(LOG_TAG, "Bundle received");
+////                DTNBundle receivedBundle = toDTNBundle(payload);
+////                router.deliverDTNBundle(receivedBundle);
+////            }
+//        }
+//
+//        @Override
+//        public void onPayloadTransferUpdate(
+//                @NonNull String nearbyEndpointID,
+//                @NonNull PayloadTransferUpdate payloadTransferUpdate
+//        ) {
+//
+//        }
+//    };
 
     private final ConnectionLifecycleCallback connectionLifecycleCallback
             = new ConnectionLifecycleCallback() {
         @Override
-        public void onConnectionInitiated(String p2pEndPointId, ConnectionInfo connectionInfo) {
-            String bundleNodeEID = connectionInfo.getEndpointName();
-            if (connectionInfo.isIncomingConnection()) {
-                if (discoveredBundleNodes.containsValue(bundleNodeEID)) { // is well-known
-                    connectionsClient.acceptConnection(p2pEndPointId, payloadCallback);
-                    Log.i(LOG_TAG, "Accepting incoming connection to well-known node "
-                            + bundleNodeEID);
-                } else {
-                    connectionsClient.rejectConnection(p2pEndPointId);
-                    Log.i(LOG_TAG, "Rejecting incoming connection to unknown node "
-                            + bundleNodeEID);
-                }
-            } else {
-                connectionsClient.acceptConnection(p2pEndPointId, payloadCallback);
-                Log.i(LOG_TAG, "Accepting outgoing connection to " + bundleNodeEID);
-            }
+        public void onConnectionInitiated(
+                @NonNull String nearbyEndpointID,
+                @NonNull ConnectionInfo connectionInfo
+        ) {
+//            String eid = connectionInfo.getEndpointName();
+//
+//            if (isWellKnown(eid)) {
+//                if (connectionInfo.isIncomingConnection()) {
+//                    connectionsClient.acceptConnection(nearbyEndpointID, payloadCallback);
+//                    Log.i(LOG_TAG, "Accepting incoming connection from wellknown node " + eid);
+//                } else {
+//                    connectionsClient.acceptConnection(nearbyEndpointID, payloadCallback);
+//                    Log.i(LOG_TAG, "Accepting outgoing connection to " + eid);
+//                }
+//            } else {
+//                if (connectionInfo.isIncomingConnection()) {
+//                    connectionsClient.rejectConnection(nearbyEndpointID);
+//                    Log.i(LOG_TAG, "Rejecting incoming connection to unknown node " + eid);
+//                }
+//            }
         }
 
         @Override
-        public void onConnectionResult(String p2pEndpointId,
-                                       ConnectionResolution connectionResolution) {
-            switch (connectionResolution.getStatus().getStatusCode()) {
-                case ConnectionsStatusCodes.STATUS_OK:
-                    // We're connected! Can now start sending and receiving data.
-                    String newlyConnectedNode = discoveredBundleNodes.get(p2pEndpointId);
-                    Log.i(LOG_TAG, "Connection to " + newlyConnectedNode + " succeeded. =)");
-                    connectedBundleNodes.put(p2pEndpointId, newlyConnectedNode);
-                    Log.d(LOG_TAG, "Currently connected bundle nodes: "
-                            + connectedBundleNodes.toString());
-                    forwardBundle(p2pEndpointId, payloadToSend);
-                    break;
-                case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
-                    // The connection was rejected by one side
-                    Log.e(LOG_TAG, "Connection rejected :(");
-                    break;
-                case ConnectionsStatusCodes.STATUS_ERROR:
-                    // The connection broke before it was able to be accepted.
-                    Log.e(LOG_TAG, "Connection error");
-                    break;
-                case ConnectionsStatusCodes.STATUS_BLUETOOTH_ERROR:
-                    Log.e(LOG_TAG, "Bluetooth is not working well");
-                    break;
-                case ConnectionsStatusCodes.STATUS_ALREADY_CONNECTED_TO_ENDPOINT:
-                    // We're already connected! Just send.
-                    Log.i(LOG_TAG, "Already connected to "
-                            + connectedBundleNodes.get(p2pEndpointId));
-                    forwardBundle(p2pEndpointId, payloadToSend);
-                    break;
-            }
-
+        public void onConnectionResult(
+                @NonNull String nearbyEndpointID,
+                @NonNull ConnectionResolution connectionResolution
+        ) {
+//            int statusCode = connectionResolution.getStatus().getStatusCode();
+//
+//            switch (statusCode) {
+//                case ConnectionsStatusCodes.STATUS_OK:
+//                    markDTNNodeAsConnected(nearbyEndpointID);
+//                    forwardBundle(nearbyEndpointID, payloadToSend);
+//                    break;
+//                case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
+//                    handleRejection(nearbyEndpointID);
+//                    break;
+//                    default:
+//                        Log.i(LOG_TAG, "Something went seriously wrong! :(");
+//            }
         }
 
+//        private void markDTNNodeAsConnected(String CLAAddress) {
+//            DTNNode newlyConnectedNode = discoveredDTNNodes.remove(CLAAddress);
+//
+//            if (newlyConnectedNode != null) {
+//                connectedDTNNodes.put(CLAAddress, newlyConnectedNode);
+//                Log.i(LOG_TAG, "Connected to {"
+//                        + newlyConnectedNode.CLAAddress + "=" + newlyConnectedNode.eid
+//                        + "}");
+//                Log.i(LOG_TAG, "Currently connected nodes: " + connectedDTNNodes);
+//            }
+//        }
+//
+//        private void handleRejection(String CLAAddress) {
+//            DTNNode node = discoveredDTNNodes.get(CLAAddress);
+//
+//            if (node != null)
+//                Log.i(LOG_TAG, "This node was rejected by " + node.eid);
+//        }
+
         @Override
-        public void onDisconnected(String p2pEndpointId) {
-            // We've been disconnected from this endpoint. No more data can be
-            // sent or received.
-            Log.i(LOG_TAG, "Disconnected from " + connectedBundleNodes.remove(p2pEndpointId));
-            Log.d(LOG_TAG, "Currently connected bundle nodes: "
-                    + connectedBundleNodes.toString());
+        public void onDisconnected(@NonNull String nearbyEndpointID) {
+//            DTNNode disconnectedNode = connectedDTNNodes.remove(nearbyEndpointID);
+//
+//            if (disconnectedNode != null) {
+//                discoveredDTNNodes.put(nearbyEndpointID, disconnectedNode);
+//                Log.i(LOG_TAG, "Disconnected from " + disconnectedNode.eid);
+//                Log.i(LOG_TAG, "Currently connected nodes: " + connectedDTNNodes);
+//            }
         }
     };
 
@@ -133,31 +151,38 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
             = new EndpointDiscoveryCallback() {
         @Override
         public void onEndpointFound(
-                final String p2pEndpointId, DiscoveredEndpointInfo discoveredEndpointInfo) {
-            // An endpoint was found!
-            String foundNodesServiceId = discoveredEndpointInfo.getServiceId();
-            String foundNodesBundleEID = discoveredEndpointInfo.getEndpointName();
+                @NonNull String nearbyEndpointID,
+                @NonNull DiscoveredEndpointInfo discoveredEndpointInfo
+        ) {
+            String bundleNodeEID = discoveredEndpointInfo.getEndpointName();
+            String serviceId = discoveredEndpointInfo.getServiceId();
 
-            if (foundNodesServiceId.equals(SERVICE_ID) && // supports DTN
-                    !discoveredBundleNodes.containsValue(foundNodesBundleEID)) { // not well-known
-                discoveredBundleNodes.put(p2pEndpointId, foundNodesBundleEID);
-                Log.d(LOG_TAG, "Currently discovered bundle nodes: "
-                        + discoveredBundleNodes.toString());
+            DTNNode foundNode = new DTNNode();
+            foundNode.eid = bundleNodeEID;
+            foundNode.CLAAddress = nearbyEndpointID;
+
+            if (isDTNNode(serviceId)) {
+                if (isWellKnown(foundNode)) {
+                    updateWellKnownDTNNodezCLAAddress(nearbyEndpointID, foundNode);
+                } else {
+                    makeDTNNodeWellKnown(foundNode);
+                }
+                Log.i(LOG_TAG, "Currently discovered nodes: " + potentialContacts);
             }
         }
 
         @Override
-        public void onEndpointLost(String p2pEndpointId) {
-            // A previously discovered endpoint has gone away.
-            Log.i(LOG_TAG, discoveredBundleNodes.remove(p2pEndpointId) + " has gone away");
-            Log.d(LOG_TAG, "Currently discovered bundle nodes: "
-                    + discoveredBundleNodes.toString());
+        public void onEndpointLost(@NonNull String nearbyEndpointID) {
+            forgetDTNNode(nearbyEndpointID);
+            Log.i(LOG_TAG, "Currently discovered nodes: " + potentialContacts);
         }
     };
 
     RadP2PService(Context context) {
-        this.discoveredBundleNodes = new HashMap<>();
-        this.connectedBundleNodes = new HashMap<>();
+//        this.discoveredDTNNodes = new HashMap<>();
+//        this.connectedDTNNodes = new HashMap<>();
+        this.potentialContacts = new HashSet<>();
+//        this.upContacts = new HashSet<>();
         this.connectionsClient = Nearby.getConnectionsClient(context);
     }
 
@@ -169,12 +194,13 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
 
     @Override
     public void setRouter(CLAToRouter router) {
-        this.router = router;
+//        this.router = router;
     }
 
     @Override
-    public HashMap<String, String> getDiscoveredBundleNodes() {
-        return this.discoveredBundleNodes;
+    public Set<DTNNode> getUpContacts() {
+//        return upContacts;
+        return null;
     }
 
     @Override
@@ -191,116 +217,171 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
         connectionsClient.stopAdvertising();
         connectionsClient.stopDiscovery();
         connectionsClient.stopAllEndpoints();
-        connectedBundleNodes.clear();
-        discoveredBundleNodes.clear();
+        potentialContacts.clear(); // forget everyone
+//        connectedDTNNodes.clear();
+//        discoveredDTNNodes.clear();
         Log.i(LOG_TAG, "Stopped P2P Service");
     }
 
     private void advertise() {
         Log.i(LOG_TAG, "Requesting to advertise this device as a bundle node");
+
         connectionsClient.startAdvertising(
                 thisBundleNodezEndpointId,
-                SERVICE_ID,
+                DTN_SERVICE_ID,
                 connectionLifecycleCallback,
-                new AdvertisingOptions(STRATEGY))
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        // We're advertising!
-                        Log.i(LOG_TAG, "Advertise request succeeded. Device Bundle EID: "
-                                + thisBundleNodezEndpointId);
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        // We were unable to start advertising.
-                        Log.e(LOG_TAG, "Advertise request failed. Retrying...", e);
-                        connectionsClient.stopAllEndpoints();
-                        advertise();
-                    }
-                });
+                ADVERTISING_OPTIONS
+        ).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                // We're advertising!
+                Log.i(LOG_TAG, "Advertise request succeeded. Device Bundle EID: "
+                        + thisBundleNodezEndpointId);
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                // We were unable to start advertising.
+                Log.e(LOG_TAG, "Advertise request failed. Retrying...", e);
+                connectionsClient.stopAllEndpoints();
+                advertise();
+            }
+        });
     }
 
     private void discover() {
         Log.i(LOG_TAG, "Requesting to discover other bundle nodes");
+
         connectionsClient.startDiscovery(
-                SERVICE_ID,
+                DTN_SERVICE_ID,
                 endpointDiscoveryCallback,
-                new DiscoveryOptions(STRATEGY))
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void unusedResult) {
-                        // We're discovering!
-                        Log.i(LOG_TAG, "Discovery request succeeded");
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        // We were unable to start discovering.
-                        Log.e(LOG_TAG, "Discovery request failed. Retrying...", e);
-                        connectionsClient.stopAllEndpoints();
-                        discover();
-                    }
-                });
+                DISCOVERY_OPTIONS
+        ).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                // We're discovering!
+                Log.i(LOG_TAG, "Discovery request succeeded");
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                // We were unable to start discovering.
+                Log.e(LOG_TAG, "Discovery request failed. Retrying...", e);
+                connectionsClient.stopAllEndpoints();
+                discover();
+            }
+        });
     }
 
     @Override
-    public void transmitBundle(DTNBundle dtnBundleToSend, String... p2pEndpointIds) {
-        payloadToSend = toPayload(dtnBundleToSend);
+    public void transmitBundle(DTNBundle dtnBundleToSend, Set<DTNNode> nodes) {
+//        payloadToSend = toPayload(dtnBundleToSend);
+//
+//        Log.i(LOG_TAG, "Transmitting bundle to connected bundle nodes");
+//        for (final DTNNode node : nodes) {
+//            if (isConnected(node)) {
+//                forwardBundle(node.CLAAddress, payloadToSend);
+//            } else {
+//                Log.i(LOG_TAG, "Requesting connection to " + node.eid);
+//
+//                connectionsClient.requestConnection(
+//                        thisBundleNodezEndpointId,
+//                        node.CLAAddress,
+//                        connectionLifecycleCallback
+//                ).addOnSuccessListener(new OnSuccessListener<Void>() {
+//                    @Override
+//                    public void onSuccess(Void aVoid) {
+//                        // We successfully requested a connection. Now both sides
+//                        // must accept before the connection is established.
+//                        Log.i(LOG_TAG, "Connection request to " + node.eid + " succeeded");
+//                    }
+//                }).addOnFailureListener(new OnFailureListener() {
+//                    @Override
+//                    public void onFailure(@NonNull Exception e) {
+//                        // Nearby Connections failed to request the connection.
+//                        Log.e(LOG_TAG, "Connection request to " + node.eid + " failed", e);
+//                    }
+//                });
+//            }
+//        }
+    }
 
-        Log.i(LOG_TAG, "Transmitting bundle to connected bundle nodes");
-        for (final String p2pEID : p2pEndpointIds) {
-            if (connectedBundleNodes.containsKey(p2pEID)) { // is connected
-                forwardBundle(p2pEID, payloadToSend);
-            } else {
-                Log.i(LOG_TAG, "Requesting connection to "
-                        + discoveredBundleNodes.get(p2pEID));
-                connectionsClient.requestConnection(
-                        thisBundleNodezEndpointId,
-                        p2pEID,
-                        connectionLifecycleCallback)
-                        .addOnSuccessListener(new OnSuccessListener<Void>() {
-                            @Override
-                            public void onSuccess(Void aVoid) {
-                                // We successfully requested a connection. Now both sides
-                                // must accept before the connection is established.
-                                Log.i(LOG_TAG, "Connection request to "
-                                        + discoveredBundleNodes.get(p2pEID)
-                                        + " succeeded");
-                            }
-                        })
-                        .addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                // Nearby Connections failed to request the connection.
-                                Log.e(LOG_TAG, "Connection request to "
-                                        + discoveredBundleNodes.get(p2pEID)
-                                        + " failed", e);
-                            }
-                        });
+//    private boolean isConnected(DTNNode node) {
+//        return connectedDTNNodes.containsValue(node);
+//    }
+//
+//    private DTNBundle toDTNBundle(Payload payload) {
+//        // convert to normal bundle as appropriate
+//        DTNBundle bundle = new DTNBundle();
+//        bundle.data = new String(Objects.requireNonNull(payload.asBytes()));
+//        return bundle;
+//    }
+//
+//    private Payload toPayload(DTNBundle dtnDTNBundle) {
+//        byte[] data = dtnDTNBundle.data.getBytes();
+//        return Payload.fromBytes(data);
+//    }
+//
+//    private void forwardBundle(String nearbyCLAAddress, Payload payloadToSend) {
+//        DTNNode node = connectedDTNNodes.get(nearbyCLAAddress);
+//
+//        if (node != null) {
+//            Log.i(LOG_TAG, "Sending bundle to " + node.eid);
+//            connectionsClient.sendPayload(node.CLAAddress, payloadToSend);
+//            Log.i(LOG_TAG, "Bundle sent to " + node.eid);
+//        }
+//    }
+
+    private boolean isWellKnown(DTNNode newNode) {
+//        Set<Map.Entry<String, DTNNode>> nodes = discoveredDTNNodes.entrySet();
+//        for (Map.Entry node : nodes) {
+//            DTNNode dtnNode = (DTNNode) node.getValue();
+//            if (dtnNode.eid.equals(eid)) {
+//                return true;
+//            }
+//        }
+//        return false;
+        if (potentialContacts.isEmpty()) {
+            return false;
+        } else {
+            return potentialContacts.contains(newNode);
+        }
+    }
+
+    private void updateWellKnownDTNNodezCLAAddress(String newCLAAddress, DTNNode staleNode) {
+
+        DTNNode updatedNode = new DTNNode();
+        updatedNode.eid = staleNode.eid;
+        updatedNode.CLAAddress = newCLAAddress;
+
+        potentialContacts.remove(staleNode);
+
+        potentialContacts.add(updatedNode);
+
+        Log.i(LOG_TAG, "Updated node " + staleNode.eid
+                + "\'s CLA address to " + updatedNode.CLAAddress);
+    }
+
+    private void makeDTNNodeWellKnown(DTNNode newNode) {
+
+        potentialContacts.add(newNode);
+        Log.i(LOG_TAG, "Newly discovered node: {"
+                + newNode.CLAAddress + "=" + newNode.eid
+                + "}");
+    }
+
+    private void forgetDTNNode(String CLAAddress) {
+        for (DTNNode node : potentialContacts) {
+            if (node.CLAAddress.equals(CLAAddress)) {
+                Log.i(LOG_TAG, node.eid + " has gone away");
+                potentialContacts.remove(node);
+                break;
             }
         }
     }
 
-    private DTNBundle toDTNBundle(Payload payload) {
-        // convert to normal bundle as appropriate
-        DTNBundle bundle = new DTNBundle();
-        bundle.data = new String(Objects.requireNonNull(payload.asBytes()));
-        return bundle;
-    }
-
-    private Payload toPayload(DTNBundle dtnDTNBundle) {
-        // payload should be a stream
-        byte[] data = dtnDTNBundle.data.getBytes();
-        return Payload.fromBytes(data);
-    }
-
-    private void forwardBundle(String p2pEndpointId, Payload payloadToSend) {
-        Log.i(LOG_TAG, "Sending bundle to " + connectedBundleNodes.get(p2pEndpointId));
-        connectionsClient.sendPayload(p2pEndpointId, payloadToSend);
-        Log.i(LOG_TAG, "Bundle sent to " + connectedBundleNodes.get(p2pEndpointId));
+    private boolean isDTNNode(String serviceId) {
+        return serviceId.equals(DTN_SERVICE_ID);
     }
 }
 

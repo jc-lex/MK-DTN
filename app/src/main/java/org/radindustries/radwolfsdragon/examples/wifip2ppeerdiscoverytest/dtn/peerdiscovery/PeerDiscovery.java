@@ -5,7 +5,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import java.util.Set;
 
 public interface PeerDiscovery {
-    Set<DTNNode> getUpContacts();
+    Set<DTNNode> getPeerList();
     void init();
     void cleanUp();
     void setThisBundleNodezEndpointId(String thisBundleNodezEndpointId);

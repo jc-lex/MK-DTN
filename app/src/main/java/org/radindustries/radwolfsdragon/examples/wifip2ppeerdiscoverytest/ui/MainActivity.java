@@ -60,11 +60,12 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
 //                DTNBundle bundleToSend = generateDummyBundleToSend();
 //                Log.i(LOG_TAG, "Bundle to send: " + bundleToSend.data);
 //                HashMap<String, String> recipientBundleNodes
-//                        = discoverer.getUpContacts();
+//                        = discoverer.getPeerList();
 //                Set<String> keySet = recipientBundleNodes.keySet();
 //                String[] nodes = keySet.toArray(new String[]{}); // NB: never use "set.toArray()"
 //                if (nodes.length > 0)
 //                    cla.transmitBundle(bundleToSend, nodes);
+                cla.transmitBundle(null, discoverer.getPeerList());
             }
         });
 
@@ -149,11 +150,11 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         Log.d(LOG_TAG, "Bundle received: " + bundle.data);
     }
 
-    private DTNBundle generateDummyBundleToSend() {
-        DTNBundle bundle = new DTNBundle();
-        bundle.data = "Yo, Wassap homie? B-)";
-        return bundle;
-    }
+//    private DTNBundle generateDummyBundleToSend() {
+//        DTNBundle bundle = new DTNBundle();
+//        bundle.data = "Yo, Wassap homie? B-)";
+//        return bundle;
+//    }
 
     private void getDependencies() {
         // as the acting router and daemon...

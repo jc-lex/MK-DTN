@@ -4,4 +4,5 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 
 public interface CLAToRouter {
     void deliverDTNBundle(DTNBundle bundle);
+    void notifyBundleForwardingComplete(int bundleNodeCount);
 }

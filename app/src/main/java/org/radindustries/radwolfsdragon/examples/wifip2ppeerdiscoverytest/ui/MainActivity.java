@@ -21,9 +21,13 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DT
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DependencyInjection;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.ConvergenceLayerAdapter;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscovery.PeerDiscovery;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.CLAToRouter;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements CLAToRouter /*, Daemon*/ {
@@ -35,8 +39,12 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     private ConvergenceLayerAdapter cla;
     private PeerDiscovery discoverer;
 
+    private ArrayList<DTNNode> chosenPeers;
+    private DTNBundle bundleToTransmit;
+    private Button sendBtn;
+
     // TODO EID must be persistent. Use storage
-    private static final String bundleNodeEndpointId = UUID.randomUUID().toString();
+    private static final UUID bundleNodeEndpointId = UUID.randomUUID();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,27 +53,31 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        bundleToTransmit = requestNextBundle();
+
         Button startBtn = findViewById(R.id.start_service_button);
         startBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                chosenPeers = new ArrayList<>();
                 discoverer.init();
             }
         });
 
-        Button sendBtn = findViewById(R.id.send_button);
+        sendBtn = findViewById(R.id.send_button);
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                DTNBundle bundleToSend = generateDummyBundleToSend();
-//                Log.i(LOG_TAG, "Bundle to send: " + bundleToSend.data);
-//                HashMap<String, String> recipientBundleNodes
-//                        = discoverer.getPeerList();
-//                Set<String> keySet = recipientBundleNodes.keySet();
-//                String[] nodes = keySet.toArray(new String[]{}); // NB: never use "set.toArray()"
-//                if (nodes.length > 0)
-//                    cla.transmitBundle(bundleToSend, nodes);
-                cla.transmitBundle(null, discoverer.getPeerList());
+                // TODO make routing decision prior to bundle transmission
+                chosenPeers.addAll(chooseDTNNodes(discoverer.getPeerList()));
+
+                cla.transmitBundle(
+                        bundleToTransmit,
+                        chosenPeers.get(0)
+                );
+
+                // so that successive button presses do not trigger transmissions,
+                sendBtn.setEnabled(false);
             }
         });
 
@@ -73,27 +85,27 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         stopBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                chosenPeers = null;
                 discoverer.cleanUp();
             }
         });
 
-        // request for permissions first
+        // requestForPermissions for permissions first
         if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            getDependencies();
+        } else {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.ACCESS_COARSE_LOCATION)) {
                 //explain why you need it
                 new AlertDialog.Builder(this)
                         .setTitle("Permission Request")
                         .setMessage("This app needs to know your location" +
-                                " to send your DTN text messages")
+                                " to send your DTN data")
                         .setPositiveButton("Accept", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                //request for the permission
-                                ActivityCompat.requestPermissions(getParent(),
-                                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                                        USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE);
+                                requestForPermissions();
                             }
                         })
                         .setNegativeButton("Reject", new DialogInterface.OnClickListener() {
@@ -105,25 +117,29 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
                         .setIcon(android.R.drawable.ic_dialog_alert)
                         .show();
             } else {
-                //request for the permission
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                        USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE);
+                requestForPermissions();
             }
-        } else {
-            getDependencies();
         }
+    }
+
+    private void requestForPermissions() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                },
+                USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE
+        );
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         if (requestCode == USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 &&
-                    grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                finish();
-            } else {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getDependencies();
+            } else {
+                finish();
             }
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -146,20 +162,50 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
 
     @Override
     public void deliverDTNBundle(DTNBundle bundle) {
+        // TODO send to daemon for processing
         // use its toString() method when showing in logs
         Log.d(LOG_TAG, "Bundle received: " + bundle.data);
     }
 
-//    private DTNBundle generateDummyBundleToSend() {
-//        DTNBundle bundle = new DTNBundle();
-//        bundle.data = "Yo, Wassap homie? B-)";
-//        return bundle;
-//    }
+    @Override
+    public void notifyBundleForwardingComplete(int bundleNodeCount) {
+        // TODO in case of multi-cast, do something to trigger another transmission
+        if (bundleNodeCount < chosenPeers.size()) {
+            cla.transmitBundle(
+                    bundleToTransmit,
+                    chosenPeers.get(bundleNodeCount)
+            );
+        } else {
+            sendBtn.setEnabled(true);
+        }
+    }
+
+    private Set<DTNNode> chooseDTNNodes(Set<DTNNode> nodes) {
+        // one random selection, for now
+        DTNNode[] nodesArray = nodes.toArray(new DTNNode[]{});
+        int randomNumber = (int) (Math.random() * nodesArray.length); // Z : [0, len)
+
+        Set<DTNNode> tmpNodes = new HashSet<>();
+        tmpNodes.add(nodesArray[randomNumber]);
+
+        return tmpNodes;
+    }
+
+    private DTNBundle requestNextBundle() {
+        // TODO get bundle from Daemon
+        DTNBundle bundle = new DTNBundle();
+        bundle.data = "Yo homie, the time is " + System.currentTimeMillis();
+        return bundle;
+    }
 
     private void getDependencies() {
         // as the acting router and daemon...
         discoverer = DependencyInjection.getPeerDiscoverer(this);
-        discoverer.setThisBundleNodezEndpointId(bundleNodeEndpointId);
+
+        // short numbers for debugging purposes only
+        String eid = Long.toHexString(bundleNodeEndpointId.getMostSignificantBits());
+        discoverer.setThisBundleNodezEndpointId(eid.substring(0, 7));
+
         cla = DependencyInjection.getConvergenceLayerAdapter(this);
         cla.setRouter(this);
     }

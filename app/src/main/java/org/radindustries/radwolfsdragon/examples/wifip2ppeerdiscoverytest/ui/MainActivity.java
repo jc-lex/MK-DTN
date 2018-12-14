@@ -163,7 +163,8 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     @Override
     public void deliverDTNBundle(DTNBundle bundle) {
         // TODO send to daemon for processing
-        // use its toString() method when showing in logs
+        // TODO use bundle's toString() method when showing in logs
+        // TODO do asynch task here
         Log.d(LOG_TAG, "Bundle received: " + bundle.data);
     }
 

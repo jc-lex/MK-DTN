@@ -358,7 +358,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
             = generateBundlePCFsForUserBundle();
         primaryBlock.bundleID = DTNBundleID.from(bundleNodeEndpointId, Instant.now());
 //        primaryBlock.creationTimestamp = Instant.now();
-        primaryBlock.lifeTime = PrimaryBlock.LifeTime.THREE_DAYS;
+        primaryBlock.lifeTime = PrimaryBlock.LifeTime.setLifeTime(PrimaryBlock.LifeTime.THREE_DAYS);
 //        primaryBlock.sourceEID = bundleNodeEndpointId;
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);

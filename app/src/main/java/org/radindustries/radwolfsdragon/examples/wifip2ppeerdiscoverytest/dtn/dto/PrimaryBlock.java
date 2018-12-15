@@ -41,14 +41,27 @@ public final class PrimaryBlock implements Serializable {
                 default: return bundlePCFs;
             }
         }
+        
+        public static PriorityClass getPriorityClass(BigInteger bundlePCFs) {
+            if (!bundlePCFs.testBit(8) && !bundlePCFs.testBit(7)) return BULK;
+            else if (!bundlePCFs.testBit(8) && bundlePCFs.testBit(7)) return NORMAL;
+            else if (bundlePCFs.testBit(8) && !bundlePCFs.testBit(7)) return EXPEDITED;
+            else return BULK;
+        }
     }
     
-    public static final class LifeTime {
-        private LifeTime() {}
-        public static final Period THREE_DAYS = Period.ofDays(3);
-        public static final Period ONE_WEEK = Period.ofWeeks(1);
-        public static final Period THREE_WEEKS = Period.ofWeeks(3);
-        public static final Period TWO_MONTHS = Period.ofMonths(2);
+    public enum LifeTime {
+        THREE_DAYS, ONE_WEEK, THREE_WEEKS, TWO_MONTHS;
+        
+        public static Period setLifeTime(LifeTime lifeTime) {
+            switch (lifeTime) {
+                case THREE_DAYS: return Period.ofDays(3);
+                case ONE_WEEK: return Period.ofWeeks(1);
+                case THREE_WEEKS: return Period.ofWeeks(3);
+                case TWO_MONTHS: return Period.ofMonths(2);
+                default: return Period.ofDays(3);
+            }
+        }
     }
     
     public BigInteger bundleProcessingControlFlags;

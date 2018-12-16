@@ -11,6 +11,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.Period;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.UUID;
@@ -21,6 +22,11 @@ final class TestUtilities {
     private static final int TEST_FRAGMENT_OFFSET = 0;
     private static final long TEST_CPU_SPEED = 2_400_000L;
     private static final int TEST_EID_LENGTH = 2;
+    static final String TEST_SENDER = "w1l1";
+    static final String TEST_RECIPIENT = "f1b1";
+    static final Period TEST_LIFETIME = Period.ofDays(3);
+    static final PrimaryBlock.PriorityClass TEST_PRIORITY
+        = PrimaryBlock.PriorityClass.NORMAL;
     
     private static String generateRLUUID() {
         int i = 0;
@@ -59,7 +65,9 @@ final class TestUtilities {
         
         primaryBlock.bundleProcessingControlFlags
             = generateBundlePCFsForUserBundle();
-        primaryBlock.bundleID = DTNBundleID.from(makeDTNEID(), Instant.now());
+        primaryBlock.bundleID = DTNBundleID.from(
+            DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, TEST_SENDER), Instant.now()
+        );
         primaryBlock.lifeTime
             = PrimaryBlock.LifeTime.setLifeTime(PrimaryBlock.LifeTime.THREE_DAYS);
         primaryBlock.destinationEID = makeDTNEID();

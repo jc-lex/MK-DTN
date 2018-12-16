@@ -72,6 +72,11 @@ public class RadAppAATest {
             
             assertEquals(TEST_SENDER, sender);
         }
+    
+        @Override
+        public void onOutboundBundleReceived(String recipient) {
+        
+        }
     };
     
     private static RadAppAA appAA;

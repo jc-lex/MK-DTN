@@ -189,4 +189,9 @@ final class RadAppAA implements DTNAPI, Daemon2AppAA {
         
         ui.onReceiveDTNMessage(message, src.ssp);
     }
+    
+    @Override
+    public void notifyOutboundBundleReceived(String recipient) {
+        ui.onOutboundBundleReceived(recipient);
+    }
 }

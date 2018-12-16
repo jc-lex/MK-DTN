@@ -4,4 +4,5 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 
 public interface Daemon2AppAA {
     void deliver(DTNBundle bundle);
+    void notifyOutboundBundleReceived(String recipient);
 }

@@ -5,11 +5,13 @@ import android.content.Context;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNAPI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.ConvergenceLayerAdapter;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscovery.PeerDiscovery;
 
 public final class DependencyInjection {
     private static RadP2PService radP2PService = null;
     private static RadAppAA radAppAA = null;
+    private static RadFragMgr radFragMgr = null;
 
     private DependencyInjection() {}
 
@@ -32,5 +34,12 @@ public final class DependencyInjection {
             radAppAA = new RadAppAA(ui, null);
         }
         return radAppAA;
+    }
+    
+    static Daemon2FragmentManager getFragmentManager() {
+        if (radFragMgr == null) {
+            radFragMgr = new RadFragMgr();
+        }
+        return radFragMgr;
     }
 }

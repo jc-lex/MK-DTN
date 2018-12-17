@@ -2,6 +2,11 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest;
 
 import org.junit.Test;
 
+import java.math.BigInteger;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.TimeZone;
+
 import static org.junit.Assert.*;
 
 /**
@@ -31,5 +36,19 @@ public class ExampleUnitTest {
         System.out.println("System.currentTimeMillis() = " + System.currentTimeMillis());
         System.out.println("System.nanoTime() = " + System.nanoTime());
         System.out.println("Long.MAX_VALUE = " + Long.MAX_VALUE);
+        
+        long yearMillis = 1000 * 60 * 60;
+        long l2 = 24 * 7 * 4 * 12;
+    
+        BigInteger year = BigInteger.valueOf(yearMillis).multiply(BigInteger.valueOf(l2));
+        System.out.println("year = " + year);
+        
+        BigInteger years = BigInteger.valueOf(Long.MAX_VALUE).divide(year);
+        System.out.println("years = " + years);
+    
+        // UTC uses atomic clocks & its the scientific version... only 4 real men B)
+        Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.UK);
+        System.out.println("c.getTimeInMillis() = " + c.getTimeInMillis());
+        System.out.println("c.getTimeZone() = " + c.getTimeZone());
     }
 }

@@ -39,7 +39,7 @@ public class RadAppAATest {
             String text = new String(adu.ADU);
             assertEquals(TestUtilities.TEST_SHORT_TEXT_MESSAGE, text);
     
-            assertEquals(TestUtilities.TEST_LIFETIME, bundle.primaryBlock.lifeTime);
+            assertEquals(TestUtilities.TEST_LIFETIME.getPeriod(), bundle.primaryBlock.lifeTime);
     
             assertEquals(TestUtilities.TEST_PRIORITY, bundle.primaryBlock.priorityClass);
         }

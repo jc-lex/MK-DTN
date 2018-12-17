@@ -5,8 +5,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 
 import java.io.InputStream;
 import java.math.BigInteger;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Scanner;
 
 final class DTNUtils {
@@ -16,7 +14,7 @@ final class DTNUtils {
     
     private static final long DEFAULT_CPU_SPEED = 1_100_000L;
     
-    static CanonicalBlock makeAgeCBlock(Instant creationTimestamp) {
+    static CanonicalBlock makeAgeCBlock(long creationTimestamp) {
         CanonicalBlock ageCBlock = new CanonicalBlock();
         
         ageCBlock.blockTypeSpecificDataFields = makeAgeBlock(creationTimestamp);
@@ -26,7 +24,7 @@ final class DTNUtils {
         return ageCBlock;
     }
     
-    private static AgeBlock makeAgeBlock(Instant bundleCreationTimestamp) {
+    private static AgeBlock makeAgeBlock(long bundleCreationTimestamp) {
         // at the source or sender,
         AgeBlock ageBlock = new AgeBlock();
         
@@ -40,11 +38,11 @@ final class DTNUtils {
         /*because ppl live in different timezones, there is need to have them all use
          * a common time reference (timezone). Therefore we use the standard UTC time for
          * everyone. This simplifies the process for determining the bundle's age.*/
-        ageBlock.sendingTimestamp = Instant.now();
+        ageBlock.sendingTimestamp = System.currentTimeMillis();
         
-        ageBlock.age = Duration.between(bundleCreationTimestamp, ageBlock.sendingTimestamp);
-        ageBlock.agePrime = Duration.ZERO;
-        ageBlock.T = Instant.parse(bundleCreationTimestamp.toString());
+        ageBlock.age = ageBlock.sendingTimestamp - bundleCreationTimestamp;
+        ageBlock.agePrime = 0;
+        ageBlock.T = bundleCreationTimestamp;
         
         /*
         at the receiver,

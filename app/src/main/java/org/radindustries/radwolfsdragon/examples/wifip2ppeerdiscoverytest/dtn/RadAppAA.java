@@ -12,7 +12,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 
 import java.math.BigInteger;
-import java.time.Instant;
 import java.util.Arrays;
 
 final class RadAppAA implements DTNAPI, Daemon2AppAA {
@@ -63,8 +62,9 @@ final class RadAppAA implements DTNAPI, Daemon2AppAA {
         
         primaryBlock.bundleProcessingControlFlags = makeBundlePCFs();
         primaryBlock.priorityClass = priorityClass;
-        primaryBlock.bundleID = DTNBundleID.from(daemon.getThisNodezEID(), Instant.now());
-        primaryBlock.lifeTime = PrimaryBlock.LifeTime.setLifeTime(lifeTime);
+        primaryBlock.bundleID
+            = DTNBundleID.from(daemon.getThisNodezEID(), System.currentTimeMillis());
+        primaryBlock.lifeTime = lifeTime.getPeriod();
         primaryBlock.destinationEID = recipient;
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);

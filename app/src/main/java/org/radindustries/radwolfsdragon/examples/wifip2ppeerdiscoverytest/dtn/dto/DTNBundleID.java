@@ -1,15 +1,14 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
 import java.io.Serializable;
-import java.time.Instant;
 
 public final class DTNBundleID implements Serializable {
     public DTNEndpointID sourceEID;
-    public Instant creationTimestamp;
+    public long creationTimestamp;
     
-    public static DTNBundleID from(DTNEndpointID src, Instant cts) {
+    public static DTNBundleID from(DTNEndpointID src, long cts) {
         DTNBundleID id = new DTNBundleID();
-        id.creationTimestamp = Instant.parse(cts.toString());
+        id.creationTimestamp = cts;
         id.sourceEID = DTNEndpointID.from(src);
         return id;
     }
@@ -33,14 +32,14 @@ public final class DTNBundleID implements Serializable {
         
         DTNBundleID that = (DTNBundleID) o;
         
-        if (!sourceEID.equals(that.sourceEID)) return false;
-        return creationTimestamp.equals(that.creationTimestamp);
+        if (creationTimestamp != that.creationTimestamp) return false;
+        return sourceEID.equals(that.sourceEID);
     }
     
     @Override
     public int hashCode() {
         int result = sourceEID.hashCode();
-        result = 31 * result + creationTimestamp.hashCode();
+        result = 31 * result + (int) (creationTimestamp ^ (creationTimestamp >>> 32));
         return result;
     }
 }

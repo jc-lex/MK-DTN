@@ -1,23 +1,20 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
-import java.time.Duration;
-import java.time.Instant;
-
 public final class AgeBlock extends BlockTypeSpecificDataFields {
     
     public long sourceCPUSpeedInKHz;
-    public Instant sendingTimestamp;
-    public Duration age;
-    public Duration agePrime;
-    public Instant T;
+    public long sendingTimestamp;
+    public long age;
+    public long agePrime;
+    public long T;
     
     public static AgeBlock from(AgeBlock other) {
         AgeBlock newOne = new AgeBlock();
         newOne.sourceCPUSpeedInKHz = other.sourceCPUSpeedInKHz;
-        newOne.sendingTimestamp = Instant.parse(other.sendingTimestamp.toString());
-        newOne.T = Instant.parse(other.T.toString());
-        newOne.age = Duration.parse(other.age.toString());
-        newOne.agePrime = Duration.parse(other.agePrime.toString());
+        newOne.sendingTimestamp = other.sendingTimestamp;
+        newOne.T = other.T;
+        newOne.age = other.age;
+        newOne.agePrime = other.agePrime;
         return newOne;
     }
     
@@ -40,19 +37,19 @@ public final class AgeBlock extends BlockTypeSpecificDataFields {
         AgeBlock ageBlock = (AgeBlock) o;
         
         if (sourceCPUSpeedInKHz != ageBlock.sourceCPUSpeedInKHz) return false;
-        if (!sendingTimestamp.equals(ageBlock.sendingTimestamp)) return false;
-        if (!age.equals(ageBlock.age)) return false;
-        if (!agePrime.equals(ageBlock.agePrime)) return false;
-        return T.equals(ageBlock.T);
+        if (sendingTimestamp != ageBlock.sendingTimestamp) return false;
+        if (age != ageBlock.age) return false;
+        if (agePrime != ageBlock.agePrime) return false;
+        return T == ageBlock.T;
     }
     
     @Override
     public int hashCode() {
         int result = (int) (sourceCPUSpeedInKHz ^ (sourceCPUSpeedInKHz >>> 32));
-        result = 31 * result + sendingTimestamp.hashCode();
-        result = 31 * result + age.hashCode();
-        result = 31 * result + agePrime.hashCode();
-        result = 31 * result + T.hashCode();
+        result = 31 * result + (int) (sendingTimestamp ^ (sendingTimestamp >>> 32));
+        result = 31 * result + (int) (age ^ (age >>> 32));
+        result = 31 * result + (int) (agePrime ^ (agePrime >>> 32));
+        result = 31 * result + (int) (T ^ (T >>> 32));
         return result;
     }
 }

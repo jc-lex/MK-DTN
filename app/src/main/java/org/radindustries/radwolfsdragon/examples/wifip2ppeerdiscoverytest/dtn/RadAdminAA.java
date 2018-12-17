@@ -193,11 +193,12 @@ final class RadAdminAA implements Daemon2AdminAA {
         
         primaryBlock.bundleProcessingControlFlags = makeBundlePCFsForAdminRecord();
         primaryBlock.priorityClass = userBundlePrimaryBlock.priorityClass;
-        primaryBlock.bundleID = DTNBundleID.from(daemon.getThisNodezEID(), Instant.now());
+        primaryBlock.bundleID
+            = DTNBundleID.from(daemon.getThisNodezEID(), System.currentTimeMillis());
         primaryBlock.destinationEID = DTNEndpointID.from(userBundlePrimaryBlock.bundleID.sourceEID);
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
-        primaryBlock.lifeTime = PrimaryBlock.LifeTime.setLifeTime(PrimaryBlock.LifeTime.THREE_DAYS);
+        primaryBlock.lifeTime = userBundlePrimaryBlock.lifeTime;
         
         return primaryBlock;
     }

@@ -10,7 +10,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 
 import java.math.BigInteger;
-import java.time.Period;
 import java.util.Arrays;
 
 final class RadFragMgr implements Daemon2FragmentManager {
@@ -122,8 +121,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         
         fragmentPrimaryBlock.priorityClass = bundleToFragment.primaryBlock.priorityClass;
         
-        fragmentPrimaryBlock.lifeTime
-            = Period.parse(bundleToFragment.primaryBlock.lifeTime.toString());
+        fragmentPrimaryBlock.lifeTime = bundleToFragment.primaryBlock.lifeTime;
         
         fragmentPrimaryBlock.destinationEID
             = DTNEndpointID.from(bundleToFragment.primaryBlock.destinationEID);
@@ -214,8 +212,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
                 fragPrimaryBlock.bundleID.creationTimestamp
             );
         
-        pbForOriginalBundle.lifeTime
-            = Period.parse(fragPrimaryBlock.lifeTime.toString());
+        pbForOriginalBundle.lifeTime = fragPrimaryBlock.lifeTime;
         
         pbForOriginalBundle.destinationEID
             = DTNEndpointID.from(fragPrimaryBlock.destinationEID);
@@ -319,7 +316,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
                         .equals(first.primaryBlock.bundleID.sourceEID) //come from the same place
                     &&
                     fragment.primaryBlock.bundleID.creationTimestamp //made at the same time
-                        .equals(first.primaryBlock.bundleID.creationTimestamp)
+                        == first.primaryBlock.bundleID.creationTimestamp
             )) {
                 result = false;
                 break;

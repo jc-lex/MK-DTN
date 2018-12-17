@@ -32,8 +32,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.pe
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.CLAToRouter;
 
 import java.math.BigInteger;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -287,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         return payload;
     }
     
-    private CanonicalBlock makeAgeCBlock(Instant creationTimestamp) {
+    private CanonicalBlock makeAgeCBlock(long creationTimestamp) {
         CanonicalBlock ageCBlock = new CanonicalBlock();
         
         ageCBlock.blockTypeSpecificDataFields
@@ -298,7 +296,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         return ageCBlock;
     }
     
-    private AgeBlock makeAgeBlockForBundle(Instant bundleCreationTimestamp) {
+    private AgeBlock makeAgeBlockForBundle(long bundleCreationTimestamp) {
         // at the source or sender,
         AgeBlock ageBlock = new AgeBlock();
         
@@ -316,14 +314,11 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         /*because ppl live in different timezones, there is need to have them all use
         * a common time reference (timezone). Therefore we use the standard UTC time for
         * everyone. This simplifies the process for determining the bundle's age.*/
-        ageBlock.sendingTimestamp = Instant.now();
-        
-        ageBlock.age = Duration.between(
-            bundleCreationTimestamp,
-            ageBlock.sendingTimestamp
-        );
-        ageBlock.agePrime = Duration.ZERO;
-        ageBlock.T = Instant.parse(bundleCreationTimestamp.toString());
+        ageBlock.sendingTimestamp = System.currentTimeMillis();
+    
+        ageBlock.age = ageBlock.sendingTimestamp - bundleCreationTimestamp;
+        ageBlock.agePrime = 0;
+        ageBlock.T = bundleCreationTimestamp;
         
         /*
         at the receiver,
@@ -356,8 +351,9 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         primaryBlock.bundleProcessingControlFlags
             = generateBundlePCFsForUserBundle();
         primaryBlock.priorityClass = PrimaryBlock.PriorityClass.NORMAL;
-        primaryBlock.bundleID = DTNBundleID.from(bundleNodeEndpointId, Instant.now());
-        primaryBlock.lifeTime = PrimaryBlock.LifeTime.setLifeTime(PrimaryBlock.LifeTime.THREE_DAYS);
+        primaryBlock.bundleID
+            = DTNBundleID.from(bundleNodeEndpointId, System.currentTimeMillis());
+        primaryBlock.lifeTime = PrimaryBlock.LifeTime.THREE_DAYS.getPeriod();
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         

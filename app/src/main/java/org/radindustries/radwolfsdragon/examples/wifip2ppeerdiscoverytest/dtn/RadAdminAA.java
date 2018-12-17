@@ -1,6 +1,5 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import android.annotation.SuppressLint;
 import android.util.Log;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
@@ -18,7 +17,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 
 import java.math.BigInteger;
 import java.time.Instant;
-import java.util.HashMap;
 
 final class RadAdminAA implements Daemon2AdminAA {
     private static final String LOG_TAG
@@ -53,7 +51,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         if (signal.custodyTransferSucceeded) {
             if (signal.isForAFragment) {
                 String fragmentOffset
-                    = signal.detailsIfForAFragment.get(PrimaryBlock.FragmentField.FRAGMENT_OFFSET);
+                    = signal.detailsIfForAFragment.get(AdminRecord.FragmentField.FRAGMENT_OFFSET);
                 
                 assert fragmentOffset != null;
                 daemon.delete(signal.subjectBundleID, Integer.parseInt(fragmentOffset));
@@ -63,7 +61,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         } else {
             if (signal.isForAFragment) {
                 String fragmentOffset
-                    = signal.detailsIfForAFragment.get(PrimaryBlock.FragmentField.FRAGMENT_OFFSET);
+                    = signal.detailsIfForAFragment.get(AdminRecord.FragmentField.FRAGMENT_OFFSET);
                 
                 assert fragmentOffset != null;
                 Log.i(LOG_TAG, "Custody transfer for fragment "+ fragmentOffset
@@ -172,7 +170,6 @@ final class RadAdminAA implements Daemon2AdminAA {
         return adminRecord;
     }
     
-    @SuppressLint("UseSparseArrays")
     private DTNBundle makeAdminRecordBundle(
         AdminRecord adminRecord, PrimaryBlock userBundlePrimaryBlock
     ) {
@@ -185,7 +182,6 @@ final class RadAdminAA implements Daemon2AdminAA {
     
         DTNBundle adminBundle = new DTNBundle();
         adminBundle.primaryBlock = primaryBlock;
-        adminBundle.canonicalBlocks = new HashMap<>();
         adminBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.ADMIN_RECORD, adminCBlock);
         adminBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageBlock);
         
@@ -195,33 +191,27 @@ final class RadAdminAA implements Daemon2AdminAA {
     private PrimaryBlock makeAdminRecordPrimaryBlock(PrimaryBlock userBundlePrimaryBlock) {
         PrimaryBlock primaryBlock = new PrimaryBlock();
         
-        primaryBlock.bundleProcessingControlFlags
-            = makeBundlePCFsForAdminRecord(
-            PrimaryBlock.PriorityClass.getPriorityClass(
-                userBundlePrimaryBlock.bundleProcessingControlFlags
-            )
-        ); //for now
+        primaryBlock.bundleProcessingControlFlags = makeBundlePCFsForAdminRecord();
+        primaryBlock.priorityClass = userBundlePrimaryBlock.priorityClass;
         primaryBlock.bundleID = DTNBundleID.from(daemon.getThisNodezEID(), Instant.now());
         primaryBlock.destinationEID = DTNEndpointID.from(userBundlePrimaryBlock.bundleID.sourceEID);
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
-        primaryBlock.lifeTime = PrimaryBlock.LifeTime.setLifeTime(
-            PrimaryBlock.LifeTime.THREE_DAYS
-        ); // for now
+        primaryBlock.lifeTime = PrimaryBlock.LifeTime.setLifeTime(PrimaryBlock.LifeTime.THREE_DAYS);
         
         return primaryBlock;
     }
     
-    private BigInteger makeBundlePCFsForAdminRecord(PrimaryBlock.PriorityClass priorityClass) {
-        return PrimaryBlock.PriorityClass.setPriorityClass(BigInteger.ZERO, priorityClass)
+    private BigInteger makeBundlePCFsForAdminRecord() {
+        return BigInteger.ZERO
             .setBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_MUST_NOT_BE_FRAGMENTED)
-            .setBit(PrimaryBlock.BundlePCF.DESTINATION_ENDPOINT_IS_SINGLETON);
+            .setBit(PrimaryBlock.BundlePCF.DESTINATION_ENDPOINT_IS_A_SINGLETON);
     }
     
     private CanonicalBlock makeAdminCBlock(AdminRecord adminRecord) {
         CanonicalBlock adminCBlock = new CanonicalBlock();
-        adminCBlock.blockTypeCode = CanonicalBlock.TypeCode.ADMIN_RECORD;
+        adminCBlock.blockType = CanonicalBlock.BlockType.ADMIN_RECORD;
         adminCBlock.blockProcessingControlFlags = BigInteger.ZERO; //for now
         adminCBlock.blockTypeSpecificDataFields = adminRecord;
         return adminCBlock;

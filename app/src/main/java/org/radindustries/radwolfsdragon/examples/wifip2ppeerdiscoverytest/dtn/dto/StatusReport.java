@@ -5,7 +5,8 @@ import java.time.Instant;
 public final class StatusReport extends AdminRecord {
     
     public enum Reason {
-        NO_OTHER_INFO, DEPLETED_STORAGE, LIFETIME_EXPIRED, TRANSMISSION_CANCELLED
+        NO_OTHER_INFO, DEPLETED_STORAGE, LIFETIME_EXPIRED, TRANSMISSION_CANCELLED,
+        AGE_BLOCK_UNINTELLIGIBLE
     }
     
     public boolean bundleDelivered;

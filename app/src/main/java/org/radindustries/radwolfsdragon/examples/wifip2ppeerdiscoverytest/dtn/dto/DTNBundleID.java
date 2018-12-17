@@ -2,7 +2,6 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.d
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Objects;
 
 public final class DTNBundleID implements Serializable {
     public DTNEndpointID sourceEID;
@@ -28,34 +27,20 @@ public final class DTNBundleID implements Serializable {
     }
     
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-//        if (!(obj instanceof DTNBundleID)) return false;
-        final DTNBundleID other = (DTNBundleID) obj;
-        if (!Objects.equals(this.sourceEID, other.sourceEID)) {
-            return false;
-        }
-        if (!Objects.equals(this.creationTimestamp, other.creationTimestamp)) {
-            return false;
-        }
-        return true;
-//        return Objects.equals(sourceEID, other.sourceEID) &&
-//            Objects.equals(creationTimestamp, other.creationTimestamp);
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof DTNBundleID)) return false;
+        
+        DTNBundleID that = (DTNBundleID) o;
+        
+        if (!sourceEID.equals(that.sourceEID)) return false;
+        return creationTimestamp.equals(that.creationTimestamp);
     }
     
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 23 * hash + Objects.hashCode(this.sourceEID);
-        hash = 23 * hash + Objects.hashCode(this.creationTimestamp);
-        return hash; /*Objects.hash(sourceEID, creationTimestamp)*/
+        int result = sourceEID.hashCode();
+        result = 31 * result + creationTimestamp.hashCode();
+        return result;
     }
 }

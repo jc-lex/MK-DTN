@@ -12,8 +12,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
 
-import java.util.UUID;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -47,9 +45,7 @@ public class RadAdminAATest {
     
             @Override
             public DTNEndpointID getThisNodezEID() {
-                // short IDs for testing purposes only
-                String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
-                return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 8));
+                return TestUtilities.makeDTNEID();
             }
         });
     }
@@ -63,7 +59,7 @@ public class RadAdminAATest {
         DTNBundle custodySignal = radAdminAA.makeCustodySignal(
             testUserBundle, true, CustodySignal.Reason.NO_OTHER_INFO
         );
-    
+        
         CanonicalBlock adminCBlock
             = custodySignal.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
         

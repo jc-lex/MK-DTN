@@ -11,8 +11,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 
-import java.util.UUID;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -28,6 +26,9 @@ public class RadAppAATest {
                 )
             );
             
+            assertNotNull(bundle.primaryBlock.detailsIfFragment);
+            assertNotNull(bundle.canonicalBlocks);
+            
             CanonicalBlock payloadCBlock
                 = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PAYLOAD);
             assertNotNull(payloadCBlock);
@@ -40,15 +41,12 @@ public class RadAppAATest {
     
             assertEquals(TestUtilities.TEST_LIFETIME, bundle.primaryBlock.lifeTime);
     
-            assertEquals(TestUtilities.TEST_PRIORITY, PrimaryBlock.PriorityClass.getPriorityClass(
-                bundle.primaryBlock.bundleProcessingControlFlags));
+            assertEquals(TestUtilities.TEST_PRIORITY, bundle.primaryBlock.priorityClass);
         }
     
         @Override
         public DTNEndpointID getThisNodezEID() {
-            // short IDs for testing purposes only
-            String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
-            return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 8));
+            return TestUtilities.makeDTNEID();
         }
     };
     

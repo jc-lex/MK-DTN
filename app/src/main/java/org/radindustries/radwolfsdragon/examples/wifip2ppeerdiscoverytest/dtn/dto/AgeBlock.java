@@ -2,7 +2,6 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.d
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Objects;
 
 public final class AgeBlock extends BlockTypeSpecificDataFields {
     
@@ -34,44 +33,26 @@ public final class AgeBlock extends BlockTypeSpecificDataFields {
     }
     
     @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 73 * hash
-            + (int) (this.sourceCPUSpeedInKHz ^ (this.sourceCPUSpeedInKHz >>> 32));
-        hash = 73 * hash + Objects.hashCode(this.sendingTimestamp);
-        hash = 73 * hash + Objects.hashCode(this.age);
-        hash = 73 * hash + Objects.hashCode(this.agePrime);
-        hash = 73 * hash + Objects.hashCode(this.T);
-        return hash;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof AgeBlock)) return false;
+        
+        AgeBlock ageBlock = (AgeBlock) o;
+        
+        if (sourceCPUSpeedInKHz != ageBlock.sourceCPUSpeedInKHz) return false;
+        if (!sendingTimestamp.equals(ageBlock.sendingTimestamp)) return false;
+        if (!age.equals(ageBlock.age)) return false;
+        if (!agePrime.equals(ageBlock.agePrime)) return false;
+        return T.equals(ageBlock.T);
     }
     
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final AgeBlock other = (AgeBlock) obj;
-        if (this.sourceCPUSpeedInKHz != other.sourceCPUSpeedInKHz) {
-            return false;
-        }
-        if (!Objects.equals(this.sendingTimestamp, other.sendingTimestamp)) {
-            return false;
-        }
-        if (!Objects.equals(this.age, other.age)) {
-            return false;
-        }
-        if (!Objects.equals(this.agePrime, other.agePrime)) {
-            return false;
-        }
-        if (!Objects.equals(this.T, other.T)) {
-            return false;
-        }
-        return true;
+    public int hashCode() {
+        int result = (int) (sourceCPUSpeedInKHz ^ (sourceCPUSpeedInKHz >>> 32));
+        result = 31 * result + sendingTimestamp.hashCode();
+        result = 31 * result + age.hashCode();
+        result = 31 * result + agePrime.hashCode();
+        result = 31 * result + T.hashCode();
+        return result;
     }
 }

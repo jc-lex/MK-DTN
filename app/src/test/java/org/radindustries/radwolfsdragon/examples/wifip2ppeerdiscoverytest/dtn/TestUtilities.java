@@ -1,6 +1,5 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
@@ -9,24 +8,29 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 
 import java.math.BigInteger;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.Period;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.UUID;
 
 final class TestUtilities {
     private TestUtilities() {}
     
     private static final int TEST_FRAGMENT_OFFSET = 0;
-    private static final long TEST_CPU_SPEED = 2_400_000L;
     private static final int TEST_EID_LENGTH = 2;
+    
     static final String TEST_SENDER = "w1l1";
     static final String TEST_RECIPIENT = "f1b1";
     static final Period TEST_LIFETIME = Period.ofDays(3);
     static final PrimaryBlock.PriorityClass TEST_PRIORITY
         = PrimaryBlock.PriorityClass.NORMAL;
+    
+    static DTNEndpointID makeDTNEID() {
+        DTNEndpointID eid = new DTNEndpointID();
+        eid.scheme = DTNEndpointID.DTN_SCHEME;
+        eid.ssp = generateRLUUID();
+        return eid;
+    }
     
     private static String generateRLUUID() {
         int i = 0;
@@ -43,20 +47,47 @@ final class TestUtilities {
         return rluuid.toString();
     }
     
-    private static DTNEndpointID makeDTNEID() {
-        DTNEndpointID eid = new DTNEndpointID();
-        eid.scheme = DTNEndpointID.DTN_SCHEME;
-        eid.ssp = generateRLUUID();
-        return eid;
+    static DTNBundle createTestUserBundle(byte[] message) {
+        
+        PrimaryBlock primaryBlock = makePrimaryBlockForUserBundle();
+        
+        
+        CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock(primaryBlock.bundleID.creationTimestamp);
+        
+        
+        CanonicalBlock payloadCBlock = new CanonicalBlock();
+        payloadCBlock.blockTypeSpecificDataFields = makePayloadForUserBundle(message);
+        payloadCBlock.blockType = CanonicalBlock.BlockType.PAYLOAD;
+        payloadCBlock.blockProcessingControlFlags = BigInteger.ZERO.setBit(
+            CanonicalBlock.BlockPCF.BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS
+        );
+        
+        DTNBundle userBundle = new DTNBundle();
+        userBundle.primaryBlock = primaryBlock;
+        userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PAYLOAD, payloadCBlock);
+        userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
+        
+        return userBundle;
+    }
+    
+    static DTNBundle generateNonFragmentBundle(byte[] message) {
+        DTNBundle bundle = createTestUserBundle(message);
+        
+        bundle.primaryBlock.bundleProcessingControlFlags
+            = bundle.primaryBlock.bundleProcessingControlFlags
+            .clearBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT);
+        
+        bundle.primaryBlock.detailsIfFragment.clear();
+        
+        return bundle;
     }
     
     private static BigInteger generateBundlePCFsForUserBundle() {
         
-        return PrimaryBlock.PriorityClass
-            .setPriorityClass(BigInteger.ZERO, PrimaryBlock.PriorityClass.NORMAL)
+        return BigInteger.ZERO
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT)
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_CUSTODY_TRANSFER_REQUESTED)
-            .setBit(PrimaryBlock.BundlePCF.DESTINATION_ENDPOINT_IS_SINGLETON)
+            .setBit(PrimaryBlock.BundlePCF.DESTINATION_ENDPOINT_IS_A_SINGLETON)
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_DELIVERY_REPORT_REQUESTED);
     }
     
@@ -65,6 +96,7 @@ final class TestUtilities {
         
         primaryBlock.bundleProcessingControlFlags
             = generateBundlePCFsForUserBundle();
+        primaryBlock.priorityClass = TEST_PRIORITY;
         primaryBlock.bundleID = DTNBundleID.from(
             DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, TEST_SENDER), Instant.now()
         );
@@ -73,8 +105,6 @@ final class TestUtilities {
         primaryBlock.destinationEID = makeDTNEID();
         primaryBlock.custodianEID = makeDTNEID();
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
-        
-        primaryBlock.detailsIfFragment = new HashMap<>();
         
         if (primaryBlock.bundleProcessingControlFlags
             .testBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT)) {
@@ -91,81 +121,12 @@ final class TestUtilities {
         return primaryBlock;
     }
     
-    private static AgeBlock makeAgeBlockForBundle(Instant bundleCreationTimestamp) {
-        // at the source or sender,
-        AgeBlock ageBlock = new AgeBlock();
-        
-        ageBlock.sourceCPUSpeedInKHz = TEST_CPU_SPEED;
-        ageBlock.sendingTimestamp = Instant.now();
-        ageBlock.age = Duration.between(bundleCreationTimestamp, ageBlock.sendingTimestamp);
-        ageBlock.agePrime = Duration.ZERO;
-        ageBlock.T = Instant.parse(bundleCreationTimestamp.toString());
-        
-        return ageBlock;
-    }
-    
     private static PayloadADU makePayloadForUserBundle(byte[] message) {
         
         PayloadADU payload = new PayloadADU();
         payload.ADU = Arrays.copyOf(message, message.length);
         
         return payload;
-    }
-    
-    static DTNBundle createTestUserBundle(byte[] message) {
-        
-        PrimaryBlock primaryBlock = makePrimaryBlockForUserBundle();
-        
-        
-        CanonicalBlock ageCBlock = makeAgeCBlock(primaryBlock.bundleID.creationTimestamp);
-        
-        
-        CanonicalBlock payloadCBlock = new CanonicalBlock();
-        payloadCBlock.blockTypeSpecificDataFields = makePayloadForUserBundle(message);
-        payloadCBlock.blockTypeCode = CanonicalBlock.TypeCode.PAYLOAD;
-        payloadCBlock.blockProcessingControlFlags = BigInteger.ZERO.setBit(
-            CanonicalBlock.BlockPCF.BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS
-        );
-        
-        DTNBundle userBundle = new DTNBundle();
-        userBundle.primaryBlock = primaryBlock;
-        userBundle.canonicalBlocks = new HashMap<>();
-        userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PAYLOAD, payloadCBlock);
-        userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
-        
-        return userBundle;
-    }
-    
-    private static CanonicalBlock makeAgeCBlock(Instant creationTimestamp) {
-        CanonicalBlock ageCBlock = new CanonicalBlock();
-        
-        ageCBlock.blockTypeSpecificDataFields = makeAgeBlockForBundle(creationTimestamp);
-        ageCBlock.blockTypeCode = CanonicalBlock.TypeCode.AGE;
-        ageCBlock.blockProcessingControlFlags = generateBlockPCFsForAgeBlock();
-        
-        return ageCBlock;
-    }
-    
-    private static BigInteger generateBlockPCFsForAgeBlock() {
-        
-        return BigInteger.ZERO
-            .setBit(CanonicalBlock.BlockPCF.BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS)
-            .setBit(CanonicalBlock.BlockPCF.TRANSMIT_STATUS_REPORT_IF_BLOCK_CANNOT_BE_PROCESSED)
-            .setBit(CanonicalBlock.BlockPCF.DELETE_BUNDLE_IF_BLOCK_CANNOT_BE_PROCESSED)
-            .setBit(CanonicalBlock.BlockPCF.LAST_BLOCK)
-            .setBit(CanonicalBlock.BlockPCF.DISCARD_BLOCK_IF_IT_CANNOT_BE_PROCESSED);
-    }
-    
-    static DTNBundle generateNonFragmentBundle(byte[] message) {
-        DTNBundle bundle = createTestUserBundle(message);
-        
-        bundle.primaryBlock.bundleProcessingControlFlags
-            = bundle.primaryBlock.bundleProcessingControlFlags
-            .clearBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT);
-        
-        bundle.primaryBlock.detailsIfFragment = new HashMap<>();
-        
-        return bundle;
     }
     
     static final String TEST_SHORT_TEXT_MESSAGE = "William + Phoebe = <3";

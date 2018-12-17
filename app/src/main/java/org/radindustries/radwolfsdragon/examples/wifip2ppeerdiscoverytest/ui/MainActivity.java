@@ -265,7 +265,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         
         CanonicalBlock payloadCBlock = new CanonicalBlock();
         payloadCBlock.blockTypeSpecificDataFields = makePayloadForUserBundle(message);
-        payloadCBlock.blockTypeCode = CanonicalBlock.TypeCode.PAYLOAD;
+        payloadCBlock.blockType = CanonicalBlock.BlockType.PAYLOAD;
         payloadCBlock.blockProcessingControlFlags = BigInteger.ZERO.setBit(
             CanonicalBlock.BlockPCF.BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS
         );
@@ -273,7 +273,6 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         
         DTNBundle userBundle = new DTNBundle();
         userBundle.primaryBlock = primaryBlock;
-        userBundle.canonicalBlocks = new HashMap<>();
         userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PAYLOAD, payloadCBlock);
         userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
         
@@ -293,7 +292,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         
         ageCBlock.blockTypeSpecificDataFields
             = makeAgeBlockForBundle(creationTimestamp);
-        ageCBlock.blockTypeCode = CanonicalBlock.TypeCode.AGE;
+        ageCBlock.blockType = CanonicalBlock.BlockType.AGE;
         ageCBlock.blockProcessingControlFlags = generateBlockPCFsForAgeBlock();
         
         return ageCBlock;
@@ -356,10 +355,9 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         
         primaryBlock.bundleProcessingControlFlags
             = generateBundlePCFsForUserBundle();
+        primaryBlock.priorityClass = PrimaryBlock.PriorityClass.NORMAL;
         primaryBlock.bundleID = DTNBundleID.from(bundleNodeEndpointId, Instant.now());
-//        primaryBlock.creationTimestamp = Instant.now();
         primaryBlock.lifeTime = PrimaryBlock.LifeTime.setLifeTime(PrimaryBlock.LifeTime.THREE_DAYS);
-//        primaryBlock.sourceEID = bundleNodeEndpointId;
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         
@@ -381,11 +379,10 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     
     private BigInteger generateBundlePCFsForUserBundle() {
         
-        return PrimaryBlock.PriorityClass
-            .setPriorityClass(BigInteger.ZERO, PrimaryBlock.PriorityClass.NORMAL)
+        return BigInteger.ZERO
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT)
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_CUSTODY_TRANSFER_REQUESTED)
-            .setBit(PrimaryBlock.BundlePCF.DESTINATION_ENDPOINT_IS_SINGLETON)
+            .setBit(PrimaryBlock.BundlePCF.DESTINATION_ENDPOINT_IS_A_SINGLETON)
              /*request for a SINGLE bundle delivery report a.k.a return-receipt
              (from destination only)
              here, report-to dtnEndpointID == source dtnEndpointID*/

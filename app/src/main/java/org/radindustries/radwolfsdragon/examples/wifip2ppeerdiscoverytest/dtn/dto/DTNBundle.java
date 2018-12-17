@@ -1,19 +1,19 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
+import android.annotation.SuppressLint;
+
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.Objects;
 
 public final class DTNBundle implements Serializable {
     
     // initial capacity = {payload/admin_record, age_block}
-    public static final int INITIAL_BLOCK_CAPACITY = 3;
+    private static final int DEFAULT_CBLOCK_CAPACITY = 3;
     
-    public static final class CBlockNumber {
-        private CBlockNumber() {}
-        public static final int PAYLOAD = 0;
-        public static final int ADMIN_RECORD = 1;
-        public static final int AGE = 2;
+    public interface CBlockNumber {
+        int PAYLOAD = 0;
+        int ADMIN_RECORD = 1;
+        int AGE = 2;
     }
     
     interface FragmentField {
@@ -21,7 +21,10 @@ public final class DTNBundle implements Serializable {
     }
     
     public PrimaryBlock primaryBlock;
-    public HashMap<Integer, CanonicalBlock> canonicalBlocks;
+    
+    @SuppressLint("UseSparseArrays")
+    public HashMap<Integer, CanonicalBlock> canonicalBlocks
+        = new HashMap<>(DEFAULT_CBLOCK_CAPACITY);
     
     @Override
     public String toString() {
@@ -32,31 +35,20 @@ public final class DTNBundle implements Serializable {
     }
     
     @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.primaryBlock);
-        hash = 97 * hash + Objects.hashCode(this.canonicalBlocks);
-        return hash;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof DTNBundle)) return false;
+        
+        DTNBundle bundle = (DTNBundle) o;
+        
+        if (!primaryBlock.equals(bundle.primaryBlock)) return false;
+        return canonicalBlocks.equals(bundle.canonicalBlocks);
     }
     
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final DTNBundle other = (DTNBundle) obj;
-        if (!Objects.equals(this.primaryBlock, other.primaryBlock)) {
-            return false;
-        }
-        if (!Objects.equals(this.canonicalBlocks, other.canonicalBlocks)) {
-            return false;
-        }
-        return true;
+    public int hashCode() {
+        int result = primaryBlock.hashCode();
+        result = 31 * result + canonicalBlocks.hashCode();
+        return result;
     }
 }

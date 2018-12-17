@@ -1,7 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 public final class DTNEndpointID implements Serializable {
     
@@ -22,7 +21,7 @@ public final class DTNEndpointID implements Serializable {
         return from(endpointID.scheme, endpointID.ssp);
     }
     
-    public static DTNEndpointID parse(String eidString) {
+    static DTNEndpointID parse(String eidString) {
         String[] parts = eidString.split(SEP);
         return from(parts[0], parts[1]);
     }
@@ -33,31 +32,20 @@ public final class DTNEndpointID implements Serializable {
     }
     
     @Override
-    public int hashCode() {
-        int hash = 3;
-        hash = 29 * hash + Objects.hashCode(this.scheme);
-        hash = 29 * hash + Objects.hashCode(this.ssp);
-        return hash;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof DTNEndpointID)) return false;
+        
+        DTNEndpointID that = (DTNEndpointID) o;
+        
+        if (!scheme.equals(that.scheme)) return false;
+        return ssp.equals(that.ssp);
     }
     
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final DTNEndpointID other = (DTNEndpointID) obj;
-        if (!Objects.equals(this.scheme, other.scheme)) {
-            return false;
-        }
-        if (!Objects.equals(this.ssp, other.ssp)) {
-            return false;
-        }
-        return true;
+    public int hashCode() {
+        int result = scheme.hashCode();
+        result = 31 * result + ssp.hashCode();
+        return result;
     }
 }

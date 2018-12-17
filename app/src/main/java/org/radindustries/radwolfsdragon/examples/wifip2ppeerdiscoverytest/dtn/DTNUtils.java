@@ -19,9 +19,8 @@ final class DTNUtils {
     static CanonicalBlock makeAgeCBlock(Instant creationTimestamp) {
         CanonicalBlock ageCBlock = new CanonicalBlock();
         
-        ageCBlock.blockTypeSpecificDataFields
-            = makeAgeBlock(creationTimestamp);
-        ageCBlock.blockTypeCode = CanonicalBlock.TypeCode.AGE;
+        ageCBlock.blockTypeSpecificDataFields = makeAgeBlock(creationTimestamp);
+        ageCBlock.blockType = CanonicalBlock.BlockType.AGE;
         ageCBlock.blockProcessingControlFlags = makeAgeBlockPCFs();
         
         return ageCBlock;
@@ -80,10 +79,10 @@ final class DTNUtils {
      * @since 15:50:31 - 14.07.2010
      */
     private static int getMaxCPUFrequencyInKHz() throws Exception {
-        return readSystemFileAsInt();
+        return readCPUSystemFileAsInt();
     }
     
-    private static int readSystemFileAsInt() throws Exception {
+    private static int readCPUSystemFileAsInt() throws Exception {
         InputStream in;
         try {
             final Process process = new ProcessBuilder(

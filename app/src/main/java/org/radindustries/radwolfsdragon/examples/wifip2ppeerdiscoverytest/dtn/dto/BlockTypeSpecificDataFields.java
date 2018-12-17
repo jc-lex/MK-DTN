@@ -2,5 +2,5 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.d
 
 import java.io.Serializable;
 
-public class BlockTypeSpecificDataFields implements Serializable {
+class BlockTypeSpecificDataFields implements Serializable {
 }

@@ -4,9 +4,8 @@ import java.util.HashMap;
 
 public class AdminRecord extends BlockTypeSpecificDataFields {
     
-    public static final class FragmentField implements DTNBundle.FragmentField {
-        private FragmentField() {}
-        public static final String FRAGMENT_LENGTH = "fragment_length";
+    public interface FragmentField extends DTNBundle.FragmentField {
+        String FRAGMENT_LENGTH = "fragment_length";
     }
     
     public enum RecordType {STATUS_REPORT, CUSTODY_SIGNAL}

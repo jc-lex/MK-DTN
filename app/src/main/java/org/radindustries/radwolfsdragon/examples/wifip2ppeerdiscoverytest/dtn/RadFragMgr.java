@@ -1,7 +1,5 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import android.annotation.SuppressLint;
-
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
@@ -14,7 +12,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fr
 import java.math.BigInteger;
 import java.time.Period;
 import java.util.Arrays;
-import java.util.HashMap;
 
 final class RadFragMgr implements Daemon2FragmentManager {
     
@@ -47,8 +44,6 @@ final class RadFragMgr implements Daemon2FragmentManager {
         
         int numFullFragments
             = originalPayloadSizeInBytes / fragmentPayloadSizeInBytes;
-//    int numRemainderBytesForLastFragment
-//      = originalPayloadSizeInBytes % fragmentPayloadSizeInBytes;
         
         DTNBundle[] fragments = new DTNBundle[numFullFragments + 1];
         
@@ -73,12 +68,10 @@ final class RadFragMgr implements Daemon2FragmentManager {
         return fragments;
     }
     
-    @SuppressLint("UseSparseArrays")
     private DTNBundle makeFragment(
         DTNBundle bundleToFragment, int fragmentOffset, int totalADULength, int start, int stop
     ) {
-        PrimaryBlock fragmentPrimaryBlock
-            = generateFragmentPrimaryBlock(
+        PrimaryBlock fragmentPrimaryBlock = generateFragmentPrimaryBlock(
             bundleToFragment, fragmentOffset, totalADULength
         );
         
@@ -90,7 +83,6 @@ final class RadFragMgr implements Daemon2FragmentManager {
         
         DTNBundle fragment = new DTNBundle();
         fragment.primaryBlock = fragmentPrimaryBlock;
-        fragment.canonicalBlocks = new HashMap<>();
         fragment.canonicalBlocks.put(
             DTNBundle.CBlockNumber.PAYLOAD, fragmentPayloadCanonicalBlock
         );
@@ -111,8 +103,6 @@ final class RadFragMgr implements Daemon2FragmentManager {
         ).setBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT)
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_MUST_NOT_BE_FRAGMENTED);
         
-        fragmentPrimaryBlock.detailsIfFragment = new HashMap<>();
-        
         if (fragmentPrimaryBlock.bundleProcessingControlFlags
             .testBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT)) {
             fragmentPrimaryBlock.detailsIfFragment.put(
@@ -129,6 +119,8 @@ final class RadFragMgr implements Daemon2FragmentManager {
             bundleToFragment.primaryBlock.bundleID.sourceEID,
             bundleToFragment.primaryBlock.bundleID.creationTimestamp
         );
+        
+        fragmentPrimaryBlock.priorityClass = bundleToFragment.primaryBlock.priorityClass;
         
         fragmentPrimaryBlock.lifeTime
             = Period.parse(bundleToFragment.primaryBlock.lifeTime.toString());
@@ -156,7 +148,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         CanonicalBlock fragmentAgeCBlock = new CanonicalBlock();
         
         fragmentAgeCBlock.blockTypeSpecificDataFields = fragmentAgeBlock;
-        fragmentAgeCBlock.blockTypeCode = CanonicalBlock.TypeCode.AGE;
+        fragmentAgeCBlock.blockType = CanonicalBlock.BlockType.AGE;
         fragmentAgeCBlock.blockProcessingControlFlags = new BigInteger(
             bundleAgeCBlock.blockProcessingControlFlags.toString()
         );
@@ -173,7 +165,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         assert bundlePayloadCBlock != null;
         
         CanonicalBlock payloadCBlock = new CanonicalBlock();
-        payloadCBlock.blockTypeCode = CanonicalBlock.TypeCode.PAYLOAD;
+        payloadCBlock.blockType = CanonicalBlock.BlockType.PAYLOAD;
         payloadCBlock.blockProcessingControlFlags
             = new BigInteger(bundlePayloadCBlock.blockProcessingControlFlags.toString());
         
@@ -188,7 +180,6 @@ final class RadFragMgr implements Daemon2FragmentManager {
     }
     
     @Override
-    @SuppressLint("UseSparseArrays")
     public DTNBundle defragment(DTNBundle[] fragmentsToCombine) {
         //template
         DTNBundle first = fragmentsToCombine[0];
@@ -207,7 +198,6 @@ final class RadFragMgr implements Daemon2FragmentManager {
         //original
         DTNBundle originalBundle = new DTNBundle();
         originalBundle.primaryBlock = primaryBlock;
-        originalBundle.canonicalBlocks = new HashMap<>();
         originalBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PAYLOAD, payloadCBlock);
         originalBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
     
@@ -236,7 +226,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         pbForOriginalBundle.reportToEID
             = DTNEndpointID.from(fragPrimaryBlock.reportToEID);
         
-        pbForOriginalBundle.detailsIfFragment = new HashMap<>();
+        pbForOriginalBundle.priorityClass = fragPrimaryBlock.priorityClass;
         
         pbForOriginalBundle.bundleProcessingControlFlags
             = new BigInteger(fragPrimaryBlock.bundleProcessingControlFlags.toString())
@@ -252,7 +242,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
             = templateFragment.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         
         assert fragAgeCBlock != null;
-        ageCBlock.blockTypeCode = CanonicalBlock.TypeCode.AGE;
+        ageCBlock.blockType = CanonicalBlock.BlockType.AGE;
         ageCBlock.blockProcessingControlFlags
             = new BigInteger(fragAgeCBlock.blockProcessingControlFlags.toString());
         ageCBlock.blockTypeSpecificDataFields
@@ -267,7 +257,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
             .get(DTNBundle.CBlockNumber.PAYLOAD);
         
         assert fragPayloadCBlock != null;
-        payloadCBlock.blockTypeCode = CanonicalBlock.TypeCode.PAYLOAD;
+        payloadCBlock.blockType = CanonicalBlock.BlockType.PAYLOAD;
         payloadCBlock.blockProcessingControlFlags
             = new BigInteger(fragPayloadCBlock
             .blockProcessingControlFlags.toString());

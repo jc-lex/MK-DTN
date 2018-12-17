@@ -14,27 +14,17 @@ public final class PayloadADU extends BlockTypeSpecificDataFields {
     }
     
     @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Arrays.hashCode(this.ADU);
-        return hash;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof PayloadADU)) return false;
+        
+        PayloadADU that = (PayloadADU) o;
+    
+        return Arrays.equals(ADU, that.ADU);
     }
     
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final PayloadADU other = (PayloadADU) obj;
-        if (!Arrays.equals(this.ADU, other.ADU)) {
-            return false;
-        }
-        return true;
+    public int hashCode() {
+        return Arrays.hashCode(ADU);
     }
 }

@@ -15,6 +15,10 @@ public final class DTNBundleID implements Serializable {
         return id;
     }
     
+    public static DTNBundleID from(DTNBundleID other) {
+        return from(other.sourceEID, other.creationTimestamp);
+    }
+    
     @Override
     public String toString() {
         return "DTNBundleID{" +

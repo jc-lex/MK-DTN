@@ -24,6 +24,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.ConvergenceLayerAdapter;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
@@ -41,9 +42,9 @@ import java.util.Set;
 final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
 
     private static final String LOG_TAG
-            = DTNConstants.MAIN_LOG_TAG + "_" + RadP2PService.class.getSimpleName();
+            = DConstants.MAIN_LOG_TAG + "_" + RadP2PService.class.getSimpleName();
     private static final String DTN_SERVICE_ID
-            = DTNConstants.DTN_REGISTRATION_TYPE + BuildConfig.APPLICATION_ID;
+            = DTNUtils.DTN_REGISTRATION_TYPE + BuildConfig.APPLICATION_ID;
     private static final Strategy STRATEGY = Strategy.P2P_POINT_TO_POINT;
     private static final AdvertisingOptions ADVERTISING_OPTIONS
             = new AdvertisingOptions.Builder().setStrategy(STRATEGY).build();

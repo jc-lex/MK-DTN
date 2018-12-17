@@ -1,63 +1,49 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
-import java.math.BigInteger;
 import java.time.Instant;
-import java.util.Objects;
 
 public final class CustodySignal extends AdminRecord {
     
-    public static final class StatusFlag {
-        private StatusFlag() {}
-        public static final int CUSTODY_TRANSFER_ACCEPTED = 7;
+    public enum Reason {
+        NO_OTHER_INFO, DEPLETED_STORAGE, REDUNDANT_RECEPTION
     }
     
-    public static final class ReasonCode implements AdminRecord.ReasonCode {
-        private ReasonCode() {}
-        public static final BigInteger REDUNDANT_RECEPTION = new BigInteger("3", 16);
-    }
-    
-    public BigInteger status;
+    public boolean custodyTransferSucceeded;
+    public Reason reasonCode;
     public Instant timeOfSignal;
     
     @Override
     public String toString() {
         return "CustodySignal{" +
-            "status=" + status.toString(2) +
+            "recordType=" + recordType +
+            ",subjectBundleID=" + subjectBundleID +
+            ",isForAFragment=" + isForAFragment +
+            ",detailsIfForAFragment=" + detailsIfForAFragment +
+            ",custodyTransferSucceeded=" + custodyTransferSucceeded +
+            ",reasonCode=" + reasonCode +
             ",timeOfSignal=" + timeOfSignal +
-            ",detailsIfForFragment=" + detailsIfForFragment +
-            ",creationTimestampOfBundle=" + creationTimestampOfBundle +
-            ",sourceEIDOfBundle=" + sourceEIDOfBundle +
-            ",recordTypeCodeAndFlags=" + recordTypeCodeAndFlags.toString(2) +
-            "}";
+            '}';
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof CustodySignal)) return false;
+        if (!super.equals(o)) return false;
+        
+        CustodySignal that = (CustodySignal) o;
+        
+        if (custodyTransferSucceeded != that.custodyTransferSucceeded) return false;
+        if (reasonCode != that.reasonCode) return false;
+        return timeOfSignal.equals(that.timeOfSignal);
     }
     
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 13 * hash + Objects.hashCode(this.status);
-        hash = 13 * hash + Objects.hashCode(this.timeOfSignal);
-        hash = 13 * hash + super.hashCode();
-        return hash;
-    }
-    
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final CustodySignal other = (CustodySignal) obj;
-        if (!Objects.equals(this.status, other.status)) {
-            return false;
-        }
-        if (!Objects.equals(this.timeOfSignal, other.timeOfSignal)) {
-            return false;
-        }
-        return super.equals(obj);
+        int result = super.hashCode();
+        result = 31 * result + (custodyTransferSucceeded ? 1 : 0);
+        result = 31 * result + reasonCode.hashCode();
+        result = 31 * result + timeOfSignal.hashCode();
+        return result;
     }
 }

@@ -14,4 +14,22 @@ public class ExampleUnitTest {
     public void addition_isCorrect() {
         assertEquals(4, 2 + 2);
     }
+    
+    enum Day {SUN}
+    
+    @Test
+    public void testEnumsFromStrings() {
+        Day today = Day.SUN;
+        
+        String todayStr = today.toString();
+        
+        assertEquals(today, Day.valueOf(todayStr));
+    }
+    
+    @Test
+    public void testSysTime() {
+        System.out.println("System.currentTimeMillis() = " + System.currentTimeMillis());
+        System.out.println("System.nanoTime() = " + System.nanoTime());
+        System.out.println("Long.MAX_VALUE = " + Long.MAX_VALUE);
+    }
 }

@@ -16,8 +16,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DTNConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DependencyInjection;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.ConvergenceLayerAdapter;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
 
     private static final int USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 66;
     private static final String LOG_TAG
-            = DTNConstants.MAIN_LOG_TAG + "_" + MainActivity.class.getSimpleName();
+            = DConstants.MAIN_LOG_TAG + "_" + MainActivity.class.getSimpleName();
 
     private ConvergenceLayerAdapter cla;
     private PeerDiscovery discoverer;

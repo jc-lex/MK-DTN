@@ -34,7 +34,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ro
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -44,21 +44,21 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     private static final int USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 66;
     private static final String LOG_TAG
             = DConstants.MAIN_LOG_TAG + "_" + MainActivity.class.getSimpleName();
-
-    private ConvergenceLayerAdapter cla;
-    private PeerDiscovery discoverer;
     
-    // TODO EID must be persistent. Use storage
-    private DTNEndpointID bundleNodeEndpointId;
-    private ArrayList<DTNBundleNode> chosenPeers;
-    private HashSet<DTNBundleID> deliveredFragments;
-    private DTNBundle bundleToTransmit;
-    private Button sendBtn;
-    
+    // TODO EID must be persistent. Use storage, but for now its a constant
+    private static final DTNEndpointID BUNDLE_NODE_ENDPOINT_ID = getThisNodezEID();
     private static final long TEST_CPU_SPEED = 2_000_000L;
     private static final String TEST_SHORT_TEXT_MESSAGE = "William + Phoebe = <3";
     private static final int TEST_FRAGMENT_OFFSET = 0;
     private static final int TEST_FRAGMENT_LENGTH = TEST_SHORT_TEXT_MESSAGE.length();
+    
+    private ConvergenceLayerAdapter cla;
+    private PeerDiscovery discoverer;
+    
+    private ArrayList<DTNBundleNode> chosenPeers;
+    private HashSet<DTNBundleID> deliveredFragments;
+    private DTNBundle bundleToTransmit = requestNextBundle();
+    private Button sendBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,10 +67,11 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         
-        bundleToTransmit = requestNextBundle();
         chosenPeers = new ArrayList<>();
         deliveredFragments = new HashSet<>();
 
+        initUI();
+        
         // requestForPermissions for permissions first
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -103,12 +104,6 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         }
     }
     
-    @Override
-    protected void onStart() {
-        super.onStart();
-        initUI();
-    }
-    
     private void initUI() {
         Button startBtn = findViewById(R.id.start_service_button);
         startBtn.setOnClickListener(new View.OnClickListener() {
@@ -124,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
             public void onClick(View v) {
                 // TODO make routing decision prior to bundle transmission
                 chosenPeers.addAll(chooseDTNNodes(discoverer.getPeerList()));
+                if (chosenPeers.isEmpty()) return;
     
                 // TODO make sure to fragment this bundle first before sending
                 cla.transmit(bundleToTransmit, setDestination(0));
@@ -161,8 +157,9 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(
+        int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults
+    ) {
         if (requestCode == USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getDependencies();
@@ -199,7 +196,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     
     private void collectFragmentBundleID(DTNBundle deliveredBundle) {
         // this set of fragment IDs is collected by the Daemon, not router
-        if (deliveredBundle.primaryBlock.destinationEID.equals(bundleNodeEndpointId)) {
+        if (deliveredBundle.primaryBlock.destinationEID.equals(BUNDLE_NODE_ENDPOINT_ID)) {
             if (deliveredBundle.primaryBlock.bundleProcessingControlFlags
                 .testBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT)) {
                 DTNBundleID fragmentID = deliveredBundle.primaryBlock.bundleID;
@@ -239,8 +236,11 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     private Set<DTNBundleNode> chooseDTNNodes(Set<DTNBundleNode> nodes) {
         // NOTE do one random selection, for now
         DTNBundleNode[] nodesArray = nodes.toArray(new DTNBundleNode[]{});
+        if (nodesArray.length == 0) {
+            return Collections.emptySet();
+        }
+        
         int randomNumber = (int) (Math.random() * nodesArray.length); // Z : [0, len)
-
         Set<DTNBundleNode> tmpNodes = new HashSet<>();
         tmpNodes.add(nodesArray[randomNumber]);
 
@@ -305,7 +305,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
 //            ageBlock.sourceCPUSpeedInKHz = SystemUtils.getMaxCPUFrequencyInKHz();
 //        } catch (Exception e) {
 //            Log.e(LOG_TAG, "Could not get "
-//                + bundleNodeEndpointId + "\'s MAX clock speed. Assuming default...", e);
+//                + BUNDLE_NODE_ENDPOINT_ID + "\'s MAX clock speed. Assuming default...", e);
 ////            finish();
 //            // we can't do anything without this clock speed. for now, lets assume a default.
 //            ageBlock.sourceCPUSpeedInKHz = TEST_CPU_SPEED;
@@ -352,12 +352,11 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
             = generateBundlePCFsForUserBundle();
         primaryBlock.priorityClass = PrimaryBlock.PriorityClass.NORMAL;
         primaryBlock.bundleID
-            = DTNBundleID.from(bundleNodeEndpointId, System.currentTimeMillis());
+            = DTNBundleID.from(BUNDLE_NODE_ENDPOINT_ID, System.currentTimeMillis());
         primaryBlock.lifeTime = PrimaryBlock.LifeTime.THREE_DAYS.getPeriod();
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         
-        primaryBlock.detailsIfFragment = new HashMap<>();
         if (primaryBlock.bundleProcessingControlFlags
             .testBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT)) {
             primaryBlock.detailsIfFragment.put(
@@ -388,16 +387,16 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     private void getDependencies() {
         // as the acting router and daemon...
         discoverer = DependencyInjection.getPeerDiscoverer(this);
-
+        discoverer.setThisBundleNodezEndpointId(BUNDLE_NODE_ENDPOINT_ID);
+        cla = DependencyInjection.getConvergenceLayerAdapter(this);
+        cla.setRouter(this);
+    }
+    
+    private static DTNEndpointID getThisNodezEID() {
         // short numbers for debugging purposes only
         String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
         //for the first time, do the next line and store it in storage DB.
-        bundleNodeEndpointId = DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 8));
+        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 8));
         //the next time, get the EID from storage DB
-        
-        discoverer.setThisBundleNodezEndpointId(bundleNodeEndpointId);
-
-        cla = DependencyInjection.getConvergenceLayerAdapter(this);
-        cla.setRouter(this);
     }
 }

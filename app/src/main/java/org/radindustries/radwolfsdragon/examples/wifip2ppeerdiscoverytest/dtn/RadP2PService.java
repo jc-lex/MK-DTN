@@ -317,34 +317,32 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
     }
 
     @Override
-    public void transmit(DTNBundle dtnBundleToSend, final DTNBundleNode node) {
-        bundleToSend = dtnBundleToSend;
+    public void transmit(DTNBundle bundle, DTNBundleNode destination) {
+        bundleToSend = bundle;
         sent = false;
+        final DTNEndpointID eid = destination.dtnEndpointID;
         Log.i(LOG_TAG, "Requesting a connection for bundle forwarding");
-        String claAddress = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
+        String claAddress = destination.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
         
-        if (claAddress != null) {
-            // initiating contact
-            connectionsClient.requestConnection(
-                thisBundleNodezEndpointId.toString(),
-                claAddress,
-                connectionLifecycleCallback
-            ).addOnSuccessListener(new OnSuccessListener<Void>() {
-                @Override
-                public void onSuccess(Void aVoid) {
-                    // We successfully requested a connection.
-                    Log.i(LOG_TAG, "Connection request to "
-                        + node.dtnEndpointID + " succeeded");
-                }
-            }).addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception e) {
-                    // Nearby Connections failed to request the connection.
-                    Log.e(LOG_TAG, "Connection request to "
-                        + node.dtnEndpointID + " failed", e);
-                }
-            });
-        }
+        assert claAddress != null;
+        // initiating contact
+        connectionsClient.requestConnection(
+            thisBundleNodezEndpointId.toString(),
+            claAddress,
+            connectionLifecycleCallback
+        ).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                // We successfully requested a connection.
+                Log.i(LOG_TAG, "Connection request to " + eid + " succeeded");
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                // Nearby Connections failed to request the connection.
+                Log.e(LOG_TAG, "Connection request to " + eid + " failed", e);
+            }
+        });
     }
 
     private void forwardBundle(final String CLAAddress, final DTNBundle bundleToSend) {
@@ -410,7 +408,8 @@ final class RadP2PService implements PeerDiscovery, ConvergenceLayerAdapter {
         
         for (DTNBundleNode node : potentialContacts) {
             if (node.equals(staleNode)) {
-                node.CLAAddresses.replace(DTNBundleNode.CLAKey.NEARBY, newCLAAddress);
+                node.CLAAddresses.remove(DTNBundleNode.CLAKey.NEARBY);
+                node.CLAAddresses.put(DTNBundleNode.CLAKey.NEARBY, newCLAAddress);
                 updatedCLAAddress = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
                 break;
             }

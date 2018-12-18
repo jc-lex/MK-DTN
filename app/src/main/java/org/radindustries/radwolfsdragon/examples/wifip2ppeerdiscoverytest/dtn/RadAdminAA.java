@@ -16,7 +16,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
 
 import java.math.BigInteger;
-import java.time.Instant;
 
 final class RadAdminAA implements Daemon2AdminAA {
     private static final String LOG_TAG
@@ -106,7 +105,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         signal.recordType = AdminRecord.RecordType.CUSTODY_SIGNAL;
         signal.reasonCode = reasonCode;
         signal.custodyTransferSucceeded = custodyAccepted;
-        signal.timeOfSignal = Instant.now();
+        signal.timeOfSignal = System.currentTimeMillis();
         
         return processOtherAdminRecordDetails(userBundle, signal);
     }
@@ -130,7 +129,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         report.recordType = AdminRecord.RecordType.STATUS_REPORT;
         report.reasonCode = reasonCode;
         report.bundleDelivered = bundleDelivered;
-        report.timeOfDelivery = Instant.now();
+        report.timeOfDelivery = System.currentTimeMillis();
         
         return processOtherAdminRecordDetails(userBundle, report);
     }

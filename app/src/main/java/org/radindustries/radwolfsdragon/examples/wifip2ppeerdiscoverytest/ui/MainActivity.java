@@ -19,7 +19,9 @@ import android.widget.Button;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DependencyInjection;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.ConvergenceLayerAdapter;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.CLA2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
@@ -28,8 +30,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscovery.PeerDiscovery;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.CLAToRouter;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -39,21 +40,21 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity implements CLAToRouter /*, Daemon*/ {
+public class MainActivity extends AppCompatActivity implements CLA2Daemon, PeerDiscoverer2Daemon {
 
     private static final int USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 66;
     private static final String LOG_TAG
             = DConstants.MAIN_LOG_TAG + "_" + MainActivity.class.getSimpleName();
     
     // TODO EID must be persistent. Use storage, but for now its a constant
-    private static final DTNEndpointID BUNDLE_NODE_ENDPOINT_ID = getThisNodezEID();
+    private static final DTNEndpointID BUNDLE_NODE_ENDPOINT_ID = makeEID();
     private static final long TEST_CPU_SPEED = 2_000_000L;
     private static final String TEST_SHORT_TEXT_MESSAGE = "William + Phoebe = <3";
     private static final int TEST_FRAGMENT_OFFSET = 0;
     private static final int TEST_FRAGMENT_LENGTH = TEST_SHORT_TEXT_MESSAGE.length();
     
-    private ConvergenceLayerAdapter cla;
-    private PeerDiscovery discoverer;
+    private Daemon2CLA cla;
+    private Daemon2PeerDiscoverer discoverer;
     
     private ArrayList<DTNBundleNode> chosenPeers;
     private HashSet<DTNBundleID> deliveredFragments;
@@ -66,9 +67,6 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        
-        chosenPeers = new ArrayList<>();
-        deliveredFragments = new HashSet<>();
 
         initUI();
         
@@ -110,6 +108,8 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
             @Override
             public void onClick(View v) {
                 discoverer.init();
+                deliveredFragments = new HashSet<>();
+                chosenPeers = new ArrayList<>();
             }
         });
     
@@ -118,6 +118,7 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
             @Override
             public void onClick(View v) {
                 // TODO make routing decision prior to bundle transmission
+                if (!chosenPeers.isEmpty()) chosenPeers.clear();
                 chosenPeers.addAll(chooseDTNNodes(discoverer.getPeerList()));
                 if (chosenPeers.isEmpty()) return;
     
@@ -184,15 +185,6 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
         }
         return super.onOptionsItemSelected(item);
     }
-
-    @Override
-    public void deliver(DTNBundle bundle) {
-        // TODO send to daemon for processing
-        // TODO do asynch task here
-        Log.d(LOG_TAG, "Bundle received:\n" + bundle);
-        
-        collectFragmentBundleID(bundle);
-    }
     
     private void collectFragmentBundleID(DTNBundle deliveredBundle) {
         // this set of fragment IDs is collected by the Daemon, not router
@@ -221,24 +213,13 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
             }
         }
     }
-
-    @Override
-    public void onBundleForwardingCompleted(int bundleNodeCount) {
-         /*NOTE in case of Nearby multi-cast (P2P_CLUSTER),
-         do something to trigger another transmission.*/
-        if (bundleNodeCount < chosenPeers.size()) {
-            cla.transmit(bundleToTransmit, setDestination(bundleNodeCount));
-        } else {
-            sendBtn.setEnabled(true);
-        }
-    }
-
+    
     private Set<DTNBundleNode> chooseDTNNodes(Set<DTNBundleNode> nodes) {
         // NOTE do one random selection, for now
-        DTNBundleNode[] nodesArray = nodes.toArray(new DTNBundleNode[]{});
-        if (nodesArray.length == 0) {
+        if (nodes.size() == 0) {
             return Collections.emptySet();
         }
+        DTNBundleNode[] nodesArray = nodes.toArray(new DTNBundleNode[]{});
         
         int randomNumber = (int) (Math.random() * nodesArray.length); // Z : [0, len)
         Set<DTNBundleNode> tmpNodes = new HashSet<>();
@@ -385,18 +366,40 @@ public class MainActivity extends AppCompatActivity implements CLAToRouter /*, D
     }
     
     private void getDependencies() {
-        // as the acting router and daemon...
-        discoverer = DependencyInjection.getPeerDiscoverer(this);
-        discoverer.setThisBundleNodezEndpointId(BUNDLE_NODE_ENDPOINT_ID);
-        cla = DependencyInjection.getConvergenceLayerAdapter(this);
-        cla.setRouter(this);
+        // as the acting daemon...
+        discoverer = DependencyInjection.getPeerDiscoverer(this, this, this);
+        cla = DependencyInjection.getCLA(this, this);
     }
     
-    private static DTNEndpointID getThisNodezEID() {
+    @Override
+    public DTNEndpointID getThisNodezEID() {
+        return BUNDLE_NODE_ENDPOINT_ID;
+    }
+    
+    private static DTNEndpointID makeEID() {
         // short numbers for debugging purposes only
         String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
         //for the first time, do the next line and store it in storage DB.
         return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 8));
         //the next time, get the EID from storage DB
+    }
+    
+    @Override
+    public void onBundleReceived(DTNBundle bundle) {
+        // TODO send to daemon for processing
+        // TODO do asynch task here
+        Log.d(LOG_TAG, "Bundle received:\n" + bundle);
+    
+        collectFragmentBundleID(bundle);
+    }
+    
+    @Override
+    public void onTransmissionComplete(int numNodesSentTo) {
+        if (numNodesSentTo < chosenPeers.size()) {
+            cla.transmit(bundleToTransmit, setDestination(numNodesSentTo));
+        } else {
+            sendBtn.setEnabled(true);
+            cla.reset();
+        }
     }
 }

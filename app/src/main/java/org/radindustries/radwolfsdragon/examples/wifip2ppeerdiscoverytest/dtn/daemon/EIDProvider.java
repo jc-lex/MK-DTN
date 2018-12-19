@@ -2,6 +2,6 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.d
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 
-public interface AA2Daemon {
+public interface EIDProvider {
     DTNEndpointID getThisNodezEID();
 }

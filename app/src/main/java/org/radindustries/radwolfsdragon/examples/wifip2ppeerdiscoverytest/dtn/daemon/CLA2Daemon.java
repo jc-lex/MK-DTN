@@ -2,6 +2,7 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.d
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 
-public interface AppAA2Daemon extends EIDProvider {
-    void transmit(DTNBundle bundle);
+public interface CLA2Daemon extends EIDProvider {
+    void onBundleReceived(DTNBundle bundle);
+    void onTransmissionComplete(int numNodesSentTo);
 }

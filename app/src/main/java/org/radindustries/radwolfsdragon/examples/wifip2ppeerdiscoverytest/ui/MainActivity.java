@@ -30,6 +30,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 
 import java.math.BigInteger;
@@ -54,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements CLA2Daemon, PeerD
     private static final int TEST_FRAGMENT_LENGTH = TEST_SHORT_TEXT_MESSAGE.length();
     
     private Daemon2CLA cla;
+    private DTNManager manager;
     private Daemon2PeerDiscoverer discoverer;
     
     private ArrayList<DTNBundleNode> chosenPeers;
@@ -107,7 +109,7 @@ public class MainActivity extends AppCompatActivity implements CLA2Daemon, PeerD
         startBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                discoverer.init();
+                manager.start();
                 deliveredFragments = new HashSet<>();
                 chosenPeers = new ArrayList<>();
             }
@@ -136,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements CLA2Daemon, PeerD
             public void onClick(View v) {
                 chosenPeers.clear();
                 deliveredFragments.clear();
-                discoverer.cleanUp();
+                manager.stop();
             }
         });
     }
@@ -369,6 +371,7 @@ public class MainActivity extends AppCompatActivity implements CLA2Daemon, PeerD
         // as the acting daemon...
         discoverer = DependencyInjection.getPeerDiscoverer(this, this, this);
         cla = DependencyInjection.getCLA(this, this);
+        manager = DependencyInjection.getDTNManager();
     }
     
     @Override

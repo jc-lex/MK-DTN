@@ -1,5 +1,7 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
+import android.support.annotation.NonNull;
+
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNAPI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
@@ -18,7 +20,7 @@ final class RadAppAA implements DTNAPI, Daemon2AppAA {
     private DTNUI ui;
     private AppAA2Daemon daemon;
     
-    RadAppAA(DTNUI ui, AppAA2Daemon daemon) {
+    RadAppAA(@NonNull DTNUI ui, @NonNull AppAA2Daemon daemon) {
         this.ui = ui;
         this.daemon = daemon;
     }

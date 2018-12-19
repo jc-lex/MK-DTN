@@ -1,5 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
+import android.support.annotation.NonNull;
 import android.util.Log;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
@@ -23,7 +24,7 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     private AdminAA2Daemon daemon;
     
-    RadAdminAA(AdminAA2Daemon daemon) {
+    RadAdminAA(@NonNull AdminAA2Daemon daemon) {
         this.daemon = daemon;
     }
     

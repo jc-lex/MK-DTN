@@ -18,12 +18,13 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildC
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 
 import java.util.HashSet;
 import java.util.Set;
 
-final class RadDiscoverer implements Daemon2PeerDiscoverer {
+final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
     private static final String LOG_TAG
         = DConstants.MAIN_LOG_TAG + "_" + RadDiscoverer.class.getSimpleName();
     
@@ -89,10 +90,10 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer {
     }
     
     @Override
-    public void init() {
-        Log.i(LOG_TAG, "init");
+    public boolean start() {
         advertise();
         discover();
+        return true;
     }
     
     private void advertise() {
@@ -125,12 +126,12 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer {
     }
     
     @Override
-    public void cleanUp() {
-        Log.i(LOG_TAG, "cleanUp");
+    public boolean stop() {
         potentialContacts.clear();
         connectionsClient.stopDiscovery();
         connectionsClient.stopAdvertising();
         connectionsClient.stopAllEndpoints();
+        return true;
     }
     
     private boolean isWellKnown(DTNBundleNode newNode) {

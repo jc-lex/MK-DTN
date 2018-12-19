@@ -22,13 +22,14 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cl
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.CLA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Objects;
 
-final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider {
+final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Managable {
     private static final String LOG_TAG
         = DConstants.MAIN_LOG_TAG + "_" + RadCLA.class.getSimpleName();
     
@@ -195,5 +196,15 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider {
     private void disconnectAndNotify(String CLAAddress) {
         connectionsClient.disconnectFromEndpoint(CLAAddress);
         daemon.onTransmissionComplete(++bundleNodeCounter);
+    }
+    
+    @Override
+    public boolean start() {
+        return true; //RadDiscoverer is doing this for us
+    }
+    
+    @Override
+    public boolean stop() {
+        return true; //RadDiscoverer is doing this for us
     }
 }

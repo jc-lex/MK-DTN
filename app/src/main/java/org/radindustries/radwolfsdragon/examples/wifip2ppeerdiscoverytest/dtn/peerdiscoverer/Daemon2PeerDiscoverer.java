@@ -6,6 +6,4 @@ import java.util.Set;
 
 public interface Daemon2PeerDiscoverer {
     Set<DTNBundleNode> getPeerList();
-    void init();        // ------------------ both of these are temporary
-    void cleanUp();     // ------------|
 }

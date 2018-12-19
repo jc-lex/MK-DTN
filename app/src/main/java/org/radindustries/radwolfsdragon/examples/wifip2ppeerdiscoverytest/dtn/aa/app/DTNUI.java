@@ -3,4 +3,5 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.a
 public interface DTNUI {
     void onReceiveDTNMessage(byte[] message, String sender);
     void onOutboundBundleReceived(String recipient);
+    void onPeerListChanged(String[] peerList);
 }

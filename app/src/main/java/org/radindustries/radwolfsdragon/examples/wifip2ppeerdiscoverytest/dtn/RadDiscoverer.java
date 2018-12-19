@@ -2,7 +2,6 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
-import android.util.Log;
 
 import com.google.android.gms.nearby.Nearby;
 import com.google.android.gms.nearby.connection.AdvertisingOptions;
@@ -53,6 +52,7 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
                     updateWellKnownDTNNodezCLAAddress(nearbyEndpointID, foundNode);
                 } else {
                     makeDTNNodeWellKnown(foundNode);
+                    daemon.notifyPeerListChanged();
                 }
             }
         }
@@ -60,6 +60,7 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
         @Override
         public void onEndpointLost(@NonNull String nearbyEndpointID) {
             forgetDTNNode(nearbyEndpointID);
+            daemon.notifyPeerListChanged();
         }
     };
     
@@ -75,9 +76,9 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
     private RadDiscoverer() {}
     
     RadDiscoverer(
-        @NonNull PeerDiscoverer2Daemon daemon,
-        @NonNull Context context,
-        @NonNull CLCProvider provider) {
+        @NonNull PeerDiscoverer2Daemon daemon, @NonNull CLCProvider provider,
+        @NonNull Context context
+    ) {
         this.daemon = daemon;
         this.provider = provider;
         connectionsClient = Nearby.getConnectionsClient(context);
@@ -154,7 +155,6 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
     
     private void makeDTNNodeWellKnown(DTNBundleNode newNode) {
         potentialContacts.add(newNode);
-        Log.i(LOG_TAG, "found");
     }
     
     private void forgetDTNNode(String CLAAddress) {
@@ -162,7 +162,6 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
             String claAddress = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
             if (CLAAddress.equals(claAddress)) {
                 potentialContacts.remove(node);
-                Log.i(LOG_TAG, "forgotten");
                 break;
             }
         }

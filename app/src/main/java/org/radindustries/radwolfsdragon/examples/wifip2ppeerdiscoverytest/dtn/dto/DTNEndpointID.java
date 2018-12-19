@@ -21,7 +21,7 @@ public final class DTNEndpointID implements Serializable {
         return from(endpointID.scheme, endpointID.ssp);
     }
     
-    static DTNEndpointID parse(String eidString) {
+    public static DTNEndpointID parse(String eidString) {
         String[] parts = eidString.split(SEP);
         return from(parts[0], parts[1]);
     }

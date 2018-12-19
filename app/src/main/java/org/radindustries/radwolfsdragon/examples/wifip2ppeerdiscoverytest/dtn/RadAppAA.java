@@ -2,7 +2,7 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.support.annotation.NonNull;
 
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNAPI;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AppAA2Daemon;
@@ -14,9 +14,11 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Set;
 
-final class RadAppAA implements DTNAPI, Daemon2AppAA {
+final class RadAppAA implements DTNClient, Daemon2AppAA {
     private DTNUI ui;
     private AppAA2Daemon daemon;
     
@@ -26,11 +28,19 @@ final class RadAppAA implements DTNAPI, Daemon2AppAA {
     }
     
     @Override
+    public void send(byte[] message, String recipient) {
+        send(
+            message, recipient,
+            PrimaryBlock.PriorityClass.NORMAL, PrimaryBlock.LifeTime.THREE_DAYS
+        );
+    }
+    
+    @Override
     public void send(
         byte[] message, String recipient, PrimaryBlock.PriorityClass priorityClass,
         PrimaryBlock.LifeTime lifeTime
     ) {
-        DTNEndpointID receiver = DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, recipient);
+        DTNEndpointID receiver = DTNEndpointID.parse(recipient);
         DTNBundle bundleToSend
             = createUserBundle(message, receiver, priorityClass, lifeTime);
         
@@ -108,19 +118,33 @@ final class RadAppAA implements DTNAPI, Daemon2AppAA {
         byte[] message = null;
     
         CanonicalBlock payloadCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PAYLOAD);
-        if (payloadCBlock != null) {
-            PayloadADU adu = (PayloadADU) payloadCBlock.blockTypeSpecificDataFields;
-            message = adu.ADU;
-        }
+        assert payloadCBlock != null;
+        
+        PayloadADU adu = (PayloadADU) payloadCBlock.blockTypeSpecificDataFields;
+        message = adu.ADU;
     
         PrimaryBlock primaryBlock = bundle.primaryBlock;
         DTNEndpointID src =  primaryBlock.bundleID.sourceEID;
         
-        ui.onReceiveDTNMessage(message, src.ssp);
+        ui.onReceiveDTNMessage(message, src.toString());
     }
     
     @Override
     public void notifyOutboundBundleReceived(String recipient) {
         ui.onOutboundBundleReceived(recipient);
+    }
+    
+    @Override
+    public void notifyPeerListChanged(Set<DTNEndpointID> peers) {
+        ArrayList<String> eids = new ArrayList<>();
+        for (DTNEndpointID eid : peers) {
+            eids.add(eid.toString());
+        }
+        ui.onPeerListChanged(eids.toArray(new String[]{}));
+    }
+    
+    @Override
+    public String getID() {
+        return daemon.getThisNodezEID().toString();
     }
 }

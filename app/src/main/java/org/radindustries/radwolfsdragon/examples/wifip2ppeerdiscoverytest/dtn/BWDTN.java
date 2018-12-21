@@ -11,6 +11,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fr
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 public final class BWDTN {
     private static RadAppAA radAppAA = null;
@@ -19,6 +20,7 @@ public final class BWDTN {
     private static RadDiscoverer radDiscoverer = null;
     private static RadCLA radCLA = null;
     private static RadManager radManager = null;
+    private static RadRouter radRouter = null;
     private static RadDaemon radDaemon = null;
 
     private BWDTN() {}
@@ -45,6 +47,7 @@ public final class BWDTN {
             radDaemon.setAppAA(radAppAA);
             radDaemon.setAdminAA(getAdminAA());
             radDaemon.setFragmentManager(getFragmentManager());
+            radDaemon.setRouter(getRouter());
             radDaemon.setManagables(new Daemon2Managable[]{radDiscoverer, radCLA});
         }
     }
@@ -70,5 +73,10 @@ public final class BWDTN {
     private static Daemon2CLA getCLA(@NonNull Context context) {
         if (radCLA == null) radCLA = new RadCLA(radDaemon, context);
         return radCLA;
+    }
+    
+    private static Daemon2Router getRouter() {
+        if (radRouter == null) radRouter = new RadRouter(radDaemon);
+        return radRouter;
     }
 }

@@ -10,6 +10,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.CLA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.DTNManager2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
@@ -17,32 +18,36 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 final class RadDaemon
-    implements AppAA2Daemon, AdminAA2Daemon, CLA2Daemon, PeerDiscoverer2Daemon, DTNManager2Daemon {
+    implements AppAA2Daemon, AdminAA2Daemon, CLA2Daemon, PeerDiscoverer2Daemon, DTNManager2Daemon,
+        Router2Daemon {
     
     private Daemon2CLA cla;
     private Daemon2PeerDiscoverer discoverer;
     private Daemon2AppAA appAA;
     private Daemon2AdminAA adminAA;
     private Daemon2FragmentManager fragmentManager;
+    private Daemon2Router router;
     private Daemon2Managable[] managables;
     
     private static final DTNEndpointID BUNDLE_NODE_EID = makeEID(); //from persistent storage
     
     private ArrayList<DTNBundleNode> chosenPeers;
+    private Daemon2Router.RoutingProtocol currentProtocol;
 //    private Set<DTNBundleNode> currentPeers;
 //    private HashSet<DTNBundleID> deliveredFragments; //for debugging
     private DTNBundle bundleToTransmit;
     
     RadDaemon() {
         this.chosenPeers = new ArrayList<>();
+        this.currentProtocol = DEFAULT_ROUTING_PROTOCOL;
 //        this.deliveredFragments = new HashSet<>();
 //        this.currentPeers = new HashSet<>();
     }
@@ -71,35 +76,29 @@ final class RadDaemon
         this.adminAA = adminAA;
     }
     
+    void setRouter(@NonNull Daemon2Router router) {
+        this.router = router;
+    }
+    
     @Override
     public void transmit(DTNBundle bundle) {
+        transmit(bundle, currentProtocol);
+    }
+    
+    // NOTE do bundle transmission async
+    @Override
+    public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
+        currentProtocol = routingProtocol;
         bundleToTransmit = bundle; // put in storage
+        if (!chosenPeers.isEmpty()) chosenPeers.clear();
         
-        chosenPeers.addAll(chooseDTNNodes(discoverer.getPeerList())); // ask router for choice
+        chosenPeers.addAll(
+            router.chooseNextHop(discoverer.getPeerList(), routingProtocol, bundle)
+        );
         if (chosenPeers.isEmpty()) return;
     
         // TODO make sure to fragment this bundle first before sending
-        cla.transmit(bundleToTransmit, setDestination(0));
-    }
-    
-    private DTNBundleNode setDestination(int theChosenOne) {
-        DTNBundleNode destination = chosenPeers.get(theChosenOne);
-        bundleToTransmit.primaryBlock.destinationEID = destination.dtnEndpointID;
-        return destination;
-    }
-    
-    // NOTE dummy routing
-    private Set<DTNBundleNode> chooseDTNNodes(Set<DTNBundleNode> nodes) {
-        if (nodes.size() == 0) {
-            return Collections.emptySet();
-        }
-        DTNBundleNode[] nodesArray = nodes.toArray(new DTNBundleNode[]{});
-        
-        int randomNumber = (int) (Math.random() * nodesArray.length); // Z : [0, len)
-        Set<DTNBundleNode> tmpNodes = new HashSet<>();
-        tmpNodes.add(nodesArray[randomNumber]);
-        
-        return tmpNodes;
+        cla.transmit(bundle, chosenPeers.get(0));
     }
     
     @Override
@@ -151,7 +150,7 @@ final class RadDaemon
     @Override
     public void onTransmissionComplete(int numNodesSentTo) {
         if (numNodesSentTo < chosenPeers.size()) {
-            cla.transmit(bundleToTransmit, setDestination(numNodesSentTo));
+            cla.transmit(bundleToTransmit, chosenPeers.get(numNodesSentTo));
         } else {
             cla.reset();
         }

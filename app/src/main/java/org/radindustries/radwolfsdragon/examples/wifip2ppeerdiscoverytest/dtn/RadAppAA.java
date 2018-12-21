@@ -12,6 +12,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -31,20 +32,21 @@ final class RadAppAA implements DTNClient, Daemon2AppAA {
     public void send(byte[] message, String recipient) {
         send(
             message, recipient,
-            PrimaryBlock.PriorityClass.NORMAL, PrimaryBlock.LifeTime.THREE_DAYS
+            daemon.DEFAULT_PRIORITY_CLASS, daemon.DEFAULT_LIFETIME,
+            daemon.DEFAULT_ROUTING_PROTOCOL
         );
     }
     
     @Override
     public void send(
         byte[] message, String recipient, PrimaryBlock.PriorityClass priorityClass,
-        PrimaryBlock.LifeTime lifeTime
+        PrimaryBlock.LifeTime lifeTime, Daemon2Router.RoutingProtocol routingProtocol
     ) {
         DTNEndpointID receiver = DTNEndpointID.parse(recipient);
         DTNBundle bundleToSend
             = createUserBundle(message, receiver, priorityClass, lifeTime);
         
-        daemon.transmit(bundleToSend);
+        daemon.transmit(bundleToSend, routingProtocol);
     }
     
     private DTNBundle createUserBundle(

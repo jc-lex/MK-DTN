@@ -26,15 +26,63 @@ final class RadRouter implements Daemon2Router {
     public Set<DTNBundleNode> chooseNextHop(
         Set<DTNBundleNode> neighbours, RoutingProtocol routingProtocol, DTNBundle bundle
     ) {
-        Set<DTNBundleNode> nextHop = new HashSet<>();
+        Set<DTNBundleNode> nextHop = Collections.emptySet();
+        
+        if (neighbours.isEmpty()) return nextHop;
+        
+        Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
+        if (EIDs.contains(bundle.primaryBlock.destinationEID)) {
+            return findDestination(neighbours, bundle.primaryBlock.destinationEID);
+        }
         
         switch (routingProtocol) {
             case EPIDEMIC: nextHop = doEpidemicRouting(neighbours, bundle); break;
             case PER_HOP: nextHop = doPerHopRouting(neighbours, bundle); break;
-            default: break;
+            case TWO_HOP: nextHop = doTwoHopRouting(neighbours, bundle); break;
+            case SPRAY_AND_WAIT: nextHop = doSprayAndWaitRouting(neighbours, bundle); break;
+            case NECTAR: nextHop = doNECTARRouting(neighbours, bundle); break;
+            case PROPHET: nextHop = doProPHETRouting(neighbours, bundle); break;
+            case DIRECT_CONTACT: default: break;
         }
         
         return nextHop;
+    }
+    
+    private Set<DTNBundleNode> doProPHETRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
+        return Collections.emptySet();
+    }
+    
+    private Set<DTNBundleNode> doNECTARRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
+        return Collections.emptySet(); // TODO implement NECTAR routing
+    }
+    
+    private Set<DTNBundleNode> doSprayAndWaitRouting(
+        Set<DTNBundleNode> neighbours, DTNBundle bundle
+    ) {
+        DTNEndpointID previousCustodian = bundle.primaryBlock.custodianEID;
+        DTNEndpointID source = bundle.primaryBlock.bundleID.sourceEID;
+        
+        if (!(source.equals(daemon.getThisNodezEID()) || previousCustodian.equals(source))) {
+            // waiting phase
+            Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
+            
+            if (EIDs.contains(bundle.primaryBlock.destinationEID)) {
+                return findDestination(neighbours, bundle.primaryBlock.destinationEID);
+            } else {
+                return Collections.emptySet();
+            }
+        } else {
+            // spraying phase
+            return selectRandomly(neighbours, NUM_MULTICAST_NODES);
+        }
+    }
+    
+    private Set<DTNBundleNode> doTwoHopRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
+        if (bundle.primaryBlock.bundleID.sourceEID.equals(daemon.getThisNodezEID())) {
+            return selectRandomly(neighbours, NUM_MULTICAST_NODES);
+        } else {
+            return Collections.emptySet();
+        }
     }
     
     private Set<DTNBundleNode> doEpidemicRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
@@ -43,15 +91,11 @@ final class RadRouter implements Daemon2Router {
         } else {
             Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
     
-            Set<DTNBundleNode> remainingNeighbours = new HashSet<>();
-    
-            //remove the source from the list
+            Set<DTNBundleNode> remainingNeighbours = neighbours;
+            
             if (EIDs.contains(bundle.primaryBlock.bundleID.sourceEID)) {
-                for (DTNBundleNode node : neighbours) {
-                    if (!node.dtnEndpointID.equals(bundle.primaryBlock.bundleID.sourceEID)) {
-                        remainingNeighbours.add(node);
-                    }
-                }
+                remainingNeighbours
+                    = removeSource(neighbours, bundle.primaryBlock.bundleID.sourceEID);
             }
             
             return remainingNeighbours;
@@ -59,14 +103,24 @@ final class RadRouter implements Daemon2Router {
     }
     
     private Set<DTNBundleNode> doPerHopRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
-        if (neighbours.size() == 0) {
-            return neighbours;
-        }
-        else if (bundle.primaryBlock.bundleID.sourceEID.equals(daemon.getThisNodezEID())) {
-            return perHopSelectionIfSource(neighbours, bundle);
+        if (bundle.primaryBlock.bundleID.sourceEID.equals(daemon.getThisNodezEID())) {
+            return selectRandomly(neighbours, NUM_UNICAST_NODES);
         } else {
             return perHopSelectionIfIntermediate(neighbours, bundle);
         }
+    }
+    
+    private Set<DTNBundleNode> perHopSelectionIfIntermediate(
+        Set<DTNBundleNode> neighbours, DTNBundle bundle
+    ) {
+        Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
+        Set<DTNBundleNode> remainingNeighbours = neighbours;
+        
+        if (EIDs.contains(bundle.primaryBlock.bundleID.sourceEID)) {
+            remainingNeighbours = removeSource(neighbours, bundle.primaryBlock.bundleID.sourceEID);
+        }
+        
+        return selectRandomly(remainingNeighbours, NUM_UNICAST_NODES);
     }
     
     private Set<DTNEndpointID> getNeighbourEIDs(Set<DTNBundleNode> neighbours) {
@@ -79,45 +133,45 @@ final class RadRouter implements Daemon2Router {
         return EIDs;
     }
     
-    private Set<DTNBundleNode> perHopSelectionIfSource(
-        Set<DTNBundleNode> neighbours, DTNBundle bundle
+    private Set<DTNBundleNode> findDestination(
+        Set<DTNBundleNode> neighbours, DTNEndpointID destinationEID
     ) {
-        Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
-        Set<DTNBundleNode> selection = new HashSet<>();
+        Set<DTNBundleNode> destinationSet = new HashSet<>();
         
-        if (EIDs.contains(bundle.primaryBlock.destinationEID)) {
-            for (DTNBundleNode node : neighbours) {
-                if (node.dtnEndpointID.equals(bundle.primaryBlock.destinationEID)) {
-                    selection.add(node);
-                    return selection;
-                }
+        for (DTNBundleNode node : neighbours) {
+            if (node.dtnEndpointID.equals(destinationEID)) {
+                destinationSet.add(node);
+                return destinationSet;
             }
-        } else {
-            DTNBundleNode[] nodesArray = neighbours.toArray(new DTNBundleNode[]{});
-            int randomNumber = (int) (Math.random() * nodesArray.length); // Z : [0, len)
-            selection.add(nodesArray[randomNumber]);
-            return selection;
         }
         
         return Collections.emptySet();
     }
     
-    private Set<DTNBundleNode> perHopSelectionIfIntermediate(
-        Set<DTNBundleNode> neighbours, DTNBundle bundle
+    private Set<DTNBundleNode> selectRandomly(Set<DTNBundleNode> neighbours, int numSelections) {
+        Set<DTNBundleNode> randomSelection = new HashSet<>();
+        DTNBundleNode[] nodesArray = neighbours.toArray(new DTNBundleNode[]{});
+        
+        int randomNumber;
+        for (int i = 0; i < numSelections; i++) {
+            randomNumber = (int) (Math.random() * nodesArray.length); // Z : [0, len)
+            randomSelection.add(nodesArray[randomNumber]);
+        }
+        
+        return randomSelection;
+    }
+    
+    private Set<DTNBundleNode> removeSource(
+        Set<DTNBundleNode> neighbours, DTNEndpointID sourceEID
     ) {
-        Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
+        Set<DTNBundleNode> setWithoutSource = new HashSet<>();
         
-        Set<DTNBundleNode> remainingNeighbours = new HashSet<>();
-        
-        //remove the source from the list
-        if (EIDs.contains(bundle.primaryBlock.bundleID.sourceEID)) {
-            for (DTNBundleNode node : neighbours) {
-                if (!node.dtnEndpointID.equals(bundle.primaryBlock.bundleID.sourceEID)) {
-                    remainingNeighbours.add(node);
-                }
+        for (DTNBundleNode node : neighbours) {
+            if (!node.dtnEndpointID.equals(sourceEID)) {
+                setWithoutSource.add(node);
             }
         }
         
-        return perHopSelectionIfSource(remainingNeighbours, bundle);
+        return setWithoutSource;
     }
 }

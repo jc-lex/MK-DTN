@@ -11,8 +11,11 @@ public interface Daemon2Router {
         EPIDEMIC, SPRAY_AND_WAIT, DIRECT_CONTACT, TWO_HOP,
         
         //forwarding-based
-        PER_HOP, NECTAR, PER_CONTACT
+        PER_HOP, NECTAR, PROPHET
     }
+    
+    int NUM_MULTICAST_NODES = 3;
+    int NUM_UNICAST_NODES = 1;
     
     Set<DTNBundleNode> chooseNextHop(
         Set<DTNBundleNode> neighbours, RoutingProtocol routingProtocol, DTNBundle bundle

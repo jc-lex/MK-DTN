@@ -93,10 +93,13 @@ final class RadDaemon
         if (!chosenPeers.isEmpty()) chosenPeers.clear();
         
         chosenPeers.addAll(
-            router.chooseNextHop(discoverer.getPeerList(), routingProtocol, bundle)
+            router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundleToTransmit)
         );
         if (chosenPeers.isEmpty()) return;
     
+        // update the custodian EID prior to transmission
+        bundleToTransmit.primaryBlock.custodianEID = getThisNodezEID();
+        
         // TODO make sure to fragment this bundle first before sending
         cla.transmit(bundle, chosenPeers.get(0));
     }
@@ -117,6 +120,7 @@ final class RadDaemon
     public void onBundleReceived(DTNBundle bundle) {
         //collectFragmentBundleID(bundle);
         appAA.deliver(bundle);
+        // NOTE save the bundle as it is. Don't update the custodian EID on custody acceptance.
     }
     
 //    private void collectFragmentBundleID(DTNBundle deliveredBundle) {

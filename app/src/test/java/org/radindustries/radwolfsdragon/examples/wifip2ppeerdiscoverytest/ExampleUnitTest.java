@@ -3,11 +3,13 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest;
 import org.junit.Test;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -50,5 +52,14 @@ public class ExampleUnitTest {
         Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.UK);
         System.out.println("c.getTimeInMillis() = " + c.getTimeInMillis());
         System.out.println("c.getTimeZone() = " + c.getTimeZone());
+    }
+    
+    @Test
+    public void testArraySorting() {
+        int[] f = new int[]{3, 4, 1, 5, 2, 7, 1, 4, 2};
+        Arrays.sort(f);
+        assertEquals(7, f[8]);
+    
+        ArrayList<int[]> fList = (ArrayList<int[]>) Arrays.asList(f);
     }
 }

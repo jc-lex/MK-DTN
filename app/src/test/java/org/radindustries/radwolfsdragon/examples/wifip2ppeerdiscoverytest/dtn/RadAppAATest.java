@@ -10,6 +10,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -19,6 +20,11 @@ public class RadAppAATest {
     
     // manual mock objects
     private static final AppAA2Daemon daemon = new AppAA2Daemon() {
+        @Override
+        public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
+            transmit(bundle);
+        }
+    
         @Override
         public void transmit(DTNBundle bundle) {
             assertFalse(bundle.primaryBlock.bundleProcessingControlFlags.testBit(
@@ -63,6 +69,11 @@ public class RadAppAATest {
         public void onOutboundBundleReceived(String recipient) {
         
         }
+    
+        @Override
+        public void onPeerListChanged(String[] peerList) {
+        
+        }
     };
     
     private static RadAppAA appAA;
@@ -78,7 +89,8 @@ public class RadAppAATest {
             TestUtilities.TEST_SHORT_TEXT_MESSAGE.getBytes(),
             TestUtilities.TEST_RECIPIENT,
             TestUtilities.TEST_PRIORITY,
-            PrimaryBlock.LifeTime.THREE_DAYS
+            PrimaryBlock.LifeTime.THREE_DAYS,
+            Daemon2Router.RoutingProtocol.PER_HOP
         );
     }
     

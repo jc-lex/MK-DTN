@@ -11,6 +11,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fr
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRouter;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 public final class BWDTN {
@@ -21,6 +23,7 @@ public final class BWDTN {
     private static RadCLA radCLA = null;
     private static RadManager radManager = null;
     private static RadRouter radRouter = null;
+    private static RadNECTARRoutingTable radNECTARRoutingTable = null;
     private static RadDaemon radDaemon = null;
 
     private BWDTN() {}
@@ -48,6 +51,8 @@ public final class BWDTN {
             radDaemon.setAdminAA(getAdminAA());
             radDaemon.setFragmentManager(getFragmentManager());
             radDaemon.setRouter(getRouter());
+            radDaemon.setNECTARRoutingTable(getRoutingTable(context));
+            radDaemon.setNECTARRouter(getNECTARRouter());
             radDaemon.setManagables(new Daemon2Managable[]{radDiscoverer, radCLA});
         }
     }
@@ -66,7 +71,8 @@ public final class BWDTN {
     
     private static Daemon2PeerDiscoverer getPeerDiscoverer(@NonNull Context context) {
         if (radCLA == null) radCLA = new RadCLA(radDaemon, context);
-        if (radDiscoverer == null) radDiscoverer = new RadDiscoverer(radDaemon, radCLA, context);
+        if (radDiscoverer == null)
+            radDiscoverer = new RadDiscoverer(radDaemon, radDaemon, radCLA, context);
         return radDiscoverer;
     }
     
@@ -76,7 +82,18 @@ public final class BWDTN {
     }
     
     private static Daemon2Router getRouter() {
-        if (radRouter == null) radRouter = new RadRouter(radDaemon);
+        if (radRouter == null) radRouter = new RadRouter(radDaemon, radDaemon);
         return radRouter;
+    }
+    
+    private static Daemon2NECTARRouter getNECTARRouter() {
+        if (radRouter == null) radRouter = new RadRouter(radDaemon, radDaemon);
+        return radRouter;
+    }
+    
+    private static Daemon2NECTARRoutingTable getRoutingTable(@NonNull Context context) {
+        if (radNECTARRoutingTable == null)
+            radNECTARRoutingTable = new RadNECTARRoutingTable(context);
+        return radNECTARRoutingTable;
     }
 }

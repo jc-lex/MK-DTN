@@ -2,24 +2,28 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.support.annotation.NonNull;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRouter;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-final class RadRouter implements Daemon2Router {
+final class RadRouter implements Daemon2Router, Daemon2NECTARRouter {
     
     private Router2Daemon daemon;
+    private NECTARRouter2Daemon NECTARDaemon;
     
     private RadRouter() {}
     
-    RadRouter(@NonNull Router2Daemon daemon) {
+    RadRouter(@NonNull Router2Daemon daemon, @NonNull NECTARRouter2Daemon NECTARDaemon) {
         this.daemon = daemon;
+        this.NECTARDaemon = NECTARDaemon;
     }
     
     @Override
@@ -40,7 +44,7 @@ final class RadRouter implements Daemon2Router {
             case PER_HOP: nextHop = doPerHopRouting(neighbours, bundle); break;
             case TWO_HOP: nextHop = doTwoHopRouting(neighbours, bundle); break;
             case SPRAY_AND_WAIT: nextHop = doSprayAndWaitRouting(neighbours, bundle); break;
-            case NECTAR: nextHop = doNECTARRouting(neighbours, bundle); break;
+            case NECTAR: nextHop = doNECTARRouting(neighbours); break;
             case PROPHET: nextHop = doProPHETRouting(neighbours, bundle); break;
             case DIRECT_CONTACT: default: break;
         }
@@ -52,8 +56,29 @@ final class RadRouter implements Daemon2Router {
         return Collections.emptySet();
     }
     
-    private Set<DTNBundleNode> doNECTARRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
-        return Collections.emptySet(); // TODO implement NECTAR routing
+    private Set<DTNBundleNode> doNECTARRouting(Set<DTNBundleNode> neighbours) {
+        Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
+        DTNEndpointID[] EIDArray = EIDs.toArray(new DTNEndpointID[]{});
+        int[] freq = new int[EIDArray.length];
+        
+        int maxFreq = 0;
+        
+        for (int i = 0; i < EIDArray.length; i++) {
+            freq[i] = NECTARDaemon.getMeetingFrequency(EIDArray[i]);
+            if (freq[i] > maxFreq) maxFreq = freq[i];
+        }
+        
+        Set<DTNBundleNode> selection = new HashSet<>();
+        for (int j = 0; j < freq.length; j++) {
+            if (freq[j] == maxFreq) {
+                for (DTNBundleNode node : neighbours) {
+                    if (node.dtnEndpointID.equals(EIDArray[j])) {
+                        selection.add(node);
+                    }
+                }
+            }
+        }
+        return selection;
     }
     
     private Set<DTNBundleNode> doSprayAndWaitRouting(

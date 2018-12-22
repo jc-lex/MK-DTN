@@ -9,6 +9,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AppAA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.CLA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.DTNManager2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARPeerDiscoverer2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
@@ -18,6 +20,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRouter;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.ArrayList;
@@ -27,7 +31,7 @@ import java.util.UUID;
 
 final class RadDaemon
     implements AppAA2Daemon, AdminAA2Daemon, CLA2Daemon, PeerDiscoverer2Daemon, DTNManager2Daemon,
-        Router2Daemon {
+        Router2Daemon, NECTARRouter2Daemon, NECTARPeerDiscoverer2Daemon {
     
     private Daemon2CLA cla;
     private Daemon2PeerDiscoverer discoverer;
@@ -35,6 +39,8 @@ final class RadDaemon
     private Daemon2AdminAA adminAA;
     private Daemon2FragmentManager fragmentManager;
     private Daemon2Router router;
+    private Daemon2NECTARRouter NECTARRouter;
+    private Daemon2NECTARRoutingTable NECTARRoutingTable;
     private Daemon2Managable[] managables;
     
     private static final DTNEndpointID BUNDLE_NODE_EID = makeEID(); //from persistent storage
@@ -80,6 +86,14 @@ final class RadDaemon
         this.router = router;
     }
     
+    void setNECTARRoutingTable(@NonNull Daemon2NECTARRoutingTable NECTARRoutingTable) {
+        this.NECTARRoutingTable = NECTARRoutingTable;
+    }
+    
+    void setNECTARRouter(@NonNull Daemon2NECTARRouter NECTARRouter) {
+        this.NECTARRouter = NECTARRouter;
+    }
+    
     @Override
     public void transmit(DTNBundle bundle) {
         transmit(bundle, currentProtocol);
@@ -92,9 +106,17 @@ final class RadDaemon
         bundleToTransmit = bundle; // put in storage
         if (!chosenPeers.isEmpty()) chosenPeers.clear();
         
-        chosenPeers.addAll(
-            router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundleToTransmit)
-        );
+        if (routingProtocol == Daemon2Router.RoutingProtocol.NECTAR) {
+            chosenPeers.addAll(
+                NECTARRouter.chooseNextHop(
+                    discoverer.getPeerList(), currentProtocol, bundleToTransmit
+                )
+            );
+        } else {
+            chosenPeers.addAll(
+                router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundleToTransmit)
+            );
+        }
         if (chosenPeers.isEmpty()) return;
     
         // update the custodian EID prior to transmission
@@ -192,6 +214,16 @@ final class RadDaemon
         //for the first time, do the next line and store it in storage DB.
         return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 8));
         //the next time, get the EID from storage DB
+    }
+    
+    @Override
+    public void incrementMeetingFrequency(DTNEndpointID nodeEID) {
+        NECTARRoutingTable.incrementMeetingFrequency(nodeEID);
+    }
+    
+    @Override
+    public int getMeetingFrequency(DTNEndpointID nodeEID) {
+        return NECTARRoutingTable.getMeetingFrequency(nodeEID);
     }
     
     @Override

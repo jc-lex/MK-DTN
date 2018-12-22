@@ -15,8 +15,10 @@ import com.google.android.gms.tasks.OnFailureListener;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARPeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 
@@ -48,6 +50,8 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
             DTNBundleNode foundNode = DTNBundleNode.from(bundleNodeEID, nearbyEndpointID);
             
             if (isDTNNode(serviceId)) {
+                NECTARDaemon.incrementMeetingFrequency(DTNEndpointID.parse(bundleNodeEID));
+                
                 if (isWellKnown(foundNode)) {
                     updateWellKnownDTNNodezCLAAddress(nearbyEndpointID, foundNode);
                 } else {
@@ -70,16 +74,18 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
     
     private Set<DTNBundleNode> potentialContacts;
     private PeerDiscoverer2Daemon daemon;
+    private NECTARPeerDiscoverer2Daemon NECTARDaemon;
     private CLCProvider provider;
     private ConnectionsClient connectionsClient;
     
     private RadDiscoverer() {}
     
     RadDiscoverer(
-        @NonNull PeerDiscoverer2Daemon daemon, @NonNull CLCProvider provider,
-        @NonNull Context context
+        @NonNull PeerDiscoverer2Daemon daemon, @NonNull NECTARPeerDiscoverer2Daemon NECTARDaemon,
+        @NonNull CLCProvider provider, @NonNull Context context
     ) {
         this.daemon = daemon;
+        this.NECTARDaemon = NECTARDaemon;
         this.provider = provider;
         connectionsClient = Nearby.getConnectionsClient(context);
         potentialContacts = new HashSet<>();

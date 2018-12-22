@@ -3,7 +3,6 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest;
 import org.junit.Test;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Locale;
@@ -60,6 +59,6 @@ public class ExampleUnitTest {
         Arrays.sort(f);
         assertEquals(7, f[8]);
     
-        ArrayList<int[]> fList = (ArrayList<int[]>) Arrays.asList(f);
+//        ArrayList<int[]> fList = (ArrayList<int[]>) Arrays.asList(f);
     }
 }

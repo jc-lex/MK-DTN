@@ -4,22 +4,17 @@ import android.arch.persistence.room.ColumnInfo;
 import android.arch.persistence.room.Entity;
 import android.arch.persistence.room.PrimaryKey;
 
-import static org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.RadNECTARRoutingTable.COL_MEETING_FREQUENCY;
-import static org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.RadNECTARRoutingTable.COL_NODE_EID;
-import static org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.RadNECTARRoutingTable.COL_ROOM_ID;
-import static org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.RadNECTARRoutingTable.TABLE_NAME;
-
-@Entity(tableName = TABLE_NAME)
+@Entity(tableName = RadNECTARRoutingTable.TABLE_NAME)
 final class NeighbourhoodIndex {
     
     @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = COL_ROOM_ID)
+    @ColumnInfo(name = RadNECTARRoutingTable.COL_ROOM_ID)
     private int id;
     
-    @ColumnInfo(name = COL_NODE_EID)
+    @ColumnInfo(name = RadNECTARRoutingTable.COL_NODE_EID)
     private String nodeEID;
     
-    @ColumnInfo(name = COL_MEETING_FREQUENCY)
+    @ColumnInfo(name = RadNECTARRoutingTable.COL_MEETING_FREQUENCY)
     private int meetingFrequency;
     
     NeighbourhoodIndex() {}

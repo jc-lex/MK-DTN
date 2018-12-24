@@ -31,13 +31,13 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     @Override
     public void incrementMeetingFrequency(DTNEndpointID nodeEID) {
         NeighbourhoodIndex ni = nectarRepo.getIndex(nodeEID.toString());
-        if (ni.getNodeEID() != null && !ni.getNodeEID().isEmpty()) { // <-- must test this
+        if (ni != null) {
             ni.setMeetingFrequency(ni.getMeetingFrequency() + 1);
             nectarRepo.update(ni);
         } else {
             NeighbourhoodIndex newNI = new NeighbourhoodIndex();
-            ni.setNodeEID(nodeEID.toString());
-            ni.setMeetingFrequency(1);
+            newNI.setNodeEID(nodeEID.toString());
+            newNI.setMeetingFrequency(1);
             nectarRepo.insert(newNI);
         }
     }

@@ -21,11 +21,11 @@ final class NECTARRepo {
         return repo;
     }
     
-    void insert(NeighbourhoodIndex ni) {
+    synchronized void insert(NeighbourhoodIndex ni) {
         dao.insert(ni);
     }
     
-    void update(NeighbourhoodIndex ni) {
+    synchronized void update(NeighbourhoodIndex ni) {
         dao.update(ni);
     }
     

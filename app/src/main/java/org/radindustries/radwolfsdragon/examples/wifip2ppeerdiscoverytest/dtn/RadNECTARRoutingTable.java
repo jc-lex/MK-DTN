@@ -11,8 +11,11 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     static final String DB_NAME = "NECTAR_routing_db";
     static final String TABLE_NAME = "neighbourhood_index_table";
     static final String COL_ROOM_ID = "id";
-    static final String COL_NODE_EID = "node_eid";
-    static final String COL_MEETING_FREQUENCY = "meeting_frequency";
+    static final String COL_NODE_EID = "node_EID";
+    static final String COL_FIRST_ENCOUNTER_TIMESTAMP = "first_encounter_timestamp";
+    static final String COL_MEETING_COUNT = "meeting_count";
+    
+    private static final long DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
     
     private static NECTARRepo nectarRepo;
     
@@ -23,21 +26,26 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     }
     
     @Override
-    public int getMeetingFrequency(DTNEndpointID nodeEID) {
+    public float getMeetingFrequency(DTNEndpointID nodeEID) {
         NeighbourhoodIndex ni = nectarRepo.getIndex(nodeEID.toString());
-        return ni.getMeetingFrequency();
+        
+        return ni != null ?
+            (ni.getMeetingCount() * DAY_IN_MILLIS) /
+            (System.currentTimeMillis() - ni.getFirstEncounterTimestamp()) :
+            0.0F;
     }
     
     @Override
     public void incrementMeetingFrequency(DTNEndpointID nodeEID) {
         NeighbourhoodIndex ni = nectarRepo.getIndex(nodeEID.toString());
-        if (ni != null) {
-            ni.setMeetingFrequency(ni.getMeetingFrequency() + 1);
+        if (ni != null) { // updating
+            ni.setMeetingCount(ni.getMeetingCount() + 1);
             nectarRepo.update(ni);
-        } else {
+        } else { // inserting
             NeighbourhoodIndex newNI = new NeighbourhoodIndex();
             newNI.setNodeEID(nodeEID.toString());
-            newNI.setMeetingFrequency(1);
+            newNI.setFirstEncounterTimestamp(System.currentTimeMillis());
+            newNI.setMeetingCount(1);
             nectarRepo.insert(newNI);
         }
     }

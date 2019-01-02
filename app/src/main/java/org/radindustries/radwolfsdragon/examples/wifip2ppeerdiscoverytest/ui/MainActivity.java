@@ -128,6 +128,8 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         
         assert dtnClient != null;
         dtnClientID = dtnClient.getID();
+        
+        peers = new String[0];
     }
     
     @Override

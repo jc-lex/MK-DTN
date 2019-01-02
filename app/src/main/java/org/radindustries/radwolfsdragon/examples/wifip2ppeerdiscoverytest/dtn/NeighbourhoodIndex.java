@@ -14,8 +14,11 @@ final class NeighbourhoodIndex {
     @ColumnInfo(name = RadNECTARRoutingTable.COL_NODE_EID)
     private String nodeEID;
     
-    @ColumnInfo(name = RadNECTARRoutingTable.COL_MEETING_FREQUENCY)
-    private int meetingFrequency;
+    @ColumnInfo(name = RadNECTARRoutingTable.COL_FIRST_ENCOUNTER_TIMESTAMP)
+    private long firstEncounterTimestamp;
+    
+    @ColumnInfo(name = RadNECTARRoutingTable.COL_MEETING_COUNT)
+    private int meetingCount;
     
     NeighbourhoodIndex() {}
     
@@ -35,11 +38,19 @@ final class NeighbourhoodIndex {
         this.nodeEID = nodeEID;
     }
     
-    int getMeetingFrequency() {
-        return meetingFrequency;
+    long getFirstEncounterTimestamp() {
+        return firstEncounterTimestamp;
     }
     
-    void setMeetingFrequency(int meetingFrequency) {
-        this.meetingFrequency = meetingFrequency;
+    void setFirstEncounterTimestamp(long firstEncounterTimestamp) {
+        this.firstEncounterTimestamp = firstEncounterTimestamp;
+    }
+    
+    int getMeetingCount() {
+        return meetingCount;
+    }
+    
+    void setMeetingCount(int meetingCount) {
+        this.meetingCount = meetingCount;
     }
 }

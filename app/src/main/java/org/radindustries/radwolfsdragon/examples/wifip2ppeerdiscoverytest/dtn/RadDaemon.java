@@ -20,7 +20,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRouter;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
@@ -39,8 +38,7 @@ final class RadDaemon
     private Daemon2AdminAA adminAA;
     private Daemon2FragmentManager fragmentManager;
     private Daemon2Router router;
-    private Daemon2NECTARRouter NECTARRouter;
-    private Daemon2NECTARRoutingTable NECTARRoutingTable;
+    private Daemon2NECTARRoutingTable nectarRoutingTable;
     private Daemon2Managable[] managables;
     
     private static final DTNEndpointID BUNDLE_NODE_EID = makeEID(); //from persistent storage
@@ -86,12 +84,8 @@ final class RadDaemon
         this.router = router;
     }
     
-    void setNECTARRoutingTable(@NonNull Daemon2NECTARRoutingTable NECTARRoutingTable) {
-        this.NECTARRoutingTable = NECTARRoutingTable;
-    }
-    
-    void setNECTARRouter(@NonNull Daemon2NECTARRouter NECTARRouter) {
-        this.NECTARRouter = NECTARRouter;
+    void setNECTARRoutingTable(@NonNull Daemon2NECTARRoutingTable nectarRoutingTable) {
+        this.nectarRoutingTable = nectarRoutingTable;
     }
     
     @Override
@@ -99,31 +93,23 @@ final class RadDaemon
         transmit(bundle, currentProtocol);
     }
     
-    // NOTE do bundle transmission async
+    // TODO bundle transmission async
     @Override
     public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
         currentProtocol = routingProtocol;
         bundleToTransmit = bundle; // put in storage
-        if (!chosenPeers.isEmpty()) chosenPeers.clear();
         
-        if (routingProtocol == Daemon2Router.RoutingProtocol.NECTAR) {
-            chosenPeers.addAll(
-                NECTARRouter.chooseNextHop(
-                    discoverer.getPeerList(), currentProtocol, bundleToTransmit
-                )
-            );
-        } else {
-            chosenPeers.addAll(
-                router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundleToTransmit)
-            );
-        }
+        if (!chosenPeers.isEmpty()) chosenPeers.clear();
+        chosenPeers.addAll(
+            router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundleToTransmit)
+        );
         if (chosenPeers.isEmpty()) return;
     
         // update the custodian EID prior to transmission
         bundleToTransmit.primaryBlock.custodianEID = getThisNodezEID();
         
-        // TODO make sure to fragment this bundle first before sending
-        cla.transmit(bundle, chosenPeers.get(0));
+        // TODO fragment this bundle first before sending
+        cla.transmit(bundleToTransmit, chosenPeers.get(0));
     }
     
     @Override
@@ -137,7 +123,7 @@ final class RadDaemon
         appAA.notifyPeerListChanged(peerEIDs);
     }
     
-    // NOTE do bundle processing async
+    // TODO bundle processing async
     @Override
     public void onBundleReceived(DTNBundle bundle) {
         //collectFragmentBundleID(bundle);
@@ -218,12 +204,12 @@ final class RadDaemon
     
     @Override
     public void incrementMeetingFrequency(DTNEndpointID nodeEID) {
-        NECTARRoutingTable.incrementMeetingFrequency(nodeEID);
+        nectarRoutingTable.incrementMeetingFrequency(nodeEID);
     }
     
     @Override
-    public int getMeetingFrequency(DTNEndpointID nodeEID) {
-        return NECTARRoutingTable.getMeetingFrequency(nodeEID);
+    public float getMeetingFrequency(DTNEndpointID nodeEID) {
+        return nectarRoutingTable.getMeetingFrequency(nodeEID);
     }
     
     @Override
@@ -233,11 +219,11 @@ final class RadDaemon
     
     @Override
     public void delete(DTNBundleID bundleID) {
-    
+        // don't delete if currentProtocol == EPIDEMIC
     }
     
     @Override
     public void delete(DTNBundleID bundleID, int fragmentOffset) {
-    
+        // don't delete if currentProtocol == EPIDEMIC
     }
 }

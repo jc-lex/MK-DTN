@@ -50,7 +50,7 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
             DTNBundleNode foundNode = DTNBundleNode.from(bundleNodeEID, nearbyEndpointID);
             
             if (isDTNNode(serviceId)) {
-                NECTARDaemon.incrementMeetingFrequency(DTNEndpointID.parse(bundleNodeEID));
+                nectarDaemon.incrementMeetingFrequency(DTNEndpointID.parse(bundleNodeEID));
                 
                 if (isWellKnown(foundNode)) {
                     updateWellKnownDTNNodezCLAAddress(nearbyEndpointID, foundNode);
@@ -74,18 +74,18 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
     
     private Set<DTNBundleNode> potentialContacts;
     private PeerDiscoverer2Daemon daemon;
-    private NECTARPeerDiscoverer2Daemon NECTARDaemon;
+    private NECTARPeerDiscoverer2Daemon nectarDaemon;
     private CLCProvider provider;
     private ConnectionsClient connectionsClient;
     
     private RadDiscoverer() {}
     
     RadDiscoverer(
-        @NonNull PeerDiscoverer2Daemon daemon, @NonNull NECTARPeerDiscoverer2Daemon NECTARDaemon,
+        @NonNull PeerDiscoverer2Daemon daemon, @NonNull NECTARPeerDiscoverer2Daemon nectarDaemon,
         @NonNull CLCProvider provider, @NonNull Context context
     ) {
         this.daemon = daemon;
-        this.NECTARDaemon = NECTARDaemon;
+        this.nectarDaemon = nectarDaemon;
         this.provider = provider;
         connectionsClient = Nearby.getConnectionsClient(context);
         potentialContacts = new HashSet<>();

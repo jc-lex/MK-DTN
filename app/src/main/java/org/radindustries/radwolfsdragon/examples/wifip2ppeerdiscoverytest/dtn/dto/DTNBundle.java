@@ -7,13 +7,11 @@ import java.util.HashMap;
 
 public final class DTNBundle implements Serializable {
     
-    // initial capacity = {payload/admin_record, age_block}
-    private static final int DEFAULT_CBLOCK_CAPACITY = 3;
-    
     public interface CBlockNumber {
         int PAYLOAD = 0;
         int ADMIN_RECORD = 1;
         int AGE = 2;
+        int NECTAR_ROUTING_INFO = 3;
     }
     
     interface FragmentField {
@@ -23,8 +21,7 @@ public final class DTNBundle implements Serializable {
     public PrimaryBlock primaryBlock;
     
     @SuppressLint("UseSparseArrays")
-    public HashMap<Integer, CanonicalBlock> canonicalBlocks
-        = new HashMap<>(DEFAULT_CBLOCK_CAPACITY);
+    public HashMap<Integer, CanonicalBlock> canonicalBlocks = new HashMap<>();
     
     @Override
     public String toString() {

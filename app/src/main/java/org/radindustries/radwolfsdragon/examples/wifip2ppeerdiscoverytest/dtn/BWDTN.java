@@ -11,7 +11,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fr
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRouter;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
@@ -51,8 +50,7 @@ public final class BWDTN {
             radDaemon.setAdminAA(getAdminAA());
             radDaemon.setFragmentManager(getFragmentManager());
             radDaemon.setRouter(getRouter());
-            radDaemon.setNECTARRoutingTable(getRoutingTable(context));
-            radDaemon.setNECTARRouter(getNECTARRouter());
+            radDaemon.setNECTARRoutingTable(getNECTARRoutingTable(context));
             radDaemon.setManagables(new Daemon2Managable[]{radDiscoverer, radCLA});
         }
     }
@@ -86,12 +84,7 @@ public final class BWDTN {
         return radRouter;
     }
     
-    private static Daemon2NECTARRouter getNECTARRouter() {
-        if (radRouter == null) radRouter = new RadRouter(radDaemon, radDaemon);
-        return radRouter;
-    }
-    
-    private static Daemon2NECTARRoutingTable getRoutingTable(@NonNull Context context) {
+    private static Daemon2NECTARRoutingTable getNECTARRoutingTable(@NonNull Context context) {
         if (radNECTARRoutingTable == null)
             radNECTARRoutingTable = new RadNECTARRoutingTable(context);
         return radNECTARRoutingTable;

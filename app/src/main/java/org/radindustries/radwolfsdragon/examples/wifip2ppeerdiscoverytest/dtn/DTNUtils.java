@@ -69,6 +69,13 @@ final class DTNUtils {
             .setBit(CanonicalBlock.BlockPCF.DISCARD_BLOCK_IF_IT_CANNOT_BE_PROCESSED);
     }
     
+    static BigInteger makeRoutingInfoBlockPCFs() {
+        
+        return BigInteger.ZERO
+            .setBit(CanonicalBlock.BlockPCF.BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS)
+            .setBit(CanonicalBlock.BlockPCF.DELETE_BUNDLE_IF_BLOCK_CANNOT_BE_PROCESSED);
+    }
+    
     /**
      * (c) 2010 Nicolas Gramlich
      * (c) 2011 Zynga Inc.

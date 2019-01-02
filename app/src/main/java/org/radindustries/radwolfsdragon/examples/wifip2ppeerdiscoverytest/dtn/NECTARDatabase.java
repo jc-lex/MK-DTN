@@ -7,7 +7,7 @@ import android.content.Context;
 
 @Database(
     entities = {NeighbourhoodIndex.class},
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class NECTARDatabase extends RoomDatabase {

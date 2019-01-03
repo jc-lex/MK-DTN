@@ -6,6 +6,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -17,11 +18,13 @@ final class TestUtilities {
     private static final int TEST_FRAGMENT_OFFSET = 0;
     private static final int TEST_EID_LENGTH = 2;
     
-    static final String TEST_SENDER = "w1l1";
-    static final String TEST_RECIPIENT = "f1b1";
+    static final String TEST_SENDER = "dtn:b111";
+    static final String TEST_RECIPIENT = "dtn:f1b1";
     static final PrimaryBlock.LifeTime TEST_LIFETIME = PrimaryBlock.LifeTime.THREE_DAYS;
     static final PrimaryBlock.PriorityClass TEST_PRIORITY
         = PrimaryBlock.PriorityClass.NORMAL;
+    static final Daemon2Router.RoutingProtocol TEST_PROTOCOL
+        = Daemon2Router.RoutingProtocol.PER_HOP;
     
     static DTNEndpointID makeDTNEID() {
         DTNEndpointID eid = new DTNEndpointID();
@@ -96,7 +99,7 @@ final class TestUtilities {
             = generateBundlePCFsForUserBundle();
         primaryBlock.priorityClass = TEST_PRIORITY;
         primaryBlock.bundleID = DTNBundleID.from(
-            DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, TEST_SENDER), System.currentTimeMillis()
+            DTNEndpointID.parse(TEST_SENDER), System.currentTimeMillis()
         );
         primaryBlock.lifeTime = TEST_LIFETIME.getPeriod();
         primaryBlock.destinationEID = makeDTNEID();

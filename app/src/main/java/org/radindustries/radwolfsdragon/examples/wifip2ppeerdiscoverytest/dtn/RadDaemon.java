@@ -204,7 +204,7 @@ final class RadDaemon
     
     @Override
     public void incrementMeetingFrequency(DTNEndpointID nodeEID) {
-        nectarRoutingTable.incrementMeetingFrequency(nodeEID);
+        nectarRoutingTable.incrementMeetingCount(nodeEID);
     }
     
     @Override

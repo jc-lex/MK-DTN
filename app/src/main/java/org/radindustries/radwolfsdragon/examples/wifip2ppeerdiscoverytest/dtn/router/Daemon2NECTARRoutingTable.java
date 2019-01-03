@@ -4,5 +4,5 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 
 public interface Daemon2NECTARRoutingTable {
     float getMeetingFrequency(DTNEndpointID nodeEID);
-    void incrementMeetingFrequency(DTNEndpointID nodeEID);
+    void incrementMeetingCount(DTNEndpointID nodeEID);
 }

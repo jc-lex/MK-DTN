@@ -18,7 +18,6 @@ import static org.junit.Assert.assertNotNull;
 
 public class RadAppAATest {
     
-    // manual mock objects
     private static final AppAA2Daemon daemon = new AppAA2Daemon() {
         @Override
         public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
@@ -89,8 +88,8 @@ public class RadAppAATest {
             TestUtilities.TEST_SHORT_TEXT_MESSAGE.getBytes(),
             TestUtilities.TEST_RECIPIENT,
             TestUtilities.TEST_PRIORITY,
-            PrimaryBlock.LifeTime.THREE_DAYS,
-            Daemon2Router.RoutingProtocol.PER_HOP
+            TestUtilities.TEST_LIFETIME,
+            TestUtilities.TEST_PROTOCOL
         );
     }
     

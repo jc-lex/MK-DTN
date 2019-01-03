@@ -36,7 +36,7 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     }
     
     @Override
-    public void incrementMeetingFrequency(DTNEndpointID nodeEID) {
+    public void incrementMeetingCount(DTNEndpointID nodeEID) {
         NeighbourhoodIndex ni = nectarRepo.getIndex(nodeEID.toString());
         if (ni != null) { // updating
             ni.setMeetingCount(ni.getMeetingCount() + 1);

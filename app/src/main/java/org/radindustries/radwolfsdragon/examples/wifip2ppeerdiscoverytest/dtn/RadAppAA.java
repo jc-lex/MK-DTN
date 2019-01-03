@@ -117,7 +117,7 @@ final class RadAppAA implements DTNClient, Daemon2AppAA {
     
     @Override
     public void deliver(DTNBundle bundle) {
-        byte[] message = null;
+        byte[] message;
     
         CanonicalBlock payloadCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PAYLOAD);
         assert payloadCBlock != null;

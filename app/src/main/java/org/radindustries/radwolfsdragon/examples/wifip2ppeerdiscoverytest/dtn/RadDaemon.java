@@ -11,6 +11,9 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.DTNManager2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARPeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARRouter2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETCLA2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETPeerDiscoverer2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
@@ -21,6 +24,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fr
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.ArrayList;
@@ -30,7 +34,8 @@ import java.util.UUID;
 
 final class RadDaemon
     implements AppAA2Daemon, AdminAA2Daemon, CLA2Daemon, PeerDiscoverer2Daemon, DTNManager2Daemon,
-        Router2Daemon, NECTARRouter2Daemon, NECTARPeerDiscoverer2Daemon {
+        Router2Daemon, NECTARRouter2Daemon, NECTARPeerDiscoverer2Daemon,
+        PRoPHETRouter2Daemon, PRoPHETPeerDiscoverer2Daemon, PRoPHETCLA2Daemon {
     
     private Daemon2CLA cla;
     private Daemon2PeerDiscoverer discoverer;
@@ -39,6 +44,7 @@ final class RadDaemon
     private Daemon2FragmentManager fragmentManager;
     private Daemon2Router router;
     private Daemon2NECTARRoutingTable nectarRoutingTable;
+    private Daemon2PRoPHETRoutingTable prophetRoutingTable;
     private Daemon2Managable[] managables;
     
     private static final DTNEndpointID BUNDLE_NODE_EID = makeEID(); //from persistent storage
@@ -86,6 +92,10 @@ final class RadDaemon
     
     void setNECTARRoutingTable(@NonNull Daemon2NECTARRoutingTable nectarRoutingTable) {
         this.nectarRoutingTable = nectarRoutingTable;
+    }
+    
+    void setPRoPHETRoutingTable(@NonNull Daemon2PRoPHETRoutingTable prophetRoutingTable) {
+        this.prophetRoutingTable = prophetRoutingTable;
     }
     
     @Override
@@ -203,7 +213,7 @@ final class RadDaemon
     }
     
     @Override
-    public void incrementMeetingFrequency(DTNEndpointID nodeEID) {
+    public void incrementMeetingCount(DTNEndpointID nodeEID) {
         nectarRoutingTable.incrementMeetingCount(nodeEID);
     }
     
@@ -213,17 +223,32 @@ final class RadDaemon
     }
     
     @Override
+    public void updateDeliveryPredictability(DTNEndpointID nodeEID) {
+        prophetRoutingTable.updateDeliveryPredictability(nodeEID);
+    }
+    
+    @Override
+    public void calculateDPTransitivity(DTNBundle bundle) {
+        prophetRoutingTable.calculateDPTransitivity(bundle);
+    }
+    
+    @Override
+    public float getDeliveryPredictability(DTNEndpointID nodeEID) {
+        return prophetRoutingTable.getDeliveryPredictability(nodeEID);
+    }
+    
+    @Override
     public void notifyOutboundBundleDelivered(String recipient) {
         appAA.notifyOutboundBundleReceived(recipient);
     }
     
     @Override
     public void delete(DTNBundleID bundleID) {
-        // don't delete if currentProtocol == EPIDEMIC
+        // don't deleteIndex if currentProtocol == EPIDEMIC
     }
     
     @Override
     public void delete(DTNBundleID bundleID, int fragmentOffset) {
-        // don't delete if currentProtocol == EPIDEMIC
+        // don't deleteIndex if currentProtocol == EPIDEMIC
     }
 }

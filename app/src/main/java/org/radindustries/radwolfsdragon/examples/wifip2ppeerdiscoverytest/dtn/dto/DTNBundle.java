@@ -12,6 +12,7 @@ public final class DTNBundle implements Serializable {
         int ADMIN_RECORD = 1;
         int AGE = 2;
         int NECTAR_ROUTING_INFO = 3;
+        int PROPHET_ROUTING_INFO = 4;
     }
     
     interface FragmentField {

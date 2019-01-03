@@ -15,16 +15,16 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 @RunWith(AndroidJUnit4.class)
-public class NECTARRepoTest {
+public class RouterDBHandlerTest {
     
-    private static NECTARRepo repo;
+    private static RouterDBHandler repo;
     private static final String TEST_EXISTING_EID = "dtn:f1b1";
     private static final String TEST_NON_EXISTENT_EID = "dtn:b111";
     
     @BeforeClass
     public static void setUpClass() {
         Context appContext = InstrumentationRegistry.getTargetContext();
-        repo = NECTARRepo.getRepo(appContext);
+        repo = RouterDBHandler.getHandler(appContext);
     }
     
     @Before
@@ -39,7 +39,7 @@ public class NECTARRepoTest {
     
     @After
     public void tearDown() {
-        repo.delete(TEST_EXISTING_EID);
+        repo.deleteIndex(TEST_EXISTING_EID);
     }
     
     @Test
@@ -70,7 +70,7 @@ public class NECTARRepoTest {
     
     @Test
     public void testDeletingIndices() {
-        repo.delete(TEST_EXISTING_EID);
+        repo.deleteIndex(TEST_EXISTING_EID);
 
         NeighbourhoodIndex index = repo.getIndex(TEST_EXISTING_EID);
         assertNull(index);

@@ -6,7 +6,7 @@ import java.math.BigInteger;
 public final class CanonicalBlock implements Serializable {
     
     public enum BlockType {
-        PAYLOAD, ADMIN_RECORD, AGE, NECTAR_ROUTING_INFO
+        PAYLOAD, ADMIN_RECORD, AGE, NECTAR_ROUTING_INFO, PROPHET_ROUTING_INFO
     }
     
     public interface BlockPCF {

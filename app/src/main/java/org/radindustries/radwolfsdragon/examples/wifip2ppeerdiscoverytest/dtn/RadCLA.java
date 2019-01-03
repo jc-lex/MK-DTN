@@ -20,6 +20,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.CLA2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETCLA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
@@ -66,6 +67,7 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
                             )
                         ) {
                             DTNBundle receivedBundle = (DTNBundle) in.readObject();
+                            prophetDaemon.calculateDPTransitivity(receivedBundle);
                             daemon.onBundleReceived(receivedBundle);
                         } catch (Exception e) {
                             break;
@@ -129,12 +131,15 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
     private int bundleNodeCounter;
     
     private CLA2Daemon daemon;
+    private PRoPHETCLA2Daemon prophetDaemon;
     private ConnectionsClient connectionsClient;
     
     private RadCLA() {}
     
-    RadCLA(@NonNull CLA2Daemon daemon, @NonNull Context context) {
+    RadCLA(@NonNull CLA2Daemon daemon, @NonNull PRoPHETCLA2Daemon prophetDaemon,
+           @NonNull Context context) {
         this.daemon = daemon;
+        this.prophetDaemon = prophetDaemon;
         connectionsClient = Nearby.getConnectionsClient(context);
         reset();
     }

@@ -14,11 +14,11 @@ interface NeighbourhoodIndexDAO {
     @Update
     void update(NeighbourhoodIndex ni);
     
-    @Query("DELETE FROM " + RadNECTARRoutingTable.TABLE_NAME + " WHERE "
-        + RadNECTARRoutingTable.COL_NODE_EID + " = :nodeEID")
+    @Query("DELETE FROM " + RouterDatabase.NECTAR_TABLE_NAME + " WHERE "
+        + RouterDatabase.COL_NODE_EID + " = :nodeEID")
     void delete(String nodeEID);
     
-    @Query("SELECT * FROM " + RadNECTARRoutingTable.TABLE_NAME + " WHERE "
-        + RadNECTARRoutingTable.COL_NODE_EID + " = :nodeEID")
+    @Query("SELECT * FROM " + RouterDatabase.NECTAR_TABLE_NAME + " WHERE "
+        + RouterDatabase.COL_NODE_EID + " = :nodeEID")
     NeighbourhoodIndex getNeighbourhoodIndex(String nodeEID);
 }

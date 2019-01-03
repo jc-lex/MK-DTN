@@ -4,8 +4,8 @@ import android.arch.persistence.room.ColumnInfo;
 import android.arch.persistence.room.Entity;
 import android.arch.persistence.room.PrimaryKey;
 
-@Entity(tableName = RouterDatabase.NECTAR_TABLE_NAME)
-final class NeighbourhoodIndex {
+@Entity(tableName = RouterDatabase.PROPHET_TABLE_NAME)
+final class DeliveryPredictability {
     
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = RouterDatabase.COL_ROOM_ID)
@@ -14,13 +14,10 @@ final class NeighbourhoodIndex {
     @ColumnInfo(name = RouterDatabase.COL_NODE_EID)
     private String nodeEID;
     
-    @ColumnInfo(name = RouterDatabase.COL_FIRST_ENCOUNTER_TIMESTAMP)
-    private long firstEncounterTimestamp;
+    @ColumnInfo(name = RouterDatabase.COL_DELIVERY_PREDICTABILITY)
+    private float probability;
     
-    @ColumnInfo(name = RouterDatabase.COL_MEETING_COUNT)
-    private int meetingCount;
-    
-    NeighbourhoodIndex() {}
+    DeliveryPredictability() {}
     
     int getId() {
         return id;
@@ -38,19 +35,11 @@ final class NeighbourhoodIndex {
         this.nodeEID = nodeEID;
     }
     
-    long getFirstEncounterTimestamp() {
-        return firstEncounterTimestamp;
+    float getProbability() {
+        return probability;
     }
     
-    void setFirstEncounterTimestamp(long firstEncounterTimestamp) {
-        this.firstEncounterTimestamp = firstEncounterTimestamp;
-    }
-    
-    int getMeetingCount() {
-        return meetingCount;
-    }
-    
-    void setMeetingCount(int meetingCount) {
-        this.meetingCount = meetingCount;
+    void setProbability(float probability) {
+        this.probability = probability;
     }
 }

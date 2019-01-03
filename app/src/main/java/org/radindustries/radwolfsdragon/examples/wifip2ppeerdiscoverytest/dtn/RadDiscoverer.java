@@ -16,6 +16,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARPeerDiscoverer2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETPeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
@@ -50,7 +51,9 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
             DTNBundleNode foundNode = DTNBundleNode.from(bundleNodeEID, nearbyEndpointID);
             
             if (isDTNNode(serviceId)) {
-                nectarDaemon.incrementMeetingFrequency(DTNEndpointID.parse(bundleNodeEID));
+                DTNEndpointID eid = DTNEndpointID.parse(bundleNodeEID);
+                nectarDaemon.incrementMeetingCount(eid);
+                prophetDaemon.updateDeliveryPredictability(eid);
                 
                 if (isWellKnown(foundNode)) {
                     updateWellKnownDTNNodezCLAAddress(nearbyEndpointID, foundNode);
@@ -75,6 +78,7 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
     private Set<DTNBundleNode> potentialContacts;
     private PeerDiscoverer2Daemon daemon;
     private NECTARPeerDiscoverer2Daemon nectarDaemon;
+    private PRoPHETPeerDiscoverer2Daemon prophetDaemon;
     private CLCProvider provider;
     private ConnectionsClient connectionsClient;
     
@@ -82,10 +86,12 @@ final class RadDiscoverer implements Daemon2PeerDiscoverer, Daemon2Managable {
     
     RadDiscoverer(
         @NonNull PeerDiscoverer2Daemon daemon, @NonNull NECTARPeerDiscoverer2Daemon nectarDaemon,
-        @NonNull CLCProvider provider, @NonNull Context context
+        @NonNull PRoPHETPeerDiscoverer2Daemon prophetDaemon, @NonNull CLCProvider provider,
+        @NonNull Context context
     ) {
         this.daemon = daemon;
         this.nectarDaemon = nectarDaemon;
+        this.prophetDaemon = prophetDaemon;
         this.provider = provider;
         connectionsClient = Nearby.getConnectionsClient(context);
         potentialContacts = new HashSet<>();

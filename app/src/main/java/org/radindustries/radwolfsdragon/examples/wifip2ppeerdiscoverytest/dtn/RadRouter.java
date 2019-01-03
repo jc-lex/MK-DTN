@@ -3,12 +3,14 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 import android.support.annotation.NonNull;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARRouter2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.NECTARRoutingInfo;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PRoPHETRoutingInfo;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.Collections;
@@ -18,13 +20,16 @@ import java.util.Set;
 final class RadRouter implements Daemon2Router {
     
     private Router2Daemon daemon;
-    private NECTARRouter2Daemon NECTARDaemon;
+    private NECTARRouter2Daemon nectarDaemon;
+    private PRoPHETRouter2Daemon prophetDaemon;
     
     private RadRouter() {}
     
-    RadRouter(@NonNull Router2Daemon daemon, @NonNull NECTARRouter2Daemon NECTARDaemon) {
+    RadRouter(@NonNull Router2Daemon daemon, @NonNull NECTARRouter2Daemon nectarDaemon,
+              @NonNull PRoPHETRouter2Daemon prophetDaemon) {
         this.daemon = daemon;
-        this.NECTARDaemon = NECTARDaemon;
+        this.nectarDaemon = nectarDaemon;
+        this.prophetDaemon = prophetDaemon;
     }
     
     @Override
@@ -46,21 +51,32 @@ final class RadRouter implements Daemon2Router {
             case TWO_HOP: nextHop = doTwoHopRouting(neighbours, bundle); break;
             case SPRAY_AND_WAIT: nextHop = doSprayAndWaitRouting(neighbours, bundle); break;
             case NECTAR: nextHop = doNECTARRouting(neighbours, bundle); break;
-            case PROPHET: nextHop = doProPHETRouting(neighbours, bundle); break;
+            case PROPHET: nextHop = doPRoPHETRouting(neighbours, bundle); break;
             case DIRECT_CONTACT: default: break;
         }
         
         return nextHop;
     }
     
-    private Set<DTNBundleNode> doProPHETRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
-        return Collections.emptySet();
+    private Set<DTNBundleNode> doPRoPHETRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
+        PRoPHETRoutingInfo prophetRoutingInfo = new PRoPHETRoutingInfo();
+        prophetRoutingInfo.deliveryPredictability
+            = prophetDaemon.getDeliveryPredictability(bundle.primaryBlock.destinationEID);
+        
+        CanonicalBlock prophetCBlock = new CanonicalBlock();
+        prophetCBlock.blockType = CanonicalBlock.BlockType.PROPHET_ROUTING_INFO;
+        prophetCBlock.blockProcessingControlFlags = DTNUtils.makeRoutingInfoBlockPCFs();
+        prophetCBlock.blockTypeSpecificDataFields = prophetRoutingInfo;
+        
+        bundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PROPHET_ROUTING_INFO, prophetCBlock);
+        
+        return doEpidemicRouting(neighbours, bundle);
     }
     
     private Set<DTNBundleNode> doNECTARRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
         NECTARRoutingInfo nectarRoutingInfo = new NECTARRoutingInfo();
         nectarRoutingInfo.meetingFrequency
-            = NECTARDaemon.getMeetingFrequency(bundle.primaryBlock.destinationEID);
+            = nectarDaemon.getMeetingFrequency(bundle.primaryBlock.destinationEID);
     
         CanonicalBlock nectarCBlock = new CanonicalBlock();
         nectarCBlock.blockType = CanonicalBlock.BlockType.NECTAR_ROUTING_INFO;

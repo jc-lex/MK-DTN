@@ -2,6 +2,6 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.d
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 
-public interface NECTARPeerDiscoverer2Daemon extends PeerDiscoverer2Daemon {
-    void incrementMeetingCount(DTNEndpointID nodeEID);
+public interface PRoPHETPeerDiscoverer2Daemon extends PeerDiscoverer2Daemon {
+    void updateDeliveryPredictability(DTNEndpointID nodeEID);
 }

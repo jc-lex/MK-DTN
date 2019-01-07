@@ -3,6 +3,7 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 import android.content.Context;
 import android.support.annotation.NonNull;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.EIDProvider;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
@@ -18,6 +19,7 @@ import java.util.concurrent.Future;
 final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon2Managable {
     
     private RouterDBHandler routerDBHandler;
+    private EIDProvider eidProvider;
     
     private ExecutorService executorService;
     
@@ -56,13 +58,16 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     private RadPRoPHETRoutingTable() {}
     
-    RadPRoPHETRoutingTable(@NonNull Context context) {
-        this.routerDBHandler = RouterDBHandler.getHandler(context);
+    RadPRoPHETRoutingTable(@NonNull Context context, @NonNull EIDProvider eidProvider) {
+        routerDBHandler = RouterDBHandler.getHandler(context);
+        this.eidProvider = eidProvider;
         executorService = Executors.newSingleThreadExecutor();
     }
     
     @Override
     public void updateDeliveryPredictability(DTNEndpointID nodeEID) {
+        if (nodeEID.equals(eidProvider.getThisNodezEID())) return;
+        
         DeliveryPredictability dp = routerDBHandler.getDP(nodeEID.toString());
         if (dp != null) { // updating
             if (dp.getProbability() < P_FIRST_THRESHOLD) {
@@ -83,6 +88,9 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public void calculateDPTransitivity(DTNBundle bundle) {
+        if (bundle.primaryBlock.destinationEID.equals(eidProvider.getThisNodezEID()) ||
+            bundle.primaryBlock.destinationEID.equals(bundle.primaryBlock.custodianEID)) return;
+        
         CanonicalBlock prophetCBlock
             = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PROPHET_ROUTING_INFO);
         
@@ -127,6 +135,8 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public float getDeliveryPredictability(DTNEndpointID nodeEID) {
+        if (nodeEID.equals(eidProvider.getThisNodezEID())) return 1.0F;
+        
         DeliveryPredictability dp = routerDBHandler.getDP(nodeEID.toString());
         return dp != null ? dp.getProbability() : 0.0F;
     }

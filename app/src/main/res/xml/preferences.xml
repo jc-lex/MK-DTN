@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <ListPreference
+        android:key="@string/pref_routing_protocol_key"
+        android:title="@string/routing_protocol_title"
+        android:entries="@array/pref_routing_protocol_entries"
+        android:entryValues="@array/pref_routing_protocol_entry_values"
+        android:defaultValue="@string/pref_default_routing_protocol"/>
+    <ListPreference
+        android:key="@string/pref_priority_class_key"
+        android:title="@string/priority_class_title"
+        android:entries="@array/pref_priority_class_entries"
+        android:entryValues="@array/pref_priority_class_entry_values"
+        android:defaultValue="@string/pref_default_priority_class"/>
+    <ListPreference
+        android:key="@string/pref_lifetime_key"
+        android:title="@string/lifetime_title"
+        android:entries="@array/pref_lifetime_entries"
+        android:entryValues="@array/pref_lifetime_entry_values"
+        android:defaultValue="@string/pref_default_lifetime"/>
+</PreferenceScreen>

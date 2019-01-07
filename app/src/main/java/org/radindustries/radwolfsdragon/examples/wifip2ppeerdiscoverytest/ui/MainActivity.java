@@ -2,8 +2,11 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui;
 
 import android.Manifest;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -21,7 +24,9 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.BWDTN;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.Arrays;
 
@@ -37,6 +42,9 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
     private DTNManager dtnManager;
     private String[] peers;
     private String dtnClientID;
+    private PrimaryBlock.LifeTime lifeTimeFromSettings;
+    private Daemon2Router.RoutingProtocol routingProtocolFromSettings;
+    private PrimaryBlock.PriorityClass priorityClassFromSettings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +52,10 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        
+        // set defaults only when app opens for the very first time
+        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+        getDTNSettings();
 
         initUI();
         
@@ -94,8 +106,16 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
             @Override
             public void onClick(View v) {
                 if (peers.length > 0) {
-                    // using defaults & sending to the first one 4 now
-                    dtnClient.send(TEST_SHORT_TEXT_MESSAGE.getBytes(), peers[0]);
+                    getDTNSettings();
+                    
+                    // sending to the first one 4 now
+                    dtnClient.send(
+                        TEST_SHORT_TEXT_MESSAGE.getBytes(),
+                        peers[0],
+                        priorityClassFromSettings,
+                        lifeTimeFromSettings,
+                        routingProtocolFromSettings
+                    );
                 }
             }
         });
@@ -130,6 +150,34 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         dtnClientID = dtnClient.getID();
         
         peers = new String[0];
+    }
+    
+    private void getDTNSettings() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        
+        String lifetime = prefs.getString(
+            getString(R.string.pref_lifetime_key),
+            getString(R.string.pref_default_lifetime)
+        );
+        lifeTimeFromSettings = PrimaryBlock.LifeTime.valueOf(lifetime);
+        
+        String routingProtocol = prefs.getString(
+            getString(R.string.pref_routing_protocol_key),
+            getString(R.string.pref_default_routing_protocol)
+        );
+        routingProtocolFromSettings = Daemon2Router.RoutingProtocol.valueOf(routingProtocol);
+        
+        String priorityClass = prefs.getString(
+            getString(R.string.pref_priority_class_key),
+            getString(R.string.pref_default_priority_class)
+        );
+        priorityClassFromSettings = PrimaryBlock.PriorityClass.valueOf(priorityClass);
+        
+        Log.i(LOG_TAG,
+            "LT = " + lifeTimeFromSettings
+            + ", RP = " + routingProtocolFromSettings
+            + ", PC = " + priorityClassFromSettings
+        );
     }
     
     @Override
@@ -174,6 +222,7 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_settings) {
+            startActivity(new Intent(this, SettingsActivity.class));
             return true;
         }
         return super.onOptionsItemSelected(item);

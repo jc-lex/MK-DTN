@@ -1,7 +1,57 @@
 <resources>
-    <string name="app_name">WifiP2PPeerDiscoveryTest</string>
+    <string name="app_name">MK-DTN</string>
     <string name="action_settings">Settings</string>
     <string name="activate_dtn_btn_text">START</string>
     <string name="deactivate_dtn_btn_text">STOP</string>
     <string name="send_btn_text">SEND</string>
+    <string name="pref_routing_protocol_key">dtn_routing_protocol</string>
+    <string name="routing_protocol_title">DTN Routing Protocol</string>
+    <string name="pref_default_routing_protocol">PER_HOP</string>
+    <string name="pref_priority_class_key">bundle_priority_class</string>
+    <string name="priority_class_title">Bundle Priority Class</string>
+    <string name="pref_default_priority_class">NORMAL</string>
+    <string name="pref_lifetime_key">bundle_lifetime</string>
+    <string name="lifetime_title">Bundle Lifetime</string>
+    <string name="pref_default_lifetime">THREE_DAYS</string>
+    <array name="pref_routing_protocol_entries">
+        <item>Per Hop (Default)</item>
+        <item>NECTAR</item>
+        <item>PRoPHET</item>
+        <item>Epidemic</item>
+        <item>Spray and Wait</item>
+        <item>Direct Contact</item>
+        <item>Two Hop</item>
+    </array>
+    <array name="pref_routing_protocol_entry_values">
+        <item>PER_HOP</item>
+        <item>NECTAR</item>
+        <item>PROPHET</item>
+        <item>EPIDEMIC</item>
+        <item>SPRAY_AND_WAIT</item>
+        <item>DIRECT_CONTACT</item>
+        <item>TWO_HOP</item>
+    </array>
+    <array name="pref_priority_class_entries">
+        <item>Expedited</item>
+        <item>Normal (Default)</item>
+        <item>Bulk</item>
+    </array>
+    <array name="pref_priority_class_entry_values">
+        <item>EXPEDITED</item>
+        <item>NORMAL</item>
+        <item>BULK</item>
+    </array>
+    <array name="pref_lifetime_entries">
+        <item>3 days (Default)</item>
+        <item>1 week</item>
+        <item>3 weeks</item>
+        <item>2 months</item>
+    </array>
+    <array name="pref_lifetime_entry_values">
+        <item>THREE_DAYS</item>
+        <item>ONE_WEEK</item>
+        <item>THREE_WEEKS</item>
+        <item>TWO_MONTHS</item>
+    </array>
+    <string name="title_activity_main2">Main2Activity</string>
 </resources>

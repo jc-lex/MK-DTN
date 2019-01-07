@@ -91,13 +91,13 @@ public final class BWDTN {
     
     private static Daemon2NECTARRoutingTable getNECTARRoutingTable(@NonNull Context context) {
         if (radNECTARRoutingTable == null)
-            radNECTARRoutingTable = new RadNECTARRoutingTable(context);
+            radNECTARRoutingTable = new RadNECTARRoutingTable(context, radDaemon);
         return radNECTARRoutingTable;
     }
     
     private static Daemon2PRoPHETRoutingTable getPRoPHETRoutingTable(@NonNull Context context) {
         if (radPRoPHETRoutingTable == null)
-            radPRoPHETRoutingTable = new RadPRoPHETRoutingTable(context);
+            radPRoPHETRoutingTable = new RadPRoPHETRoutingTable(context, radDaemon);
         return radPRoPHETRoutingTable;
     }
 }

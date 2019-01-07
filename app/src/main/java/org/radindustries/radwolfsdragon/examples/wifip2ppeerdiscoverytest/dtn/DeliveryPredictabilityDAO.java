@@ -14,7 +14,7 @@ interface DeliveryPredictabilityDAO {
     long insert(DeliveryPredictability dp);
     
     @Update
-    int update(DeliveryPredictability dp);
+    int update(DeliveryPredictability... dp);
     
     @Query("SELECT * FROM " + RouterDatabase.PROPHET_TABLE_NAME + " WHERE "
         + RouterDatabase.COL_NODE_EID + " = :nodeEID")
@@ -25,5 +25,5 @@ interface DeliveryPredictabilityDAO {
     
     @Query("DELETE FROM " + RouterDatabase.PROPHET_TABLE_NAME + " WHERE "
         + RouterDatabase.COL_NODE_EID + " = :nodeEID")
-    void delete(String nodeEID);
+    int delete(String nodeEID);
 }

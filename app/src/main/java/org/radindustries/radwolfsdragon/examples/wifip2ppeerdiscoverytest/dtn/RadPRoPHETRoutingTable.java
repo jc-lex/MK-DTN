@@ -11,12 +11,20 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ma
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon2Managable {
     
     private RouterDBHandler routerDBHandler;
     
-    private final Thread dpAgingTask = new Thread(new Runnable() {
+    private ExecutorService executorService;
+    
+    private Future<?> ageDPTaskFuture;
+    private class AgeDPTask implements Runnable {
+        private AgeDPTask() {}
+        
         @Override
         public void run() {
             while (!Thread.interrupted()) {
@@ -24,21 +32,33 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
                 
                 if (!dps.isEmpty()) {
                     for (DeliveryPredictability dp : dps) {
+                        System.out.println("dp.getProbability() = " + dp.getProbability());
                         dp.setProbability(
                             dp.getProbability() * GAMMA_POW_K
                         );
-    
-                        routerDBHandler.update(dp);
+                        System.out.println("dp.getProbability() = " + dp.getProbability());
                     }
+    
+                    if (routerDBHandler.update(dps) > 0) {
+                        System.out.println("dps aged.");
+                    }
+                } else System.out.println("no dps aged.");
+        
+                try {
+                    Thread.sleep(5_000); // TODO increase delay for aging
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    break;
                 }
             }
         }
-    });
+    }
     
     private RadPRoPHETRoutingTable() {}
     
     RadPRoPHETRoutingTable(@NonNull Context context) {
-        routerDBHandler = RouterDBHandler.getHandler(context);
+        this.routerDBHandler = RouterDBHandler.getHandler(context);
+        executorService = Executors.newSingleThreadExecutor();
     }
     
     @Override
@@ -113,13 +133,13 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public boolean start() {
-        if (!dpAgingTask.isAlive()) dpAgingTask.start();
-        return dpAgingTask.isAlive();
+        ageDPTaskFuture = executorService.submit(new AgeDPTask());
+        return true;
     }
     
     @Override
     public boolean stop() {
-        if (dpAgingTask.isAlive()) dpAgingTask.interrupt();
-        return dpAgingTask.isAlive();
+        if (!ageDPTaskFuture.isCancelled()) ageDPTaskFuture.cancel(true);
+        return ageDPTaskFuture.isCancelled();
     }
 }

@@ -7,7 +7,7 @@ import android.content.Context;
 
 @Database(
     entities = {NeighbourhoodIndex.class, DeliveryPredictability.class},
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class RouterDatabase extends RoomDatabase {
@@ -17,7 +17,6 @@ abstract class RouterDatabase extends RoomDatabase {
     static final String NECTAR_TABLE_NAME = "neighbourhood_index_table";
     static final String PROPHET_TABLE_NAME = "delivery_predictability_table";
     
-    static final String COL_ROOM_ID = "id";
     static final String COL_NODE_EID = "node_EID";
     static final String COL_FIRST_ENCOUNTER_TIMESTAMP = "first_encounter_timestamp";
     static final String COL_MEETING_COUNT = "meeting_count";
@@ -29,7 +28,9 @@ abstract class RouterDatabase extends RoomDatabase {
         if (INSTANCE == null) {
             synchronized (RouterDatabase.class) {
                 INSTANCE
-                    = Room.databaseBuilder(context, RouterDatabase.class, DB_NAME).build();
+                    = Room.databaseBuilder(context, RouterDatabase.class, DB_NAME)
+                        .fallbackToDestructiveMigration() // annihilate old db when migrating
+                        .build();
             }
         }
         return INSTANCE;

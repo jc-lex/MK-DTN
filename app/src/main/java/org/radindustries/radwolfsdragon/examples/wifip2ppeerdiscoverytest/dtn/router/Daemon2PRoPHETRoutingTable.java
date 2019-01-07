@@ -8,7 +8,10 @@ public interface Daemon2PRoPHETRoutingTable {
     float P_ENC_FIRST = 0.5F;
     float P_FIRST_THRESHOLD = 0.1F;
     float BETA = 0.9F;
+    
+    // TODO reduce aging gradient
     float GAMMA_POW_K = 0.4213F; // gamma ^ k = 0.999 ^ (3 daysInMillis / 5 minInMillis)
+    
     float DELTA = 0.01F;
     
     void updateDeliveryPredictability(DTNEndpointID nodeEID);

@@ -1,21 +1,30 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
-import android.os.AsyncTask;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 final class RouterDBHandler {
+    
+    private static final int WAITING_TIME = 5; // seconds
+    private static final int ERROR_CODE = -69;
     
     private static RouterDBHandler dbHandler = null;
     
     private NeighbourhoodIndexDAO niDAO;
     private DeliveryPredictabilityDAO dpDAO;
+    private ExecutorService executorService;
     
+    private RouterDBHandler() {}
     private RouterDBHandler(Context context) {
         RouterDatabase db = RouterDatabase.getDatabase(context);
+        executorService = Executors.newCachedThreadPool();
         niDAO = db.getNIDao();
         dpDAO = db.getDPDao();
     }
@@ -29,193 +38,154 @@ final class RouterDBHandler {
         return dbHandler;
     }
     
-    void insert(NeighbourhoodIndex ni) {
-        new InsertIndexTask(niDAO).execute(ni);
-    }
-    
-    private static class InsertIndexTask extends AsyncTask<NeighbourhoodIndex, Void, Void> {
+    long insert(final NeighbourhoodIndex ni) {
+        Future<Long> future = executorService.submit(new Callable<Long>() {
+            @Override
+            public Long call() throws Exception {
+                return niDAO.insert(ni);
+            }
+        });
         
-        private NeighbourhoodIndexDAO niDAO;
-        InsertIndexTask(NeighbourhoodIndexDAO niDAO) {
-            this.niDAO = niDAO;
-        }
-    
-        @Override
-        protected Void doInBackground(NeighbourhoodIndex... neighbourhoodIndices) {
-            niDAO.insert(neighbourhoodIndices[0]);
-            return null;
-        }
-    }
-    
-    long insert(DeliveryPredictability dp) {
-        InsertDPTask insertDPTask = new InsertDPTask(dpDAO);
-        long rowsInserted = 0;
-        insertDPTask.execute(dp);
         try {
-            rowsInserted = insertDPTask.get();
-        } catch (ExecutionException | InterruptedException e) {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
             e.printStackTrace();
-        }
-        return rowsInserted;
-    }
-    
-    private static class InsertDPTask extends AsyncTask<DeliveryPredictability, Void, Long> {
-        private DeliveryPredictabilityDAO dpDAO;
-        InsertDPTask(DeliveryPredictabilityDAO dpDAO) {
-            this.dpDAO = dpDAO;
-        }
-    
-        @Override
-        protected Long doInBackground(DeliveryPredictability... deliveryPredictabilities) {
-            return dpDAO.insert(deliveryPredictabilities[0]);
+            return ERROR_CODE;
         }
     }
     
-    void update(NeighbourhoodIndex ni) {
-        new UpdateIndexTask(niDAO).execute(ni);
-    }
-    
-    private static class UpdateIndexTask extends AsyncTask<NeighbourhoodIndex, Void, Void> {
-        private NeighbourhoodIndexDAO niDAO;
-        UpdateIndexTask(NeighbourhoodIndexDAO niDAO) {
-            this.niDAO = niDAO;
-        }
-    
-        @Override
-        protected Void doInBackground(NeighbourhoodIndex... neighbourhoodIndices) {
-            niDAO.update(neighbourhoodIndices[0]);
-            return null;
-        }
-    }
-    
-    int update(DeliveryPredictability dp) {
-        UpdateDPTask updateDPTask = new UpdateDPTask(dpDAO);
-        int rowsUpdated = 0;
-        updateDPTask.execute(dp);
+    long insert(final DeliveryPredictability dp) {
+        Future<Long> future = executorService.submit(new Callable<Long>() {
+            @Override
+            public Long call() throws Exception {
+                return dpDAO.insert(dp);
+            }
+        });
+        
         try {
-            rowsUpdated = updateDPTask.get();
-        } catch (ExecutionException | InterruptedException e) {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
             e.printStackTrace();
-        }
-        return rowsUpdated;
-    }
-    
-    private static class UpdateDPTask extends AsyncTask<DeliveryPredictability, Void, Integer> {
-        private DeliveryPredictabilityDAO dpDAO;
-        UpdateDPTask(DeliveryPredictabilityDAO dpDAO) {
-            this.dpDAO = dpDAO;
-        }
-    
-        @Override
-        protected Integer doInBackground(DeliveryPredictability... deliveryPredictabilities) {
-            return dpDAO.update(deliveryPredictabilities[0]);
+            return ERROR_CODE;
         }
     }
     
-    void deleteIndex(String nodeEID) {
-        new DeleteIndexTask(niDAO).execute(nodeEID);
-    }
-    
-    private static class DeleteIndexTask extends AsyncTask<String, Void, Void> {
-        private NeighbourhoodIndexDAO niDAO;
-        DeleteIndexTask(NeighbourhoodIndexDAO niDAO) {
-            this.niDAO = niDAO;
-        }
-    
-        @Override
-        protected Void doInBackground(String... strings) {
-            niDAO.delete(strings[0]);
-            return null;
-        }
-    }
-    
-    void deleteDP(String nodeEID) {
-        new DeleteDPTask(dpDAO).execute(nodeEID);
-    }
-    
-    private static class DeleteDPTask extends AsyncTask<String, Void, Void> {
-        private DeliveryPredictabilityDAO dpDAO;
-        DeleteDPTask(DeliveryPredictabilityDAO dpDAO) {
-            this.dpDAO = dpDAO;
-        }
-    
-        @Override
-        protected Void doInBackground(String... strings) {
-            dpDAO.delete(strings[0]);
-            return null;
-        }
-    }
-    
-    NeighbourhoodIndex getIndex(String nodeEID) {
-        GetIndexTask getIndexTask = new GetIndexTask(niDAO);
-        NeighbourhoodIndex ni = new NeighbourhoodIndex();
-        getIndexTask.execute(nodeEID);
+    int update(final NeighbourhoodIndex ni) {
+        Future<Integer> future = executorService.submit(new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                return niDAO.update(ni);
+            }
+        });
+        
         try {
-            ni = getIndexTask.get();
-        } catch (ExecutionException | InterruptedException e) {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
             e.printStackTrace();
-        }
-        return ni;
-    }
-    
-    private static class GetIndexTask extends AsyncTask<String, Void, NeighbourhoodIndex> {
-    
-        private NeighbourhoodIndexDAO niDAO;
-        GetIndexTask(NeighbourhoodIndexDAO niDAO) {
-            this.niDAO = niDAO;
-        }
-    
-        @Override
-        protected NeighbourhoodIndex doInBackground(String... strings) {
-            return niDAO.getNeighbourhoodIndex(strings[0]);
+            return ERROR_CODE;
         }
     }
     
-    DeliveryPredictability getDP(String nodeEID) {
-        GetDPTask getDPTask = new GetDPTask(dpDAO);
-        DeliveryPredictability dp = new DeliveryPredictability();
-        getDPTask.execute(nodeEID);
+    int update(final DeliveryPredictability... dp) {
+        Future<Integer> future = executorService.submit(new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                return dpDAO.update(dp);
+            }
+        });
+        
         try {
-            dp = getDPTask.get();
-        } catch (ExecutionException | InterruptedException e) {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
             e.printStackTrace();
+            return ERROR_CODE;
         }
-        return dp;
     }
     
-    private static class GetDPTask extends AsyncTask<String, Void, DeliveryPredictability> {
-        private DeliveryPredictabilityDAO dpDAO;
-        GetDPTask(DeliveryPredictabilityDAO dpDAO) {
-            this.dpDAO = dpDAO;
-        }
+    int update(List<DeliveryPredictability> dps) {
+        return update(dps.toArray(new DeliveryPredictability[0]));
+    }
     
-        @Override
-        protected DeliveryPredictability doInBackground(String... strings) {
-            return dpDAO.getDeliveryPredictability(strings[0]);
+    int deleteNI(final String nodeEID) {
+        Future<Integer> future = executorService.submit(new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                return niDAO.delete(nodeEID);
+            }
+        });
+        
+        try {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ERROR_CODE;
+        }
+    }
+    
+    int deleteDP(final String nodeEID) {
+        Future<Integer> future = executorService.submit(new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                return dpDAO.delete(nodeEID);
+            }
+        });
+        
+        try {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ERROR_CODE;
+        }
+    }
+    
+    NeighbourhoodIndex getIndex(final String nodeEID) {
+        Future<NeighbourhoodIndex> future
+            = executorService.submit(new Callable<NeighbourhoodIndex>() {
+            @Override
+            public NeighbourhoodIndex call() throws Exception {
+                return niDAO.getNeighbourhoodIndex(nodeEID);
+            }
+        });
+        
+        try {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new NeighbourhoodIndex();
+        }
+    }
+    
+    DeliveryPredictability getDP(final String nodeEID) {
+        Future<DeliveryPredictability> future
+            = executorService.submit(new Callable<DeliveryPredictability>() {
+            @Override
+            public DeliveryPredictability call() throws Exception {
+                return dpDAO.getDeliveryPredictability(nodeEID);
+            }
+        });
+        
+        try {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new DeliveryPredictability();
         }
     }
     
     List<DeliveryPredictability> getAllDPs() {
-        GetAllDPsTask getAllDPsTask = new GetAllDPsTask(dpDAO);
-        List<DeliveryPredictability> dps = Collections.emptyList();
-        getAllDPsTask.execute();
+        Future<List<DeliveryPredictability>> future
+            = executorService.submit(new Callable<List<DeliveryPredictability>>() {
+            @Override
+            public List<DeliveryPredictability> call() throws Exception {
+                return dpDAO.getAllDPs();
+            }
+        });
+        
         try {
-            dps = getAllDPsTask.get();
-        } catch (ExecutionException | InterruptedException e) {
+            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+        } catch (Exception e) {
             e.printStackTrace();
-        }
-        return dps;
-    }
-    
-    private static class GetAllDPsTask extends AsyncTask<Void, Void, List<DeliveryPredictability>> {
-        private DeliveryPredictabilityDAO dpDAO;
-        GetAllDPsTask(DeliveryPredictabilityDAO dpDAO) {
-            this.dpDAO = dpDAO;
-        }
-    
-        @Override
-        protected List<DeliveryPredictability> doInBackground(Void... voids) {
-            return dpDAO.getAllDPs();
+            return Collections.emptyList();
         }
     }
 }

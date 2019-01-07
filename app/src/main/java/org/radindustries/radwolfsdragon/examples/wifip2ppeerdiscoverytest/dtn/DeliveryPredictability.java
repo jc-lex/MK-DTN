@@ -3,35 +3,26 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 import android.arch.persistence.room.ColumnInfo;
 import android.arch.persistence.room.Entity;
 import android.arch.persistence.room.PrimaryKey;
+import android.support.annotation.NonNull;
 
 @Entity(tableName = RouterDatabase.PROPHET_TABLE_NAME)
 final class DeliveryPredictability {
     
-    @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = RouterDatabase.COL_ROOM_ID)
-    private int id;
-    
+    @PrimaryKey
+    @NonNull
     @ColumnInfo(name = RouterDatabase.COL_NODE_EID)
-    private String nodeEID;
+    private String nodeEID = "";
     
     @ColumnInfo(name = RouterDatabase.COL_DELIVERY_PREDICTABILITY)
     private float probability;
     
     DeliveryPredictability() {}
     
-    int getId() {
-        return id;
-    }
-    
-    void setId(int id) {
-        this.id = id;
-    }
-    
-    String getNodeEID() {
+    @NonNull String getNodeEID() {
         return nodeEID;
     }
     
-    void setNodeEID(String nodeEID) {
+    void setNodeEID(@NonNull String nodeEID) {
         this.nodeEID = nodeEID;
     }
     

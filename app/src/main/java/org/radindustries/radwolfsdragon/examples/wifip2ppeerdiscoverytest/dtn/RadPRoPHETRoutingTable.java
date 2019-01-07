@@ -29,14 +29,14 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
         public void run() {
             while (!Thread.interrupted()) {
                 List<DeliveryPredictability> dps = routerDBHandler.getAllDPs();
+                float lambda = (float) Math.log(2) / HALF_LIFE_IN_SECONDS;
                 
                 if (!dps.isEmpty()) {
                     for (DeliveryPredictability dp : dps) {
-                        System.out.println("dp.getProbability() = " + dp.getProbability());
                         dp.setProbability(
-                            dp.getProbability() * GAMMA_POW_K
+                            dp.getProbability() * (1 / (1 + lambda))
                         );
-                        System.out.println("dp.getProbability() = " + dp.getProbability());
+                        System.out.println(dp.getNodeEID() + " -> " + dp.getProbability());
                     }
     
                     if (routerDBHandler.update(dps) > 0) {
@@ -45,7 +45,7 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
                 } else System.out.println("no dps aged.");
         
                 try {
-                    Thread.sleep(5_000); // TODO increase delay for aging
+                    Thread.sleep(1000); // one second
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     break;

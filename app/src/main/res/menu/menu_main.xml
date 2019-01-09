@@ -4,7 +4,8 @@
     tools:context="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MainActivity">
     <item
         android:id="@+id/action_settings"
-        android:orderInCategory="100"
+        android:orderInCategory="10"
         android:title="@string/action_settings"
-        app:showAsAction="never" />
+        app:showAsAction="ifRoom"
+        android:icon="@mipmap/ic_settings_white_24dp"/>
 </menu>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <ListPreference
         android:key="@string/pref_routing_protocol_key"
         android:title="@string/routing_protocol_title"
@@ -18,8 +18,8 @@
         android:entries="@array/pref_lifetime_entries"
         android:entryValues="@array/pref_lifetime_entry_values"
         android:defaultValue="@string/pref_default_lifetime"/>
-    <CheckBoxPreference
+    <SwitchPreferenceCompat
         android:key="@string/pref_enable_dtn_notifications_key"
         android:title="@string/enable_dtn_notifications_title"
         android:defaultValue="@bool/pref_enable_dtn_notification_default" />
-</PreferenceScreen>
+</androidx.preference.PreferenceScreen>

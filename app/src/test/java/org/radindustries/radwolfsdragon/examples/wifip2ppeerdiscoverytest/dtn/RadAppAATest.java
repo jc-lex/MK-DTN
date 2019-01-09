@@ -12,6 +12,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
+import java.util.Set;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -52,6 +54,11 @@ public class RadAppAATest {
         @Override
         public DTNEndpointID getThisNodezEID() {
             return TestUtilities.makeDTNEID();
+        }
+    
+        @Override
+        public Set<DTNEndpointID> getPeerList() {
+            return null;
         }
     };
     

@@ -1,7 +1,5 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import androidx.annotation.NonNull;
-
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
@@ -19,6 +17,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Set;
 
+import androidx.annotation.NonNull;
+
 final class RadAppAA implements DTNClient, Daemon2AppAA {
     private DTNUI ui;
     private AppAA2Daemon daemon;
@@ -26,15 +26,6 @@ final class RadAppAA implements DTNClient, Daemon2AppAA {
     RadAppAA(@NonNull DTNUI ui, @NonNull AppAA2Daemon daemon) {
         this.ui = ui;
         this.daemon = daemon;
-    }
-    
-    @Override
-    public void send(byte[] message, String recipient) {
-        send(
-            message, recipient,
-            daemon.DEFAULT_PRIORITY_CLASS, daemon.DEFAULT_LIFETIME,
-            daemon.DEFAULT_ROUTING_PROTOCOL
-        );
     }
     
     @Override
@@ -143,6 +134,16 @@ final class RadAppAA implements DTNClient, Daemon2AppAA {
             eids.add(eid.toString());
         }
         ui.onPeerListChanged(eids.toArray(new String[]{}));
+    }
+    
+    @Override
+    public String[] getPeerList() {
+        Set<DTNEndpointID> peers = daemon.getPeerList();
+        ArrayList<String> eids = new ArrayList<>();
+        for (DTNEndpointID eid : peers) {
+            eids.add(eid.toString());
+        }
+        return eids.toArray(new String[]{});
     }
     
     @Override

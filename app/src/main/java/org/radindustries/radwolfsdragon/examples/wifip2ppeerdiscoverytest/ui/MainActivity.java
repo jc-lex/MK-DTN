@@ -46,8 +46,7 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
     private static final String LOG_TAG
             = DConstants.MAIN_LOG_TAG + "_" + MainActivity.class.getSimpleName();
     
-    private static String[] peers;
-    
+    private String[] peers;
     private DTNClient dtnClient;
     private DTNManager dtnManager;
     private String dtnClientID;
@@ -125,6 +124,8 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                peers = dtnClient.getPeerList();
+                Log.i(LOG_TAG, "peers = " + Arrays.toString(peers));
                 if (peers != null && peers.length > 0) {
                     getDTNSettings();
                     
@@ -136,8 +137,6 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
                         lifeTimeFromSettings,
                         routingProtocolFromSettings
                     );
-                } else {
-                    Log.d(LOG_TAG, "peers = " + Arrays.toString(peers));
                 }
             }
         });

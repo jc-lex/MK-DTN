@@ -1,7 +1,5 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import androidx.annotation.NonNull;
-
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
@@ -32,6 +30,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import androidx.annotation.NonNull;
+
 final class RadDaemon
     implements AppAA2Daemon, AdminAA2Daemon, CLA2Daemon, PeerDiscoverer2Daemon, DTNManager2Daemon,
         Router2Daemon, NECTARRouter2Daemon, NECTARPeerDiscoverer2Daemon,
@@ -57,7 +57,7 @@ final class RadDaemon
     
     RadDaemon() {
         this.chosenPeers = new ArrayList<>();
-        this.currentProtocol = DEFAULT_ROUTING_PROTOCOL;
+        this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
 //        this.deliveredFragments = new HashSet<>();
 //        this.currentPeers = new HashSet<>();
     }
@@ -133,23 +133,22 @@ final class RadDaemon
         appAA.notifyPeerListChanged(peerEIDs);
     }
     
-    // TODO bundle processing async
     @Override
-    public void onBundleReceived(DTNBundle bundle) {
-        //collectFragmentBundleID(bundle);
-        appAA.deliver(bundle);
-        notifyPeerListChangedOnBundleReceipt(bundle);
-        // NOTE save the bundle as it is. Don't update the custodian EID on custody acceptance.
-    }
-    
-    private void notifyPeerListChangedOnBundleReceipt(DTNBundle bundle) {
+    public Set<DTNEndpointID> getPeerList() {
         Set<DTNBundleNode> nodes = discoverer.getPeerList();
         Set<DTNEndpointID> peerEIDs = new HashSet<>();
         for (DTNBundleNode node : nodes) {
             peerEIDs.add(node.dtnEndpointID);
         }
-        peerEIDs.add(bundle.primaryBlock.custodianEID);
-        appAA.notifyPeerListChanged(peerEIDs);
+        return peerEIDs;
+    }
+    
+    // TODO bundle processing async
+    @Override
+    public void onBundleReceived(DTNBundle bundle) {
+        //collectFragmentBundleID(bundle);
+        appAA.deliver(bundle);
+        // NOTE save the bundle as it is. Don't update the custodian EID on custody acceptance.
     }
     
 //    private void collectFragmentBundleID(DTNBundle deliveredBundle) {

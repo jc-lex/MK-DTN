@@ -1,7 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
-import androidx.annotation.NonNull;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.EIDProvider;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
@@ -16,35 +15,38 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import androidx.annotation.NonNull;
+
 final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon2Managable {
     
     private RouterDBHandler routerDBHandler;
     private EIDProvider eidProvider;
     
     private ExecutorService executorService;
-    
     private Future<?> ageDPTaskFuture;
     private class AgeDPTask implements Runnable {
         private AgeDPTask() {}
         
         @Override
         public void run() {
+            System.out.println("DP Aging started");
+            age();
+            System.out.println("DP Aging stopped");
+        }
+        
+        private void age() {
             while (!Thread.interrupted()) {
                 List<DeliveryPredictability> dps = routerDBHandler.getAllDPs();
                 float lambda = (float) Math.log(2) / HALF_LIFE_IN_SECONDS;
-                
+        
                 if (!dps.isEmpty()) {
                     for (DeliveryPredictability dp : dps) {
                         dp.setProbability(
                             dp.getProbability() * (1 / (1 + lambda))
                         );
-                        System.out.println(dp.getNodeEID() + " -> " + dp.getProbability());
+//                        System.out.println(dp.getNodeEID() + " -> " + dp.getProbability());
                     }
-    
-                    if (routerDBHandler.update(dps) > 0) {
-                        System.out.println("dps aged.");
-                    }
-                } else System.out.println("no dps aged.");
+                }
         
                 try {
                     Thread.sleep(1000); // one second
@@ -143,13 +145,16 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public boolean start() {
-        ageDPTaskFuture = executorService.submit(new AgeDPTask());
+        if (ageDPTaskFuture == null || ageDPTaskFuture.isCancelled())
+            ageDPTaskFuture = executorService.submit(new AgeDPTask());
         return true;
     }
     
     @Override
     public boolean stop() {
-        if (!ageDPTaskFuture.isCancelled()) ageDPTaskFuture.cancel(true);
-        return ageDPTaskFuture.isCancelled();
+        if (ageDPTaskFuture != null && !ageDPTaskFuture.isCancelled()) {
+            ageDPTaskFuture.cancel(true);
+            return ageDPTaskFuture.isCancelled();
+        } else return true;
     }
 }

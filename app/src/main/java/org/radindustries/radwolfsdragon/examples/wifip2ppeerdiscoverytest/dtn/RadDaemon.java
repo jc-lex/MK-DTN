@@ -138,7 +138,18 @@ final class RadDaemon
     public void onBundleReceived(DTNBundle bundle) {
         //collectFragmentBundleID(bundle);
         appAA.deliver(bundle);
+        notifyPeerListChangedOnBundleReceipt(bundle);
         // NOTE save the bundle as it is. Don't update the custodian EID on custody acceptance.
+    }
+    
+    private void notifyPeerListChangedOnBundleReceipt(DTNBundle bundle) {
+        Set<DTNBundleNode> nodes = discoverer.getPeerList();
+        Set<DTNEndpointID> peerEIDs = new HashSet<>();
+        for (DTNBundleNode node : nodes) {
+            peerEIDs.add(node.dtnEndpointID);
+        }
+        peerEIDs.add(bundle.primaryBlock.custodianEID);
+        appAA.notifyPeerListChanged(peerEIDs);
     }
     
 //    private void collectFragmentBundleID(DTNBundle deliveredBundle) {

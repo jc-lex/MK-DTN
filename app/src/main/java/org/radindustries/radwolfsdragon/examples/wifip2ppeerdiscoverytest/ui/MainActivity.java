@@ -1,14 +1,22 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui;
 
 import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -19,6 +27,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.BWDTN;
@@ -91,6 +100,12 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         }
     }
     
+    @Override
+    protected void onResume() {
+        super.onResume();
+        inboxStyle = new NotificationCompat.InboxStyle();
+    }
+    
     private void initUI() {
         Button startBtn = findViewById(R.id.start_service_button);
         startBtn.setOnClickListener(new View.OnClickListener() {
@@ -105,7 +120,7 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (peers.length > 0) {
+                if (peers != null && peers.length > 0) {
                     getDTNSettings();
                     
                     // sending to the first one 4 now
@@ -116,6 +131,8 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
                         lifeTimeFromSettings,
                         routingProtocolFromSettings
                     );
+                } else {
+                    Log.d(LOG_TAG, "peers = " + Arrays.toString(peers));
                 }
             }
         });
@@ -148,8 +165,6 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         
         assert dtnClient != null;
         dtnClientID = dtnClient.getID();
-        
-        peers = new String[0];
     }
     
     private void getDTNSettings() {
@@ -172,29 +187,105 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
             getString(R.string.pref_default_priority_class)
         );
         priorityClassFromSettings = PrimaryBlock.PriorityClass.valueOf(priorityClass);
-        
-        Log.i(LOG_TAG,
-            "LT = " + lifeTimeFromSettings
-            + ", RP = " + routingProtocolFromSettings
-            + ", PC = " + priorityClassFromSettings
-        );
     }
     
     @Override
     public void onReceiveDTNMessage(byte[] message, String sender) {
         String text = new String(message);
-        Log.i(LOG_TAG, "Message from " + sender + " :- " + text);
+        Log.i(LOG_TAG, "Message from " + sender + " => " + text);
+        
+        notifyUser("Message from " + sender, text);
     }
     
     @Override
     public void onOutboundBundleReceived(String recipient) {
         Log.i(LOG_TAG, recipient + " received our message.");
+        
+        notifyUser("Delivery Report",recipient + " received your message.");
+    }
+    
+    private static final String NOTIFICATION_GROUP_KEY = "mkdtn-group-key";
+    private static final String NOTIFICATION_CHANNEL_ID = BuildConfig.APPLICATION_ID;
+    private static final int NOTIFICATION_VISIBILITY = NotificationCompat.VISIBILITY_PRIVATE;
+    private static final int NOTIFICATION_ID = 69;
+    
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                getString(R.string.mkdtn_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            channel.setDescription(getString(R.string.mkdtn_channel_description));
+            channel.enableVibration(true);
+            channel.setLockscreenVisibility(NOTIFICATION_VISIBILITY);
+            
+            NotificationManager notificationManager
+                = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notificationManager != null &&
+                notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null) {
+                notificationManager.createNotificationChannel(channel);
+            }
+        }
+    }
+    
+    private static NotificationCompat.InboxStyle inboxStyle;
+    
+    private NotificationCompat.Builder makeNotification(String title, String text) {
+        return new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher_round)
+            .setLargeIcon(
+                BitmapFactory.decodeResource(
+                    getResources(), R.mipmap.ic_launcher
+                )
+            )
+            .setContentTitle(title)
+            .setContentText(text)
+            .setGroup(NOTIFICATION_GROUP_KEY)
+            .setGroupSummary(true)
+            .setStyle(
+                inboxStyle
+                    .setSummaryText("For " + dtnClientID)
+                    .setBigContentTitle(getString(R.string.app_name))
+                    .addLine(title + " => " + text)
+            )
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NOTIFICATION_VISIBILITY);
+    }
+    
+    private void notifyUser(String title, String text) {
+        // check if notifications are enabled
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if (!prefs.getBoolean(getString(R.string.pref_enable_dtn_notifications_key),
+            Boolean.valueOf(getString(R.string.pref_enable_dtn_notification_default)))) return;
+    
+        // create and register channel with the system
+        createNotificationChannel();
+    
+        // make notification builder
+        NotificationCompat.Builder notificationBuilder
+            = makeNotification(title, text);
+        
+        // create intent for opening main activity
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
+        );
+        notificationBuilder.setContentIntent(pendingIntent);
+        
+    
+        //tell manager to issue the notification
+        NotificationManagerCompat notificationManagerCompat
+            = NotificationManagerCompat.from(this);
+        notificationManagerCompat.notify(NOTIFICATION_ID, notificationBuilder.build());
     }
     
     @Override
     public void onPeerListChanged(String[] peerList) {
         peers = peerList;
-        Log.i(LOG_TAG, "Peers: " + Arrays.toString(peerList));
+        Log.i(LOG_TAG, "peers = " + Arrays.toString(peers));
         // TODO notify UI of change in list
     }
     

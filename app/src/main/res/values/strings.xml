@@ -58,4 +58,9 @@
     <string name="pref_enable_dtn_notification_default">true</string>
     <string name="mkdtn_channel_name">mkdtn_channel</string>
     <string name="mkdtn_channel_description">For DTN texting</string>
+    <!--<string name="new_message_title">New Message from %1$s</string>-->
+    <string name="delivery_report_title">Delivery Report</string>
+    <string name="delivery_report_message">%1$s received your message</string>
+    <string name="notification_group_key">mkdtn_group_key</string>
+    <string name="mkdtn_hello_message">143f1b1</string>
 </resources>

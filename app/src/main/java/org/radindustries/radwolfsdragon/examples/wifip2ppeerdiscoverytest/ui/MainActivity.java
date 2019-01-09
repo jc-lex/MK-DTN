@@ -9,7 +9,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -29,6 +28,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import androidx.annotation.NonNull;
@@ -46,11 +46,10 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
     private static final String LOG_TAG
             = DConstants.MAIN_LOG_TAG + "_" + MainActivity.class.getSimpleName();
     
-    private static final String TEST_SHORT_TEXT_MESSAGE = "William + Phoebe = <3";
+    private static String[] peers;
     
     private DTNClient dtnClient;
     private DTNManager dtnManager;
-    private String[] peers;
     private String dtnClientID;
     private PrimaryBlock.LifeTime lifeTimeFromSettings;
     private Daemon2Router.RoutingProtocol routingProtocolFromSettings;
@@ -104,7 +103,12 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
     @Override
     protected void onResume() {
         super.onResume();
-        inboxStyle = new NotificationCompat.InboxStyle();
+        if (IDs != null) {
+            for (Integer id : IDs) {
+                NotificationManagerCompat.from(this).cancel(MKDTN_NOTIFICATION_TAG, id);
+            }
+        }
+        IDs = new ArrayList<>();
     }
     
     private void initUI() {
@@ -126,7 +130,7 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
                     
                     // sending to the first one 4 now
                     dtnClient.send(
-                        TEST_SHORT_TEXT_MESSAGE.getBytes(),
+                        getString(R.string.mkdtn_hello_message).getBytes(),
                         peers[0],
                         priorityClassFromSettings,
                         lifeTimeFromSettings,
@@ -195,25 +199,26 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         String text = new String(message);
         Log.i(LOG_TAG, "Message from " + sender + " => " + text);
         
-        notifyUser("Message from " + sender, text);
+        notifyUser(sender, text);
     }
     
     @Override
     public void onOutboundBundleReceived(String recipient) {
         Log.i(LOG_TAG, recipient + " received our message.");
         
-        notifyUser("Delivery Report",recipient + " received your message.");
+        notifyUser(
+            getString(R.string.delivery_report_title),
+            String.format(getString(R.string.delivery_report_message), recipient)
+        );
     }
     
-    private static final String NOTIFICATION_GROUP_KEY = "mkdtn-group-key";
-    private static final String NOTIFICATION_CHANNEL_ID = BuildConfig.APPLICATION_ID;
-    private static final int NOTIFICATION_VISIBILITY = NotificationCompat.VISIBILITY_PRIVATE;
-    private static final int NOTIFICATION_ID = 69;
+    private static final String MKDTN_NOTIFICATION_TAG = BuildConfig.APPLICATION_ID;
+    private static final int NOTIFICATION_VISIBILITY = NotificationCompat.VISIBILITY_SECRET;
     
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
+                MKDTN_NOTIFICATION_TAG,
                 getString(R.string.mkdtn_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             );
@@ -224,42 +229,35 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
             NotificationManager notificationManager
                 = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (notificationManager != null &&
-                notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null) {
+                notificationManager.getNotificationChannel(MKDTN_NOTIFICATION_TAG) == null) {
                 notificationManager.createNotificationChannel(channel);
             }
         }
     }
     
-    private static NotificationCompat.InboxStyle inboxStyle;
-    
     private NotificationCompat.Builder makeNotification(String title, String text) {
-        return new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+        return new NotificationCompat.Builder(this, MKDTN_NOTIFICATION_TAG)
             .setSmallIcon(R.mipmap.ic_launcher_round)
-            .setLargeIcon(
-                BitmapFactory.decodeResource(
-                    getResources(), R.mipmap.ic_launcher
-                )
-            )
             .setContentTitle(title)
             .setContentText(text)
-            .setGroup(NOTIFICATION_GROUP_KEY)
-            .setGroupSummary(true)
-            .setStyle(
-                inboxStyle
-                    .setSummaryText("For " + dtnClientID)
-                    .setBigContentTitle(getString(R.string.app_name))
-                    .addLine(title + " => " + text)
-            )
+            .setGroup(getString(R.string.notification_group_key))
+            .setGroupSummary(true) // for weak KITKAT devices that can't show group stuff
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NOTIFICATION_VISIBILITY);
     }
     
+    private static ArrayList<Integer> IDs;
+    
     private void notifyUser(String title, String text) {
+        NotificationManagerCompat notificationManagerCompat
+            = NotificationManagerCompat.from(this);
+        
         // check if notifications are enabled
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         if (!prefs.getBoolean(getString(R.string.pref_enable_dtn_notifications_key),
-            Boolean.valueOf(getString(R.string.pref_enable_dtn_notification_default)))) return;
+            getResources().getBoolean(R.bool.pref_enable_dtn_notification_default)) ||
+            !notificationManagerCompat.areNotificationsEnabled()) return;
     
         // create and register channel with the system
         createNotificationChannel();
@@ -270,17 +268,16 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         
         // create intent for opening main activity
         Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
         );
         notificationBuilder.setContentIntent(pendingIntent);
-        
     
-        //tell manager to issue the notification
-        NotificationManagerCompat notificationManagerCompat
-            = NotificationManagerCompat.from(this);
-        notificationManagerCompat.notify(NOTIFICATION_ID, notificationBuilder.build());
+        // for those that don't support grouping,
+        int id = (int) (Math.random() * Integer.MAX_VALUE);
+        IDs.add(id);
+        notificationManagerCompat.notify(MKDTN_NOTIFICATION_TAG, id, notificationBuilder.build());
     }
     
     @Override

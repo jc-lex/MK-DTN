@@ -1,12 +1,12 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
-import androidx.annotation.NonNull;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
@@ -14,6 +14,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.pe
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
+
+import androidx.annotation.NonNull;
 
 public final class BWDTN {
     private static RadAppAA radAppAA = null;
@@ -26,29 +28,59 @@ public final class BWDTN {
     private static RadNECTARRoutingTable radNECTARRoutingTable = null;
     private static RadPRoPHETRoutingTable radPRoPHETRoutingTable = null;
     private static RadDaemon radDaemon = null;
+    
+    private static final String ERROR_MSG = "RadDaemon is null";
 
     private BWDTN() {}
     
-    public static DTNClient getDTNClient() {
-        if (radDaemon == null) return null;
-        else return radAppAA;
+    public static DTNClient getDTNClient(@NonNull DTNUI ui) {
+        if (radDaemon == null) return new DTNClient() {
+            @Override
+            public void send(
+                byte[] message, String recipient, PrimaryBlock.PriorityClass priorityClass,
+                PrimaryBlock.LifeTime lifetime, Daemon2Router.RoutingProtocol routingProtocol) {
+                throw new UnsupportedOperationException(ERROR_MSG);
+            }
+    
+            @Override
+            public String getID() {
+                throw new UnsupportedOperationException(ERROR_MSG);
+            }
+    
+            @Override
+            public String[] getPeerList() {
+                throw new UnsupportedOperationException(ERROR_MSG);
+            }
+        };
+        else if (radAppAA == null) {
+            radAppAA = new RadAppAA(ui, radDaemon);
+            radDaemon.setAppAA(radAppAA);
+        }
+        return radAppAA;
     }
     
     public static DTNManager getDTNManager() {
-        if (radDaemon == null) return null;
-        else return radManager;
+        if (radDaemon == null) return new DTNManager() {
+            @Override
+            public boolean start() {
+                throw new UnsupportedOperationException(ERROR_MSG);
+            }
+    
+            @Override
+            public boolean stop() {
+                throw new UnsupportedOperationException(ERROR_MSG);
+            }
+        };
+        else if (radManager == null) radManager = new RadManager(radDaemon);
+        return radManager;
     }
     
-    public static void init(@NonNull Context context, @NonNull DTNUI ui) {
+    public static void init(@NonNull Context context) {
         if (radDaemon == null) {
             radDaemon = new RadDaemon();
             
-            radAppAA = new RadAppAA(ui, radDaemon);
-            radManager = new RadManager(radDaemon);
-    
             radDaemon.setCLA(getCLA(context));
             radDaemon.setDiscoverer(getPeerDiscoverer(context));
-            radDaemon.setAppAA(radAppAA);
             radDaemon.setAdminAA(getAdminAA());
             radDaemon.setFragmentManager(getFragmentManager());
             radDaemon.setRouter(getRouter());
@@ -61,9 +93,7 @@ public final class BWDTN {
     }
     
     private static Daemon2FragmentManager getFragmentManager() {
-        if (radFragMgr == null) {
-            radFragMgr = new RadFragMgr();
-        }
+        if (radFragMgr == null) radFragMgr = new RadFragMgr();
         return radFragMgr;
     }
     
@@ -74,7 +104,7 @@ public final class BWDTN {
     
     private static Daemon2PeerDiscoverer getPeerDiscoverer(@NonNull Context context) {
         if (radCLA == null) radCLA = new RadCLA(radDaemon, radDaemon, context);
-        if (radDiscoverer == null)
+        else if (radDiscoverer == null)
             radDiscoverer = new RadDiscoverer(radDaemon, radDaemon, radDaemon, radCLA, context);
         return radDiscoverer;
     }

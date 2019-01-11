@@ -51,7 +51,7 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
                 try {
                     Thread.sleep(1000); // one second
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+//                    e.printStackTrace();
                     break;
                 }
             }

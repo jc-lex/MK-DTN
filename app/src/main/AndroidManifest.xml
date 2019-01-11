@@ -20,8 +20,8 @@
         <activity
             android:name=".ui.MainActivity"
             android:label="@string/app_name"
-            android:theme="@style/AppTheme.NoActionBar"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -36,6 +36,13 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".ui.MainActivity" />
         </activity>
+
+        <service
+            android:name=".ui.MKDTNService"
+            android:enabled="true"
+            android:exported="true"
+            android:process="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MKDTNService"
+            android:permission="android.permission.ACCESS_COARSE_LOCATION" />
     </application>
 
 </manifest>

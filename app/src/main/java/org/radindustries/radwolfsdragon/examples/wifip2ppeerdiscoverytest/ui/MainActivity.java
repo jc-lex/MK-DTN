@@ -1,35 +1,32 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui;
 
 import android.Manifest;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.BWDTN;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -40,19 +37,83 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
-public class MainActivity extends AppCompatActivity implements DTNUI {
+public class MainActivity extends AppCompatActivity {
 
     private static final int USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 66;
     private static final String LOG_TAG
             = DConstants.MAIN_LOG_TAG + "_" + MainActivity.class.getSimpleName();
     
-    private String[] peers;
-    private DTNClient dtnClient;
-    private DTNManager dtnManager;
-    private String dtnClientID;
-    private PrimaryBlock.LifeTime lifeTimeFromSettings;
-    private Daemon2Router.RoutingProtocol routingProtocolFromSettings;
-    private PrimaryBlock.PriorityClass priorityClassFromSettings;
+    private static String dtnClientID;
+    private static String[] peers;
+    private static HashMap<String, String> messages;
+    
+    private String lifeTimeFromSettings;
+    private String routingProtocolFromSettings;
+    private String priorityClassFromSettings;
+    
+    private Messenger dtnServiceMessenger = null;
+    private final Messenger ourMessenger = new Messenger(new ServiceMessageHandler());
+    private static int regNum;
+    
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            dtnServiceMessenger = new Messenger(service);
+//            Log.i(LOG_TAG, "dtnServiceMessenger = " + dtnServiceMessenger);
+            bound = true;
+            Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
+            
+            try {
+                Message registrationRequest
+                    = Message.obtain(null, MKDTNService.MSG_REGISTER_CLIENT);
+                registrationRequest.replyTo = ourMessenger;
+                dtnServiceMessenger.send(registrationRequest);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+    
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            dtnServiceMessenger = null;
+            Log.i(LOG_TAG, "dtnServiceMessenger = null");
+            bound = false;
+            Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
+        }
+    };
+    
+    private static class ServiceMessageHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            Bundle data = msg.getData();
+            
+            switch (msg.what) {
+                case MKDTNService.MSG_REGISTRATION_NUMBER:
+                    regNum = msg.arg1;
+                    break;
+                case MKDTNService.MSG_GET_DTN_CLIENT_ID:
+                    dtnClientID
+                        = data.getString(MKDTNService.DTN_CLIENT_ID_KEY, "dtn:null");
+                    Log.i(LOG_TAG, "MY ID: " + dtnClientID);
+                    // TODO update UI
+                    break;
+                case MKDTNService.MSG_GET_PEER_LIST:
+                    peers = data.getStringArray(MKDTNService.PEER_LIST_KEY);
+                    Log.i(LOG_TAG, "peers = " + Arrays.toString(peers));
+                    // TODO notify data set changed
+                    break;
+                case MKDTNService.MSG_GET_RECEIVED_DTN_MESSAGES:
+                    messages
+                        = (HashMap<String, String>) data.getSerializable(MKDTNService.MESSAGES_KEY);
+                    Log.i(LOG_TAG, "messages = " + messages);
+                    // TODO notify data set changed
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,37 +123,39 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         setSupportActionBar(toolbar);
         
         // set defaults only when app opens for the very first time
-        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
-        getDTNSettings();
+//        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+//        getDTNSettings();
 
         initUI();
         
+        getPermissions();
+    }
+    
+    private void getPermissions() {
         // requestForPermissions for permissions first
-        if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            getDependencies();
-        } else {
+        if (!(ContextCompat.checkSelfPermission(this,
+            Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.ACCESS_COARSE_LOCATION)) {
+                Manifest.permission.ACCESS_COARSE_LOCATION)) {
                 //explain why you need it
                 new AlertDialog.Builder(this)
-                        .setTitle("Permission Request")
-                        .setMessage("This app needs to know your location" +
-                                " to send your DTN data")
-                        .setPositiveButton("Accept", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                requestForPermissions();
-                            }
-                        })
-                        .setNegativeButton("Reject", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                finish();
-                            }
-                        })
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .show();
+                    .setTitle("Permission Request")
+                    .setMessage("This app needs to know your location" +
+                        " to send your DTN data")
+                    .setPositiveButton("Accept", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            requestForPermissions();
+                        }
+                    })
+                    .setNegativeButton("Reject", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            handleRejection();
+                        }
+                    })
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .show();
             } else {
                 requestForPermissions();
             }
@@ -102,52 +165,84 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
     @Override
     protected void onResume() {
         super.onResume();
-        if (IDs != null) {
-            for (Integer id : IDs) {
-                NotificationManagerCompat.from(this).cancel(MKDTN_NOTIFICATION_TAG, id);
-            }
+        NotificationManagerCompat.from(this)
+            .cancel(MKDTNService.MKDTN_NOTIFICATION_TAG, MKDTNService.MKDTN_NOTIFICATION_ID);
+        MKDTNService.myNotificationStyle = new NotificationCompat.InboxStyle();
+    }
+    
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (started && !bound) bind();
+//        Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
+    }
+    
+    private void bind() {
+        Intent intent = new Intent(this, MKDTNService.class);
+        bound = bindService(intent, serviceConnection, Context.BIND_IMPORTANT);
+    }
+    
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (started && bound) {
+            unbindService(serviceConnection);
+            bound = false;
         }
-        IDs = new ArrayList<>();
+        Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
     }
     
     private void initUI() {
-        Button startBtn = findViewById(R.id.start_service_button);
-        startBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dtnManager.start();
-                Log.i(LOG_TAG, "MY ID: " + dtnClientID);
-            }
-        });
-    
         Button sendBtn = findViewById(R.id.send_button);
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                peers = dtnClient.getPeerList();
-                Log.i(LOG_TAG, "peers = " + Arrays.toString(peers));
-                if (peers != null && peers.length > 0) {
-                    getDTNSettings();
-                    
-                    // sending to the first one 4 now
-                    dtnClient.send(
-                        getString(R.string.mkdtn_hello_message).getBytes(),
-                        peers[0],
-                        priorityClassFromSettings,
-                        lifeTimeFromSettings,
-                        routingProtocolFromSettings
-                    );
+                getPeers();
+                if (peers == null || peers.length == 0) {
+                    Log.i(LOG_TAG, "No peers");
+                    return; // precaution
                 }
+                sendMessage(peers[0]);
             }
         });
+    }
     
-        Button stopBtn = findViewById(R.id.stop_service_button);
-        stopBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dtnManager.stop();
+    private void getPeers() {
+        Message peerRequest
+            = Message.obtain(null, MKDTNService.MSG_GET_PEER_LIST, regNum, 0);
+        if (dtnServiceMessenger != null) {
+            try {
+                dtnServiceMessenger.send(peerRequest);
+                Thread.sleep(1000);
+            } catch (RemoteException e) {
+                Log.e(LOG_TAG, "Service down", e);
+            } catch (InterruptedException e) {
+                Log.e(LOG_TAG, "waiting for peer list interrupted");
             }
-        });
+        } else Log.i(LOG_TAG, "dtn messenger = null");
+    }
+    
+    private void sendMessage(String destination) {
+        getDTNSettings();
+        
+        Message msg = Message.obtain(null, MKDTNService.MSG_SEND);
+        
+        Bundle data = new Bundle();
+        data.putString(MKDTNService.RECIPIENT_KEY, destination);
+        data.putString(MKDTNService.TEXT_KEY, getString(R.string.mkdtn_hello_message));
+        data.putString(MKDTNService.LIFETIME_KEY, lifeTimeFromSettings);
+        data.putString(MKDTNService.PRIORITY_KEY, priorityClassFromSettings);
+        data.putString(MKDTNService.PROTOCOL_KEY, routingProtocolFromSettings);
+        
+        msg.setData(data);
+        
+        if(dtnServiceMessenger != null) {
+            try {
+                dtnServiceMessenger.send(msg);
+            } catch (RemoteException e) {
+                Log.e(LOG_TAG, "Service down", e);
+            }
+        } else Log.i(LOG_TAG, "dtn messenger = null");
     }
     
     private void requestForPermissions() {
@@ -160,144 +255,40 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         );
     }
     
-    private void getDependencies() {
-        // should always be called first before anything BWDTN-related
-        BWDTN.init(this, this);
-        
-        dtnClient = BWDTN.getDTNClient();
-        dtnManager = BWDTN.getDTNManager();
-        
-        assert dtnClient != null;
-        dtnClientID = dtnClient.getID();
-    }
-    
     private void getDTNSettings() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        
-        String lifetime = prefs.getString(
+    
+        lifeTimeFromSettings = prefs.getString(
             getString(R.string.pref_lifetime_key),
             getString(R.string.pref_default_lifetime)
         );
-        lifeTimeFromSettings = PrimaryBlock.LifeTime.valueOf(lifetime);
-        
-        String routingProtocol = prefs.getString(
+    
+        routingProtocolFromSettings = prefs.getString(
             getString(R.string.pref_routing_protocol_key),
             getString(R.string.pref_default_routing_protocol)
         );
-        routingProtocolFromSettings = Daemon2Router.RoutingProtocol.valueOf(routingProtocol);
         
-        String priorityClass = prefs.getString(
+        priorityClassFromSettings = prefs.getString(
             getString(R.string.pref_priority_class_key),
             getString(R.string.pref_default_priority_class)
         );
-        priorityClassFromSettings = PrimaryBlock.PriorityClass.valueOf(priorityClass);
-    }
-    
-    @Override
-    public void onReceiveDTNMessage(byte[] message, String sender) {
-        String text = new String(message);
-        Log.i(LOG_TAG, "Message from " + sender + " => " + text);
-        
-        notifyUser(sender, text);
-    }
-    
-    @Override
-    public void onOutboundBundleReceived(String recipient) {
-        Log.i(LOG_TAG, recipient + " received our message.");
-        
-        notifyUser(
-            getString(R.string.delivery_report_title),
-            String.format(getString(R.string.delivery_report_message), recipient)
-        );
-    }
-    
-    private static final String MKDTN_NOTIFICATION_TAG = BuildConfig.APPLICATION_ID;
-    private static final int NOTIFICATION_VISIBILITY = NotificationCompat.VISIBILITY_SECRET;
-    
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                MKDTN_NOTIFICATION_TAG,
-                getString(R.string.mkdtn_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT
-            );
-            channel.setDescription(getString(R.string.mkdtn_channel_description));
-            channel.enableVibration(true);
-            channel.setLockscreenVisibility(NOTIFICATION_VISIBILITY);
-            
-            NotificationManager notificationManager
-                = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (notificationManager != null &&
-                notificationManager.getNotificationChannel(MKDTN_NOTIFICATION_TAG) == null) {
-                notificationManager.createNotificationChannel(channel);
-            }
-        }
-    }
-    
-    private NotificationCompat.Builder makeNotification(String title, String text) {
-        return new NotificationCompat.Builder(this, MKDTN_NOTIFICATION_TAG)
-            .setSmallIcon(R.mipmap.ic_launcher_round)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setGroup(getString(R.string.notification_group_key))
-            .setGroupSummary(true) // for weak KITKAT devices that can't show group stuff
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setVisibility(NOTIFICATION_VISIBILITY);
-    }
-    
-    private static ArrayList<Integer> IDs;
-    
-    private void notifyUser(String title, String text) {
-        NotificationManagerCompat notificationManagerCompat
-            = NotificationManagerCompat.from(this);
-        
-        // check if notifications are enabled
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if (!prefs.getBoolean(getString(R.string.pref_enable_dtn_notifications_key),
-            getResources().getBoolean(R.bool.pref_enable_dtn_notification_default)) ||
-            !notificationManagerCompat.areNotificationsEnabled()) return;
-    
-        // create and register channel with the system
-        createNotificationChannel();
-    
-        // make notification builder
-        NotificationCompat.Builder notificationBuilder
-            = makeNotification(title, text);
-        
-        // create intent for opening main activity
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
-        );
-        notificationBuilder.setContentIntent(pendingIntent);
-    
-        // for those that don't support grouping,
-        int id = (int) (Math.random() * Integer.MAX_VALUE);
-        IDs.add(id);
-        notificationManagerCompat.notify(MKDTN_NOTIFICATION_TAG, id, notificationBuilder.build());
-    }
-    
-    @Override
-    public void onPeerListChanged(String[] peerList) {
-        peers = peerList;
-        Log.i(LOG_TAG, "peers = " + Arrays.toString(peers));
-        // TODO notify UI of change in list
     }
     
     @Override
     public void onRequestPermissionsResult(
         int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults
     ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getDependencies();
-            } else {
-                finish();
+            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
+                handleRejection();
             }
         }
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+    
+    private void handleRejection() {
+        Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+        finish();
     }
 
     @Override
@@ -305,14 +296,30 @@ public class MainActivity extends AppCompatActivity implements DTNUI {
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
-
+    
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_settings) {
             startActivity(new Intent(this, SettingsActivity.class));
-            return true;
+        } else if (id == R.id.action_start_dtn) {
+            if (!(started || bound)) {
+                startService(new Intent(this, MKDTNService.class));
+                started = true;
+                bind();
+            }
+            Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
+        } else if (id == R.id.action_stop_dtn) {
+            if (started && bound) {
+                unbindService(serviceConnection);
+                bound = false;
+                started = !stopService(new Intent(this, MKDTNService.class));
+            }
+            Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
         }
         return super.onOptionsItemSelected(item);
     }
+    
+    private static boolean started = false;
+    private static boolean bound = false;
 }

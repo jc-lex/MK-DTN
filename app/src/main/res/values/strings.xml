@@ -63,4 +63,9 @@
     <string name="delivery_report_message">%1$s received your message</string>
     <string name="notification_group_key">mkdtn_group_key</string>
     <string name="mkdtn_hello_message">143f1b1</string>
+    <string name="action_start_dtn">Start</string>
+    <string name="action_stop_dtn">Stop</string>
+    <string name="dtn_service_started">DTN Service ON</string>
+    <string name="notification_bottom_summary_text">\@%1$s</string>
+    <string name="public_notification_text">New message(s)</string>
 </resources>

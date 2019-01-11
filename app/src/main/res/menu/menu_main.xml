@@ -8,4 +8,16 @@
         android:title="@string/action_settings"
         app:showAsAction="ifRoom"
         android:icon="@mipmap/ic_settings_white_24dp"/>
+    <item
+        android:id="@+id/action_start_dtn"
+        android:orderInCategory="1"
+        android:title="@string/action_start_dtn"
+        app:showAsAction="ifRoom"
+        android:icon="@android:drawable/ic_media_play"/>
+    <item
+        android:id="@+id/action_stop_dtn"
+        android:orderInCategory="2"
+        android:title="@string/action_stop_dtn"
+        app:showAsAction="ifRoom"
+        android:icon="@android:drawable/ic_menu_close_clear_cancel"/>
 </menu>

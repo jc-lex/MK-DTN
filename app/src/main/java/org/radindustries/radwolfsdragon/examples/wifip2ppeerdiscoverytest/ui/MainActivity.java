@@ -32,8 +32,6 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
@@ -52,46 +50,16 @@ public class MainActivity extends AppCompatActivity {
     private String priorityClassFromSettings;
     
     private Messenger dtnServiceMessenger = null;
-    private final Messenger ourMessenger = new Messenger(new ServiceMessageHandler());
     private static int regNum;
-    
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            dtnServiceMessenger = new Messenger(service);
-//            Log.i(LOG_TAG, "dtnServiceMessenger = " + dtnServiceMessenger);
-            bound = true;
-            Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
-            
-            try {
-                Message registrationRequest
-                    = Message.obtain(null, MKDTNService.MSG_REGISTER_CLIENT);
-                registrationRequest.replyTo = ourMessenger;
-                dtnServiceMessenger.send(registrationRequest);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
-        }
-    
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            dtnServiceMessenger = null;
-            Log.i(LOG_TAG, "dtnServiceMessenger = null");
-            bound = false;
-            Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
-        }
-    };
-    
-    private static class ServiceMessageHandler extends Handler {
+    private final Messenger ourMessenger = new Messenger(new MKDTNServiceMessageHandler());
+    private static class MKDTNServiceMessageHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             Bundle data = msg.getData();
             
             switch (msg.what) {
-                case MKDTNService.MSG_REGISTRATION_NUMBER:
-                    regNum = msg.arg1;
-                    break;
+                case MKDTNService.MSG_REGISTRATION_NUMBER: regNum = msg.arg1; break;
                 case MKDTNService.MSG_GET_DTN_CLIENT_ID:
                     dtnClientID
                         = data.getString(MKDTNService.DTN_CLIENT_ID_KEY, "dtn:null");
@@ -114,6 +82,20 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+    
+    private final ServiceConnection serviceConnection = new MKDTNServiceConnection();
+    private class MKDTNServiceConnection implements ServiceConnection {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            dtnServiceMessenger = new Messenger(service);
+            registerWithDTNService();
+        }
+    
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            dtnServiceMessenger = null;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -129,6 +111,27 @@ public class MainActivity extends AppCompatActivity {
         initUI();
         
         getPermissions();
+    }
+    
+    private void initUI() {
+        Button sendBtn = findViewById(R.id.send_button);
+        sendBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getPeers();
+                getClientID();
+                getDTNMessages();
+                
+                if (messages == null || messages.isEmpty()) Log.i(LOG_TAG, "No messages");
+                if (dtnClientID == null) Log.i(LOG_TAG, "No ID");
+                if (peers == null || peers.length == 0) {
+                    Log.i(LOG_TAG, "No peers");
+                    return; // precaution
+                }
+                
+                sendDTNMessage(peers[0]);
+            }
+        });
     }
     
     private void getPermissions() {
@@ -162,67 +165,98 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     
+    private void requestForPermissions() {
+        ActivityCompat.requestPermissions(
+            this,
+            new String[]{
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            },
+            USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE
+        );
+    }
+    
     @Override
-    protected void onResume() {
-        super.onResume();
-        NotificationManagerCompat.from(this)
-            .cancel(MKDTNService.MKDTN_NOTIFICATION_TAG, MKDTNService.MKDTN_NOTIFICATION_ID);
-        MKDTNService.myNotificationStyle = new NotificationCompat.InboxStyle();
+    public void onRequestPermissionsResult(
+        int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
+                handleRejection();
+            }
+        }
+    }
+    
+    private void handleRejection() {
+        Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+        finish();
     }
     
     @Override
     protected void onStart() {
         super.onStart();
-        if (started && !bound) bind();
-//        Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
+        bind();
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        clearNotifications();
+    }
+    
+    private void clearNotifications() {
+        Message clearNotifications
+            = Message.obtain(null, MKDTNService.MSG_CLEAR_NOTIFICATIONS);
+        sendMessageToDTNService(clearNotifications);
     }
     
     private void bind() {
         Intent intent = new Intent(this, MKDTNService.class);
-        bound = bindService(intent, serviceConnection, Context.BIND_IMPORTANT);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+    
+    private void unbind() {
+        unregisterWithDTNService();
+        unbindService(serviceConnection);
+    }
+    
+    private void registerWithDTNService() {
+        Message registerMe = Message.obtain(null, MKDTNService.MSG_REGISTER_CLIENT);
+        registerMe.replyTo = ourMessenger;
+        sendMessageToDTNService(registerMe);
+    }
+    
+    private void unregisterWithDTNService() {
+        Message unregisterMe
+            = Message.obtain(null, MKDTNService.MSG_UNREGISTER_CLIENT, regNum, 0);
+        sendMessageToDTNService(unregisterMe);
     }
     
     @Override
     protected void onStop() {
         super.onStop();
-        if (started && bound) {
-            unbindService(serviceConnection);
-            bound = false;
-        }
-        Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
-    }
-    
-    private void initUI() {
-        Button sendBtn = findViewById(R.id.send_button);
-        sendBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getPeers();
-                if (peers == null || peers.length == 0) {
-                    Log.i(LOG_TAG, "No peers");
-                    return; // precaution
-                }
-                sendMessage(peers[0]);
-            }
-        });
+        unbind();
     }
     
     private void getPeers() {
         Message peerRequest
             = Message.obtain(null, MKDTNService.MSG_GET_PEER_LIST, regNum, 0);
-        if (dtnServiceMessenger != null) {
-            try {
-                dtnServiceMessenger.send(peerRequest);
-                Thread.sleep(1000);
-            } catch (RemoteException e) {
-                Log.e(LOG_TAG, "Service down", e);
-            } catch (InterruptedException e) {
-                Log.e(LOG_TAG, "waiting for peer list interrupted");
-            }
-        } else Log.i(LOG_TAG, "dtn messenger = null");
+        sendMessageToDTNService(peerRequest);
     }
     
-    private void sendMessage(String destination) {
+    private void getClientID() {
+        Message clientIDRequest
+            = Message.obtain(null, MKDTNService.MSG_GET_DTN_CLIENT_ID, regNum, 0);
+        sendMessageToDTNService(clientIDRequest);
+    }
+    
+    private void getDTNMessages() {
+        Message getMessagesRequest
+            = Message.obtain(null, MKDTNService.MSG_GET_RECEIVED_DTN_MESSAGES, regNum, 0);
+        sendMessageToDTNService(getMessagesRequest);
+    }
+    
+    private void sendDTNMessage(String destination) {
         getDTNSettings();
         
         Message msg = Message.obtain(null, MKDTNService.MSG_SEND);
@@ -236,23 +270,17 @@ public class MainActivity extends AppCompatActivity {
         
         msg.setData(data);
         
+        sendMessageToDTNService(msg);
+    }
+    
+    private void sendMessageToDTNService(Message msg) {
         if(dtnServiceMessenger != null) {
             try {
                 dtnServiceMessenger.send(msg);
             } catch (RemoteException e) {
                 Log.e(LOG_TAG, "Service down", e);
             }
-        } else Log.i(LOG_TAG, "dtn messenger = null");
-    }
-    
-    private void requestForPermissions() {
-        ActivityCompat.requestPermissions(
-                this,
-                new String[]{
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                },
-                USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE
-        );
+        }
     }
     
     private void getDTNSettings() {
@@ -273,23 +301,6 @@ public class MainActivity extends AppCompatActivity {
             getString(R.string.pref_default_priority_class)
         );
     }
-    
-    @Override
-    public void onRequestPermissionsResult(
-        int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == USE_ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                handleRejection();
-            }
-        }
-    }
-    
-    private void handleRejection() {
-        Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
-        finish();
-    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -299,27 +310,15 @@ public class MainActivity extends AppCompatActivity {
     
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            startActivity(new Intent(this, SettingsActivity.class));
-        } else if (id == R.id.action_start_dtn) {
-            if (!(started || bound)) {
-                startService(new Intent(this, MKDTNService.class));
-                started = true;
-                bind();
-            }
-            Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
-        } else if (id == R.id.action_stop_dtn) {
-            if (started && bound) {
-                unbindService(serviceConnection);
-                bound = false;
-                started = !stopService(new Intent(this, MKDTNService.class));
-            }
-            Log.i(LOG_TAG, "started = " + started + ", bound = " + bound);
+        switch (item.getItemId()) {
+            case R.id.action_settings:
+                startActivity(new Intent(this, SettingsActivity.class));
+                break;
+            case R.id.action_manager:
+                startActivity(new Intent(this, ManagerActivity.class));
+                break;
+            default: break;
         }
         return super.onOptionsItemSelected(item);
     }
-    
-    private static boolean started = false;
-    private static boolean bound = false;
 }

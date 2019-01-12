@@ -34,15 +34,25 @@
             android:parentActivityName=".ui.MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ui.MainActivity" />
+                android:value="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MainActivity" />
         </activity>
 
         <service
             android:name=".ui.MKDTNService"
             android:enabled="true"
             android:exported="true"
-            android:process="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MKDTNService"
-            android:permission="android.permission.ACCESS_COARSE_LOCATION" />
+            android:permission="android.permission.ACCESS_COARSE_LOCATION"
+            android:process="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MKDTNService" />
+
+        <activity
+            android:name=".ui.ManagerActivity"
+            android:label="@string/title_activity_manager"
+            android:parentActivityName=".ui.MainActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MainActivity" />
+        </activity>
     </application>
 
 </manifest>

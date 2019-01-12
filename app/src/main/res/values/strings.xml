@@ -68,4 +68,6 @@
     <string name="dtn_service_started">DTN Service ON</string>
     <string name="notification_bottom_summary_text">\@%1$s</string>
     <string name="public_notification_text">New message(s)</string>
+    <string name="title_manager">Manager</string>
+    <string name="title_activity_manager">Manager</string>
 </resources>

@@ -1,6 +1,5 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import androidx.annotation.NonNull;
 import android.util.Log;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
@@ -17,6 +16,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
 
 import java.math.BigInteger;
+
+import androidx.annotation.NonNull;
 
 final class RadAdminAA implements Daemon2AdminAA {
     private static final String LOG_TAG
@@ -38,7 +39,8 @@ final class RadAdminAA implements Daemon2AdminAA {
         
         switch (record.recordType) {
             case STATUS_REPORT:
-                processStatusReport((StatusReport) record);
+                processStatusReport((StatusReport) record,
+                    adminRecord.primaryBlock.bundleID.sourceEID);
                 break;
             case CUSTODY_SIGNAL:
                 processCustodySignal((CustodySignal) record);
@@ -74,12 +76,11 @@ final class RadAdminAA implements Daemon2AdminAA {
         }
     }
     
-    private void processStatusReport(StatusReport report) {
+    private void processStatusReport(StatusReport report, DTNEndpointID recipient) {
         if (!report.isForAFragment) {
-            if (report.bundleDelivered) {
-                String ssp = report.subjectBundleID.sourceEID.ssp;
-                
-                daemon.notifyOutboundBundleDelivered(ssp);
+            if (report.bundleDelivered &&
+                report.subjectBundleID.sourceEID.equals(daemon.getThisNodezEID())) {
+                daemon.notifyOutboundBundleDelivered(recipient.toString());
             } else {
                 Log.i(LOG_TAG, "Bundle delivery for "
                     + report.subjectBundleID + " failed: " + report.reasonCode);

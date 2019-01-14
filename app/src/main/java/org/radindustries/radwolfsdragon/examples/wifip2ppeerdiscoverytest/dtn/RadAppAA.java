@@ -1,25 +1,31 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNTextMessenger;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AppAA2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AdminRecord;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNTextMessage;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 import androidx.annotation.NonNull;
 
-final class RadAppAA implements DTNClient, Daemon2AppAA {
+final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     private DTNUI ui;
     private AppAA2Daemon daemon;
     
@@ -149,5 +155,94 @@ final class RadAppAA implements DTNClient, Daemon2AppAA {
     @Override
     public String getID() {
         return daemon.getThisNodezEID().toString();
+    }
+    
+    @Override
+    public List<DTNTextMessage> getDeliveredTextMessages() {
+        List<DTNTextMessage> result = new ArrayList<>();
+        List<DTNBundle> messages = daemon.getDeliveredMessages();
+        
+        for (DTNBundle bundle : messages) {
+            if (isPayloadADU(bundle)) {
+                result.add(getMessageFromPayloadADU(bundle));
+            } else if (isStatusReport(bundle)) {
+                result.add(getMessageFromStatusReport(bundle));
+            }
+        }
+        
+        return result;
+    }
+    
+    private boolean isStatusReport(DTNBundle bundle) {
+        if (bundle != null) {
+            if (bundle.primaryBlock.bundleProcessingControlFlags
+                .testBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)) {
+    
+                CanonicalBlock adminRecordCBlock
+                    = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+                assert adminRecordCBlock != null;
+    
+                AdminRecord adminRecord
+                    = (AdminRecord) adminRecordCBlock.blockTypeSpecificDataFields;
+    
+                return adminRecord.recordType.equals(AdminRecord.RecordType.STATUS_REPORT);
+            } else return false;
+        } else return false;
+    }
+    
+    private boolean isPayloadADU(DTNBundle bundle) {
+        if (bundle != null) {
+            return !bundle.primaryBlock.bundleProcessingControlFlags
+                .testBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD);
+        } else return false;
+    }
+    
+    private DTNTextMessage getMessageFromStatusReport(DTNBundle bundle) {
+        if (bundle != null) {
+            CanonicalBlock adminRecordCBlock
+                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+            assert adminRecordCBlock != null;
+    
+            StatusReport statusReport
+                = (StatusReport) adminRecordCBlock.blockTypeSpecificDataFields;
+            
+            DTNTextMessage deliveryReportText = new DTNTextMessage();
+            deliveryReportText.sender = bundle.primaryBlock.bundleID.sourceEID.toString();
+            deliveryReportText.textMessage
+                = "Message received @ " + statusReport.timeOfDelivery;
+            deliveryReportText.creationTimestamp
+                = bundle.primaryBlock.bundleID.creationTimestamp;
+            deliveryReportText.receivedTimestamp = getReceivedTimestamp(bundle);
+            
+            return deliveryReportText;
+        } else return new DTNTextMessage();
+    }
+    
+    private DTNTextMessage getMessageFromPayloadADU(DTNBundle bundle) {
+        if (bundle != null) {
+            CanonicalBlock payloadCBlock
+                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PAYLOAD);
+            assert payloadCBlock != null;
+            
+            PayloadADU payloadADU = (PayloadADU) payloadCBlock.blockTypeSpecificDataFields;
+            
+            DTNTextMessage msgFromSender = new DTNTextMessage();
+            msgFromSender.sender = bundle.primaryBlock.bundleID.sourceEID.toString();
+            msgFromSender.textMessage = new String(payloadADU.ADU);
+            msgFromSender.creationTimestamp
+                = bundle.primaryBlock.bundleID.creationTimestamp;
+            msgFromSender.receivedTimestamp = getReceivedTimestamp(bundle);
+            
+            return msgFromSender;
+        } else return new DTNTextMessage();
+    }
+    
+    private long getReceivedTimestamp(DTNBundle bundle) {
+        CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+        assert ageCBlock != null;
+    
+        AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+        
+        return ageBlock.receivingTimestamp;
     }
 }

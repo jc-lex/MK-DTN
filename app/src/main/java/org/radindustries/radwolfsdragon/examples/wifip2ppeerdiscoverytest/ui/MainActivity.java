@@ -23,9 +23,11 @@ import android.widget.Toast;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNTextMessage;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -43,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
     
     private static String dtnClientID;
     private static String[] peers;
-    private static HashMap<String, String> messages;
+    private static List<DTNTextMessage> messages;
     
     private String lifeTimeFromSettings;
     private String routingProtocolFromSettings;
@@ -63,19 +65,19 @@ public class MainActivity extends AppCompatActivity {
                 case MKDTNService.MSG_GET_DTN_CLIENT_ID:
                     dtnClientID
                         = data.getString(MKDTNService.DTN_CLIENT_ID_KEY, "dtn:null");
-                    Log.i(LOG_TAG, "MY ID: " + dtnClientID);
+                    Log.i(LOG_TAG, "id = " + dtnClientID);
                     // TODO update UI
                     break;
                 case MKDTNService.MSG_GET_PEER_LIST:
                     peers = data.getStringArray(MKDTNService.PEER_LIST_KEY);
                     Log.i(LOG_TAG, "peers = " + Arrays.toString(peers));
-                    // TODO notify data set changed
+                    // TODO notify peers data set changed
                     break;
                 case MKDTNService.MSG_GET_RECEIVED_DTN_MESSAGES:
-                    messages
-                        = (HashMap<String, String>) data.getSerializable(MKDTNService.MESSAGES_KEY);
+                    messages = (ArrayList<DTNTextMessage>)
+                        data.getSerializable(MKDTNService.MESSAGES_KEY);
                     Log.i(LOG_TAG, "messages = " + messages);
-                    // TODO notify data set changed
+                    // TODO notify messages data set changed
                     break;
                 default:
                     break;
@@ -118,18 +120,11 @@ public class MainActivity extends AppCompatActivity {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getPeers();
+                if (peers == null || peers.length == 0) getPeers();
+                else sendDTNMessage(peers[0]);
+                
                 getClientID();
                 getDTNMessages();
-                
-                if (messages == null || messages.isEmpty()) Log.i(LOG_TAG, "No messages");
-                if (dtnClientID == null) Log.i(LOG_TAG, "No ID");
-                if (peers == null || peers.length == 0) {
-                    Log.i(LOG_TAG, "No peers");
-                    return; // precaution
-                }
-                
-                sendDTNMessage(peers[0]);
             }
         });
     }
@@ -196,18 +191,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         bind();
-    }
-    
-    @Override
-    protected void onResume() {
-        super.onResume();
-        clearNotifications();
-    }
-    
-    private void clearNotifications() {
-        Message clearNotifications
-            = Message.obtain(null, MKDTNService.MSG_CLEAR_NOTIFICATIONS);
-        sendMessageToDTNService(clearNotifications);
     }
     
     private void bind() {

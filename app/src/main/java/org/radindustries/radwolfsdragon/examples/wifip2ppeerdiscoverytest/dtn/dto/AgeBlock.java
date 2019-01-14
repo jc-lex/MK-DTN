@@ -4,6 +4,7 @@ public final class AgeBlock extends BlockTypeSpecificDataFields {
     
     public long sourceCPUSpeedInKHz;
     public long sendingTimestamp;
+    public long receivingTimestamp;
     public long age;
     public long agePrime;
     public long T;
@@ -12,6 +13,7 @@ public final class AgeBlock extends BlockTypeSpecificDataFields {
         AgeBlock newOne = new AgeBlock();
         newOne.sourceCPUSpeedInKHz = other.sourceCPUSpeedInKHz;
         newOne.sendingTimestamp = other.sendingTimestamp;
+        newOne.receivingTimestamp = other.receivingTimestamp;
         newOne.T = other.T;
         newOne.age = other.age;
         newOne.agePrime = other.agePrime;
@@ -20,13 +22,14 @@ public final class AgeBlock extends BlockTypeSpecificDataFields {
     
     @Override
     public String toString() {
-        return "AgeBlock{"
-            + "sourceCPUSpeedInKHz=" + sourceCPUSpeedInKHz
-            + ",sendingTimestamp=" + sendingTimestamp
-            + ",age=" + age
-            + ",agePrime=" + agePrime
-            + ",T=" + T
-            + "}";
+        return "AgeBlock{" +
+            "sourceCPUSpeedInKHz=" + sourceCPUSpeedInKHz +
+            ",sendingTimestamp=" + sendingTimestamp +
+            ",receivingTimestamp=" + receivingTimestamp +
+            ",age=" + age +
+            ",agePrime=" + agePrime +
+            ",T=" + T +
+            '}';
     }
     
     @Override
@@ -38,6 +41,7 @@ public final class AgeBlock extends BlockTypeSpecificDataFields {
         
         if (sourceCPUSpeedInKHz != ageBlock.sourceCPUSpeedInKHz) return false;
         if (sendingTimestamp != ageBlock.sendingTimestamp) return false;
+        if (receivingTimestamp != ageBlock.receivingTimestamp) return false;
         if (age != ageBlock.age) return false;
         if (agePrime != ageBlock.agePrime) return false;
         return T == ageBlock.T;
@@ -47,6 +51,7 @@ public final class AgeBlock extends BlockTypeSpecificDataFields {
     public int hashCode() {
         int result = (int) (sourceCPUSpeedInKHz ^ (sourceCPUSpeedInKHz >>> 32));
         result = 31 * result + (int) (sendingTimestamp ^ (sendingTimestamp >>> 32));
+        result = 31 * result + (int) (receivingTimestamp ^ (receivingTimestamp >>> 32));
         result = 31 * result + (int) (age ^ (age >>> 32));
         result = 31 * result + (int) (agePrime ^ (agePrime >>> 32));
         result = 31 * result + (int) (T ^ (T >>> 32));

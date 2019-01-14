@@ -15,20 +15,20 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
-import android.util.Log;
+import android.text.Html;
+import android.text.Spanned;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.BWDTN;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNTextMessenger;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -37,46 +37,42 @@ public class MKDTNService extends Service implements DTNUI {
     
     private DTNManager dtnManager;
     private static DTNClient dtnClient;
+    private static DTNTextMessenger textMessenger;
     private static String[] peers;
-    private static HashMap<String, String> receivedDTNMessages;
-    private static NotificationCompat.InboxStyle myNotificationStyle;
     
-    private static final String LOG_TAG
-        = DConstants.MAIN_LOG_TAG + "_" + MKDTNService.class.getSimpleName();
+//    private static final String LOG_TAG
+//        = DConstants.MAIN_LOG_TAG + "_" + MKDTNService.class.getSimpleName();
     
     @Override
     public void onReceiveDTNMessage(byte[] message, String sender) {
         String text = new String(message);
-        receivedDTNMessages.put(sender, text);
-        notifyUser(sender, text);
+        text = String.format(getString(R.string.new_message_text), sender, text);
+        notifyUser(Html.fromHtml(text));
     
-        for (Messenger messenger : theirMessengers) {
-            Message msg = Message.obtain(null, MSG_GET_RECEIVED_DTN_MESSAGES);
-            Bundle data = new Bundle();
-            data.putSerializable(MESSAGES_KEY, receivedDTNMessages);
-            msg.setData(data);
-            if (messenger != null) {
-                try {
-                    messenger.send(msg);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                    unregisterClient(messenger);
-                }
-            }
-        }
+//        for (Messenger messenger : theirMessengers) {
+//            Message msg = Message.obtain(null, MSG_GET_RECEIVED_DTN_MESSAGES);
+//            Bundle data = new Bundle();
+//            data.putSerializable(MESSAGES_KEY,
+//                (ArrayList) textMessenger.getDeliveredTextMessages());
+//            msg.setData(data);
+//            if (messenger != null) {
+//                try {
+//                    messenger.send(msg);
+//                } catch (RemoteException e) {
+//                    e.printStackTrace();
+//                    theirMessengers.remove(messenger);
+//                }
+//            }
+//        }
     }
     
     @Override
     public void onOutboundBundleReceived(String recipient) {
-        notifyUser(
-            getString(R.string.delivery_report_title),
-            String.format(getString(R.string.delivery_report_message), recipient)
-        );
+        String text = String.format(getString(R.string.delivery_report_text), recipient);
+        notifyUser(Html.fromHtml(text));
     }
     
     private static final String MK_DTN_NOTIFICATION_TAG = BuildConfig.APPLICATION_ID;
-    private static final int MK_DTN_NOTIFICATION_ID = 69;
-    private static final int MK_DTN_SERVICE_NOTIFICATION_ID = 666;
     private static final int NOTIFICATION_VISIBILITY = NotificationCompat.VISIBILITY_PRIVATE;
     
     private void createNotificationChannel() {
@@ -99,44 +95,33 @@ public class MKDTNService extends Service implements DTNUI {
         }
     }
     
-    private NotificationCompat.Builder makeNotification(String title, String text) {
+    private NotificationCompat.Builder makeNotification(Spanned text) {
         return new NotificationCompat.Builder(this, MK_DTN_NOTIFICATION_TAG)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText(getString(R.string.public_notification_text))
-            .setWhen(System.currentTimeMillis())
-            .setShowWhen(true)
+            .setContentText(text)
             .setGroup(getString(R.string.notification_group_key))
             .setGroupSummary(true)
             .setAutoCancel(true)
-            .setStyle(myNotificationStyle.addLine(title + " => " + text))
-            .setPublicVersion(
-                new NotificationCompat.Builder(this, MK_DTN_NOTIFICATION_TAG)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle(getString(R.string.app_name))
-                .setContentText(getString(R.string.public_notification_text))
-                .build()
-            )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NOTIFICATION_VISIBILITY);
     }
     
-    private void notifyUser(String title, String text) {
+    private void notifyUser(Spanned text) {
         NotificationManagerCompat notificationManagerCompat
             = NotificationManagerCompat.from(this);
         
         // check if notifications are enabled
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if (!prefs.getBoolean(getString(R.string.pref_enable_dtn_notifications_key),
-            getResources().getBoolean(R.bool.pref_enable_dtn_notification_default)) ||
-            !notificationManagerCompat.areNotificationsEnabled()) return;
+        if (!(notificationManagerCompat.areNotificationsEnabled() &&
+            prefs.getBoolean(getString(R.string.pref_enable_dtn_notifications_key),
+            getResources().getBoolean(R.bool.pref_enable_dtn_notification_default)))) return;
         
         // create and register channel with the system
         createNotificationChannel();
         
         // make notification builder
-        NotificationCompat.Builder notificationBuilder
-            = makeNotification(title, text);
+        NotificationCompat.Builder notificationBuilder = makeNotification(text);
         
         // create intent for opening main activity
         Intent intent = new Intent(this, MainActivity.class);
@@ -147,7 +132,8 @@ public class MKDTNService extends Service implements DTNUI {
         notificationBuilder.setContentIntent(pendingIntent);
         
         notificationManagerCompat.notify(
-            MK_DTN_NOTIFICATION_TAG, MK_DTN_NOTIFICATION_ID, notificationBuilder.build()
+            (int) (Math.random() * Integer.MAX_VALUE),
+            notificationBuilder.build()
         );
     }
     
@@ -165,15 +151,9 @@ public class MKDTNService extends Service implements DTNUI {
                     messenger.send(msg);
                 } catch (RemoteException e) {
                     e.printStackTrace();
-                    unregisterClient(messenger);
+                    theirMessengers.remove(messenger);
                 }
             }
-        }
-    }
-    
-    private void unregisterClient(Messenger messenger) {
-        if (theirMessengers.remove(messenger)) {
-            Log.i(LOG_TAG, messenger + " unregistered");
         }
     }
     
@@ -182,7 +162,6 @@ public class MKDTNService extends Service implements DTNUI {
     public static final int MSG_GET_PEER_LIST = 1;
     public static final int MSG_GET_DTN_CLIENT_ID = 2;
     public static final int MSG_GET_RECEIVED_DTN_MESSAGES = 3;
-    public static final int MSG_CLEAR_NOTIFICATIONS = 9;
     
     public static final int MSG_SEND = 7;
     public static final String RECIPIENT_KEY = "recipient";
@@ -199,14 +178,8 @@ public class MKDTNService extends Service implements DTNUI {
     public static final String MESSAGES_KEY = "messages";
     public static final String DTN_CLIENT_ID_KEY = "dtnClientID";
     
-    private final Messenger ourMessenger = new Messenger(new UIMessageHandler(this));
+    private final Messenger ourMessenger = new Messenger(new UIMessageHandler());
     private static class UIMessageHandler extends Handler {
-        private Context context;
-        
-        private UIMessageHandler(Context context) {
-            this.context = context;
-        }
-        
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
@@ -214,11 +187,10 @@ public class MKDTNService extends Service implements DTNUI {
                 switch (msg.what) {
                     case MSG_REGISTER_CLIENT: registerClient(msg); break;
                     case MSG_UNREGISTER_CLIENT: unregisterClient(msg.arg1); break;
-                    case MSG_SEND: sendMessage(msg.getData()); break;
+                    case MSG_SEND: sendOutboundMessage(msg.getData()); break;
                     case MSG_GET_PEER_LIST: sendPeerList(msg); break;
                     case MSG_GET_DTN_CLIENT_ID: sendClientID(msg); break;
-                    case MSG_GET_RECEIVED_DTN_MESSAGES: sendMessages(msg); break;
-                    case MSG_CLEAR_NOTIFICATIONS: clearNotifications(); break;
+                    case MSG_GET_RECEIVED_DTN_MESSAGES: getDeliveredMessages(msg); break;
                     default: break;
                 }
             } catch (RemoteException e) {
@@ -228,14 +200,14 @@ public class MKDTNService extends Service implements DTNUI {
         }
         
         private void unregisterClient(int regNum) {
-            if (theirMessengers.remove(regNum) != null)
-                Log.i(LOG_TAG, "Client unregistered. REG NO: " + regNum);
+            theirMessengers.remove(regNum);
         }
         
-        private void sendMessages(Message msg) throws RemoteException {
+        private void getDeliveredMessages(Message msg) throws RemoteException {
             Bundle data = new Bundle();
             Message messages = Message.obtain(msg.getTarget(), MSG_GET_RECEIVED_DTN_MESSAGES);
-            data.putSerializable(MESSAGES_KEY, receivedDTNMessages);
+            data.putSerializable(MESSAGES_KEY,
+                (ArrayList) textMessenger.getDeliveredTextMessages());
             messages.setData(data);
             if (theirMessengers.get(msg.arg1) != null)
                 theirMessengers.get(msg.arg1).send(messages);
@@ -255,7 +227,6 @@ public class MKDTNService extends Service implements DTNUI {
             
             theirMessengers.add(msg.replyTo);
             int regNum = theirMessengers.indexOf(msg.replyTo);
-            Log.i(LOG_TAG, "new client registered. REG NO: " + regNum);
             
             Message registrationInfo = Message.obtain(
                 msg.getTarget(), MSG_REGISTRATION_NUMBER, regNum, 0
@@ -274,7 +245,7 @@ public class MKDTNService extends Service implements DTNUI {
                 theirMessengers.get(msg.arg1).send(peerList);
         }
         
-        private void sendMessage(Bundle messageBundle) {
+        private void sendOutboundMessage(Bundle messageBundle) {
             String recipient = messageBundle.getString(RECIPIENT_KEY, "dtn:null");
             
             String text = messageBundle.getString(TEXT_KEY, "hi");
@@ -302,18 +273,10 @@ public class MKDTNService extends Service implements DTNUI {
                 protocol
             );
         }
-        
-        private void clearNotifications() {
-            NotificationManagerCompat.from(context)
-                .cancel(MK_DTN_NOTIFICATION_TAG, MK_DTN_NOTIFICATION_ID);
-            myNotificationStyle = new NotificationCompat.InboxStyle();
-        }
     }
     
     public MKDTNService() {
         peers = new String[0];
-        receivedDTNMessages = new HashMap<>();
-        myNotificationStyle = new NotificationCompat.InboxStyle();
         theirMessengers = new ArrayList<>();
     }
     
@@ -324,6 +287,7 @@ public class MKDTNService extends Service implements DTNUI {
         BWDTN.init(this);
         dtnManager = BWDTN.getDTNManager();
         dtnClient = BWDTN.getDTNClient(this);
+        textMessenger = BWDTN.getDTNTextMessenger(this);
         
         showPersistentNotification();
     }
@@ -348,17 +312,19 @@ public class MKDTNService extends Service implements DTNUI {
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.dtn_service_started))
             .setTicker(getString(R.string.dtn_service_started))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+            .setShowWhen(false)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NOTIFICATION_VISIBILITY);
     
         // create intent for opening main activity
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent = new Intent(this, ManagerActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
         );
         notificationBuilder.setContentIntent(pendingIntent);
         
-        startForeground(MK_DTN_SERVICE_NOTIFICATION_ID, notificationBuilder.build());
+        startForeground(666, notificationBuilder.build());
     }
     
     @Override

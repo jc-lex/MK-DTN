@@ -2,8 +2,6 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
 import android.os.ParcelFileDescriptor;
-import androidx.annotation.NonNull;
-import androidx.collection.SimpleArrayMap;
 import android.util.Log;
 
 import com.google.android.gms.nearby.Nearby;
@@ -29,6 +27,9 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Objects;
+
+import androidx.annotation.NonNull;
+import androidx.collection.SimpleArrayMap;
 
 final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Managable {
     private static final String LOG_TAG
@@ -67,6 +68,8 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
                             )
                         ) {
                             DTNBundle receivedBundle = (DTNBundle) in.readObject();
+                            DTNUtils.setTimeReceived(receivedBundle);
+                            
                             prophetDaemon.calculateDPTransitivity(receivedBundle);
                             daemon.onBundleReceived(receivedBundle);
                         } catch (Exception e) {
@@ -151,12 +154,13 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
     
     @Override
     public void transmit(DTNBundle bundle, DTNBundleNode destination) {
-        Log.i(LOG_TAG, "Sending bundle:\n" + bundle);
+//        Log.i(LOG_TAG, "Sending bundle:\n" + bundle);
         bundleToSend = bundle;
         sent = false;
+        
         String claAddress = destination.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
-    
         assert claAddress != null;
+        
         connectionsClient.requestConnection(
             daemon.getThisNodezEID().toString(),
             claAddress,

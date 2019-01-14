@@ -4,8 +4,10 @@ import android.content.Context;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNTextMessenger;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNTextMessage;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
@@ -14,6 +16,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.pe
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
+
+import java.util.List;
 
 import androidx.annotation.NonNull;
 
@@ -52,7 +56,21 @@ public final class BWDTN {
                 throw new UnsupportedOperationException(ERROR_MSG);
             }
         };
-        else if (radAppAA == null) {
+        else return getRadAppAA(ui);
+    }
+    
+    public static DTNTextMessenger getDTNTextMessenger(@NonNull DTNUI ui) {
+        if (radDaemon == null) return new DTNTextMessenger() {
+            @Override
+            public List<DTNTextMessage> getDeliveredTextMessages() {
+                throw new UnsupportedOperationException(ERROR_MSG);
+            }
+        };
+        else return getRadAppAA(ui);
+    }
+    
+    private static RadAppAA getRadAppAA(@NonNull DTNUI ui) {
+        if (radAppAA == null) {
             radAppAA = new RadAppAA(ui, radDaemon);
             radDaemon.setAppAA(radAppAA);
         }

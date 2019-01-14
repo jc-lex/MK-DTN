@@ -14,10 +14,13 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AdminRecord;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
@@ -27,6 +30,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ro
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -57,6 +61,7 @@ final class RadDaemon
     
     RadDaemon() {
         this.chosenPeers = new ArrayList<>();
+        this.deliveredMessages = new ArrayList<>();
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
 //        this.deliveredFragments = new HashSet<>();
 //        this.currentPeers = new HashSet<>();
@@ -147,8 +152,32 @@ final class RadDaemon
     @Override
     public void onBundleReceived(DTNBundle bundle) {
         //collectFragmentBundleID(bundle);
+        storeTextMessage(bundle);
         appAA.deliver(bundle);
         // NOTE save the bundle as it is. Don't update the custodian EID on custody acceptance.
+    }
+    
+    private List<DTNBundle> deliveredMessages; // temporary storage
+    
+    @Override
+    public List<DTNBundle> getDeliveredMessages() {
+        return deliveredMessages; // TODO get them from storage
+    }
+    
+    private void storeTextMessage(DTNBundle bundle) {
+        if (bundle.primaryBlock.bundleProcessingControlFlags
+            .testBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)) {
+    
+            CanonicalBlock adminRecordCBlock
+                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+            assert adminRecordCBlock != null;
+    
+            AdminRecord adminRecord = (AdminRecord) adminRecordCBlock.blockTypeSpecificDataFields;
+            
+            if (adminRecord.recordType.equals(AdminRecord.RecordType.CUSTODY_SIGNAL))
+                return;
+        }
+        deliveredMessages.add(bundle);
     }
     
 //    private void collectFragmentBundleID(DTNBundle deliveredBundle) {

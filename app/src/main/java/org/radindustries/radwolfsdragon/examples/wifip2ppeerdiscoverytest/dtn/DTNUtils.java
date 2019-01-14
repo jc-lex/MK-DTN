@@ -2,6 +2,7 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -74,6 +75,14 @@ final class DTNUtils {
         return BigInteger.ZERO
             .setBit(CanonicalBlock.BlockPCF.BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS)
             .setBit(CanonicalBlock.BlockPCF.DELETE_BUNDLE_IF_BLOCK_CANNOT_BE_PROCESSED);
+    }
+    
+    static void setTimeReceived(DTNBundle receivedBundle) {
+        CanonicalBlock ageCBlock = receivedBundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+        assert ageCBlock != null;
+        
+        AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+        ageBlock.receivingTimestamp = System.currentTimeMillis();
     }
     
     /**

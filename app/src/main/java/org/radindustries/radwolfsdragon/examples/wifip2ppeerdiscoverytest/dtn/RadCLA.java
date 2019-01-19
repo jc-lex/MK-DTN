@@ -1,8 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
-import android.os.ParcelFileDescriptor;
-import android.util.Log;
 
 import com.google.android.gms.nearby.Nearby;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
@@ -13,7 +11,6 @@ import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
 import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
-import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
@@ -23,10 +20,9 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 
-import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.Objects;
+import java.util.Set;
 
 import androidx.annotation.NonNull;
 import androidx.collection.SimpleArrayMap;
@@ -112,7 +108,7 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
             switch (statusCode) {
                 case ConnectionsStatusCodes.STATUS_OK:
                     if (!isIncoming) // is outgoing connection
-                        forward(bundleToSend, nearbyEndpointID);
+//                        forward(bundleToSend, nearbyEndpointID);
                     break;
                 default:
                     break;
@@ -122,16 +118,16 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
         @Override
         public void onDisconnected(@NonNull String nearbyEndpointID) {
             if (sent) {
-                daemon.onTransmissionComplete(++bundleNodeCounter);
+//                daemon.onTransmissionComplete(++bundleNodeCounter);
                 sent = false;
             }
         }
     };
     
-    private DTNBundle bundleToSend;
+//    private DTNBundle bundleToSend;
     private boolean sent;
     private boolean isIncoming;
-    private int bundleNodeCounter;
+//    private int bundleNodeCounter;
     
     private CLA2Daemon daemon;
     private PRoPHETCLA2Daemon prophetDaemon;
@@ -144,7 +140,7 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
         this.daemon = daemon;
         this.prophetDaemon = prophetDaemon;
         connectionsClient = Nearby.getConnectionsClient(context);
-        reset();
+//        reset();
     }
     
     @Override
@@ -152,7 +148,7 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
         return connectionLifecycleCallback;
     }
     
-    @Override
+    /*@Override
     public void transmit(DTNBundle bundle, DTNBundleNode destination) {
 //        Log.i(LOG_TAG, "Sending bundle:\n" + bundle);
         bundleToSend = bundle;
@@ -166,45 +162,45 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
             claAddress,
             connectionLifecycleCallback
         );
-    }
+    }*/
     
-    @Override
-    public void reset() {
-        bundleNodeCounter = 0;
-    }
+//    @Override
+//    public void reset() {
+//        bundleNodeCounter = 0;
+//    }
     
-    private void forward(final DTNBundle bundleToSend, final String CLAAddress) {
-        try {
-            final ParcelFileDescriptor[] payloadPipe = ParcelFileDescriptor.createPipe();
-        
-            connectionsClient.sendPayload(
-                CLAAddress,
-                Payload.fromStream(payloadPipe[0]) // reading side
-            ).addOnSuccessListener(new OnSuccessListener<Void>() {
-                @Override
-                public void onSuccess(Void aVoid) {
-                    try (
-                        ObjectOutputStream out = new ObjectOutputStream(
-                            new ParcelFileDescriptor
-                                .AutoCloseOutputStream(payloadPipe[1]) // writing side
-                        )
-                    ) {
-                        out.writeObject(bundleToSend);
-                        sent = true;
-                    } catch (IOException e) {
-                        disconnectAndNotify(CLAAddress);
-                    }
-                    Log.i(LOG_TAG, "Bundle sent = " + sent);
-                }
-            });
-        } catch (IOException e) {
-            disconnectAndNotify(CLAAddress);
-        }
-    }
+//    private void forward(final DTNBundle bundleToSend, final String CLAAddress) {
+//        try {
+//            final ParcelFileDescriptor[] payloadPipe = ParcelFileDescriptor.createPipe();
+//
+//            connectionsClient.sendPayload(
+//                CLAAddress,
+//                Payload.fromStream(payloadPipe[0]) // reading side
+//            ).addOnSuccessListener(new OnSuccessListener<Void>() {
+//                @Override
+//                public void onSuccess(Void aVoid) {
+//                    try (
+//                        ObjectOutputStream out = new ObjectOutputStream(
+//                            new ParcelFileDescriptor
+//                                .AutoCloseOutputStream(payloadPipe[1]) // writing side
+//                        )
+//                    ) {
+//                        out.writeObject(bundleToSend);
+//                        sent = true;
+//                    } catch (IOException e) {
+//                        disconnectAndNotify(CLAAddress);
+//                    }
+//                    Log.i(LOG_TAG, "Bundle sent = " + sent);
+//                }
+//            });
+//        } catch (IOException e) {
+//            disconnectAndNotify(CLAAddress);
+//        }
+//    }
     
     private void disconnectAndNotify(String CLAAddress) {
         connectionsClient.disconnectFromEndpoint(CLAAddress);
-        daemon.onTransmissionComplete(++bundleNodeCounter);
+//        daemon.onTransmissionComplete(++bundleNodeCounter);
     }
     
     @Override
@@ -215,5 +211,10 @@ final class RadCLA implements Daemon2CLA, RadDiscoverer.CLCProvider, Daemon2Mana
     @Override
     public boolean stop() {
         return true; //RadDiscoverer is doing this for us
+    }
+    
+    @Override
+    public void transmit(DTNBundle bundle, Set<DTNBundleNode> destinations) {
+    
     }
 }

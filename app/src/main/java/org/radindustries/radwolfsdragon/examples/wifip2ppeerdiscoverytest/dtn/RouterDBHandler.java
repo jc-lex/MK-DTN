@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 
 final class RouterDBHandler {
     
-    private static final int WAITING_TIME = 5; // seconds
+    private static final long WAITING_TIME_IN_SECONDS = 5L;
     private static final int ERROR_CODE = -69;
     
     private static RouterDBHandler dbHandler = null;
@@ -47,7 +47,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return ERROR_CODE;
@@ -63,7 +63,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return ERROR_CODE;
@@ -79,7 +79,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return ERROR_CODE;
@@ -95,7 +95,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return ERROR_CODE;
@@ -115,7 +115,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return ERROR_CODE;
@@ -131,7 +131,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return ERROR_CODE;
@@ -148,7 +148,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return new NeighbourhoodIndex();
@@ -165,7 +165,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return new DeliveryPredictability();
@@ -182,7 +182,7 @@ final class RouterDBHandler {
         });
         
         try {
-            return future.get(WAITING_TIME, TimeUnit.SECONDS);
+            return future.get(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
             return Collections.emptyList();

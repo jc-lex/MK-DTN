@@ -1,5 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui;
 
+import android.app.ActivityManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -29,7 +30,9 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ma
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.ArrayList;
+import java.util.List;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
@@ -37,7 +40,7 @@ public class MKDTNService extends Service implements DTNUI {
     
     private DTNManager dtnManager;
     private static DTNClient dtnClient;
-    private static DTNTextMessenger textMessenger;
+    private static DTNTextMessenger dtnTextMessenger;
     private static String[] peers;
     
 //    private static final String LOG_TAG
@@ -53,7 +56,7 @@ public class MKDTNService extends Service implements DTNUI {
 //            Message msg = Message.obtain(null, MSG_GET_RECEIVED_DTN_MESSAGES);
 //            Bundle data = new Bundle();
 //            data.putSerializable(MESSAGES_KEY,
-//                (ArrayList) textMessenger.getDeliveredTextMessages());
+//                (ArrayList) dtnTextMessenger.getDeliveredTextMessages());
 //            msg.setData(data);
 //            if (messenger != null) {
 //                try {
@@ -143,14 +146,16 @@ public class MKDTNService extends Service implements DTNUI {
     
         for (Messenger messenger : theirMessengers) {
             Message msg = Message.obtain(null, MSG_GET_PEER_LIST);
+            
             Bundle data = new Bundle();
             data.putStringArray(PEER_LIST_KEY, peers);
             msg.setData(data);
+            
             if (messenger != null) {
                 try {
                     messenger.send(msg);
                 } catch (RemoteException e) {
-                    e.printStackTrace();
+//                    e.printStackTrace();
                     theirMessengers.remove(messenger);
                 }
             }
@@ -207,7 +212,7 @@ public class MKDTNService extends Service implements DTNUI {
             Bundle data = new Bundle();
             Message messages = Message.obtain(msg.getTarget(), MSG_GET_RECEIVED_DTN_MESSAGES);
             data.putSerializable(MESSAGES_KEY,
-                (ArrayList) textMessenger.getDeliveredTextMessages());
+                (ArrayList) dtnTextMessenger.getDeliveredTextMessages());
             messages.setData(data);
             if (theirMessengers.get(msg.arg1) != null)
                 theirMessengers.get(msg.arg1).send(messages);
@@ -287,7 +292,7 @@ public class MKDTNService extends Service implements DTNUI {
         BWDTN.init(this);
         dtnManager = BWDTN.getDTNManager();
         dtnClient = BWDTN.getDTNClient(this);
-        textMessenger = BWDTN.getDTNTextMessenger(this);
+        dtnTextMessenger = BWDTN.getDTNTextMessenger(this);
         
         showPersistentNotification();
     }
@@ -297,10 +302,7 @@ public class MKDTNService extends Service implements DTNUI {
             = NotificationManagerCompat.from(this);
     
         // check if notifications are enabled
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if (!prefs.getBoolean(getString(R.string.pref_enable_dtn_notifications_key),
-            getResources().getBoolean(R.bool.pref_enable_dtn_notification_default)) ||
-            !notificationManagerCompat.areNotificationsEnabled()) return;
+        if (!notificationManagerCompat.areNotificationsEnabled()) return;
     
         // create and register channel with the system
         createNotificationChannel();
@@ -332,9 +334,11 @@ public class MKDTNService extends Service implements DTNUI {
         return ourMessenger.getBinder();
     }
     
+    private boolean started;
+    
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        dtnManager.start();
+        if (!started) started = dtnManager.start();
         return Service.START_STICKY;
     }
     
@@ -346,20 +350,24 @@ public class MKDTNService extends Service implements DTNUI {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        dtnManager.stop();
+        if (started) started = !dtnManager.stop();
     }
     
-//    public static boolean isRunning(@NonNull Context context) {
-//        ActivityManager manager
-//            = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-//        if (manager == null) return false;
-//        if (manager.getRunningServices(Integer.MAX_VALUE) == null) return false;
-//        for (ActivityManager.RunningServiceInfo service :
-//            manager.getRunningServices(Integer.MAX_VALUE)) {
-//            if (service.service.getClassName().equals(MKDTNService.class.getName())) {
-//                return true;
-//            }
-//        }
-//        return false;
-//    }
+    public static boolean isRunning(@NonNull Context context) {
+        ActivityManager manager
+            = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (manager == null) return false;
+
+        List<ActivityManager.RunningServiceInfo> services
+            = manager.getRunningServices(Integer.MAX_VALUE);
+        if (services == null || services.isEmpty()) return false;
+
+        for (ActivityManager.RunningServiceInfo service : services) {
+            if (service.service.getClassName().equals(MKDTNService.class.getName())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

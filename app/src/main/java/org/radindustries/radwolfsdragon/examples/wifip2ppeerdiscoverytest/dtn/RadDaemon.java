@@ -14,13 +14,10 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AdminRecord;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
@@ -29,10 +26,14 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ro
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.NonNull;
 
@@ -53,18 +54,13 @@ final class RadDaemon
     
     private static final DTNEndpointID BUNDLE_NODE_EID = makeEID(); //from persistent storage
     
-    private ArrayList<DTNBundleNode> chosenPeers;
     private Daemon2Router.RoutingProtocol currentProtocol;
-//    private Set<DTNBundleNode> currentPeers;
-//    private HashSet<DTNBundleID> deliveredFragments; //for debugging
-    private DTNBundle bundleToTransmit;
+    private ExecutorService bundleTransmitter;
+    private ExecutorService bundleProcessor;
     
     RadDaemon() {
-        this.chosenPeers = new ArrayList<>();
         this.deliveredMessages = new ArrayList<>();
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
-//        this.deliveredFragments = new HashSet<>();
-//        this.currentPeers = new HashSet<>();
     }
     
     void setCLA(@NonNull Daemon2CLA cla) {
@@ -108,34 +104,48 @@ final class RadDaemon
         transmit(bundle, currentProtocol);
     }
     
-    // TODO bundle transmission async
     @Override
     public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
         currentProtocol = routingProtocol;
-        bundleToTransmit = bundle; // put in storage
-        
-        if (!chosenPeers.isEmpty()) chosenPeers.clear();
-        chosenPeers.addAll(
-            router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundleToTransmit)
-        );
-        if (chosenPeers.isEmpty()) return;
     
-        // update the custodian EID prior to transmission
-        bundleToTransmit.primaryBlock.custodianEID = getThisNodezEID();
+        // TODO fragment & store bundle(s)
         
-        // TODO fragment this bundle first before sending
-        cla.transmit(bundleToTransmit, chosenPeers.get(0));
+        bundleTransmitter.submit(new TransmitOutboundBundleTask(bundle));
+        
+//        // proactive fragmentation
+//        DTNBundle[] fragments = fragmentManager.fragment(bundle);
+//
+//        for (DTNBundle fragment : fragments)
+//            bundleTransmitter.submit(new TransmitOutboundBundleTask(fragment));
+    }
+    
+    private class TransmitOutboundBundleTask implements Runnable {
+        private DTNBundle bundle;
+        private Set<DTNBundleNode> nextHops;
+    
+        private TransmitOutboundBundleTask(DTNBundle bundle) {
+            this.bundle = bundle;
+            nextHops = new HashSet<>();
+        }
+    
+        @Override
+        public void run() {
+            do {
+                nextHops.addAll(
+                    router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
+                );
+            } while (nextHops.isEmpty());
+    
+            // update the custodian EID prior to transmission
+            bundle.primaryBlock.custodianEID = getThisNodezEID();
+            
+            cla.transmit(bundle, nextHops);
+        }
     }
     
     @Override
     public void notifyPeerListChanged() {
-        Set<DTNBundleNode> nodes = discoverer.getPeerList();
-        Set<DTNEndpointID> peerEIDs = new HashSet<>();
-        for (DTNBundleNode node : nodes) {
-            peerEIDs.add(node.dtnEndpointID);
-        }
-//        currentPeers = nodes;
-        appAA.notifyPeerListChanged(peerEIDs);
+        appAA.notifyPeerListChanged(getPeerList());
     }
     
     @Override
@@ -148,38 +158,48 @@ final class RadDaemon
         return peerEIDs;
     }
     
-    // TODO bundle processing async
     @Override
     public void onBundleReceived(DTNBundle bundle) {
-        //collectFragmentBundleID(bundle);
-        storeTextMessage(bundle);
-        appAA.deliver(bundle);
+        bundleProcessor.submit(new ProcessInboundBundleTask(bundle));
+    }
+    
+    private class ProcessInboundBundleTask implements Runnable {
+        private DTNBundle bundle;
+    
+        private ProcessInboundBundleTask(DTNBundle bundle) {
+            this.bundle = bundle;
+        }
+    
         // NOTE save the bundle as it is. Don't update the custodian EID on custody acceptance.
+        @Override
+        public void run() {
+//            storeTextMessage(bundle);
+            if (deliveredMessages.add(bundle)) appAA.deliver(bundle);
+        }
     }
     
     private List<DTNBundle> deliveredMessages; // temporary storage
     
     @Override
     public List<DTNBundle> getDeliveredMessages() {
-        return deliveredMessages; // TODO get them from storage
+        return Collections.unmodifiableList(deliveredMessages); // TODO get them from storage
     }
     
-    private void storeTextMessage(DTNBundle bundle) {
-        if (bundle.primaryBlock.bundleProcessingControlFlags
-            .testBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)) {
-    
-            CanonicalBlock adminRecordCBlock
-                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
-            assert adminRecordCBlock != null;
-    
-            AdminRecord adminRecord = (AdminRecord) adminRecordCBlock.blockTypeSpecificDataFields;
-            
-            if (adminRecord.recordType.equals(AdminRecord.RecordType.CUSTODY_SIGNAL))
-                return;
-        }
-        deliveredMessages.add(bundle);
-    }
-    
+//    private void storeTextMessage(DTNBundle bundle) {
+//        if (bundle.primaryBlock.bundleProcessingControlFlags
+//            .testBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)) {
+//
+//            CanonicalBlock adminRecordCBlock
+//                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+//            assert adminRecordCBlock != null;
+//
+//            AdminRecord adminRecord = (AdminRecord) adminRecordCBlock.blockTypeSpecificDataFields;
+//
+//            if (adminRecord.recordType.equals(AdminRecord.RecordType.CUSTODY_SIGNAL)) return;
+//        }
+//        deliveredMessages.add(bundle);
+//    }
+//
 //    private void collectFragmentBundleID(DTNBundle deliveredBundle) {
 //        // this set of fragment IDs is collected by the Daemon, not router
 //        if (deliveredBundle.primaryBlock.destinationEID.equals(BUNDLE_NODE_EID)) {
@@ -208,34 +228,66 @@ final class RadDaemon
 //        }
 //    }
     
-    @Override
-    public void onTransmissionComplete(int numNodesSentTo) {
-        if (numNodesSentTo < chosenPeers.size()) {
-            cla.transmit(bundleToTransmit, chosenPeers.get(numNodesSentTo));
-        } else {
-            cla.reset();
-        }
-    }
+//    @Override
+//    public void onTransmissionComplete(int numNodesSentTo) {
+//        if (numNodesSentTo < chosenPeers.size()) {
+//            cla.transmit(bundleToTransmit, chosenPeers.get(numNodesSentTo));
+//        } else {
+//            cla.reset();
+//        }
+//    }
     
     @Override
     public boolean start() {
-        if (!chosenPeers.isEmpty()) chosenPeers.clear();
-        boolean state = true;
-        for (Daemon2Managable managable : managables) {
-            state = state && managable.start();
-        }
+        boolean state = startExecutors();
+        for (Daemon2Managable managable : managables) state &= managable.start();
         return state;
+    }
+    
+    private boolean startExecutors() {
+        bundleTransmitter = Executors.newSingleThreadExecutor();
+//        if (waitingBundleTransmissionTasks != null)
+//            for (Runnable task : waitingBundleTransmissionTasks) bundleTransmitter.submit(task);
+        
+        bundleProcessor = Executors.newSingleThreadExecutor();
+//        if (waitingBundleProcessingTasks != null)
+//            for (Runnable task : waitingBundleProcessingTasks) bundleProcessor.submit(task);
+        
+        return true;
     }
     
     @Override
     public boolean stop() {
-        chosenPeers.clear();
-//        deliveredFragments.clear();
-        boolean state = true;
-        for (Daemon2Managable managable : managables) {
-            state = state && managable.stop();
-        }
+        boolean state = stopExecutors();
+        for (Daemon2Managable managable : managables) state &= managable.stop();
         return state;
+    }
+    
+    private static final long WAITING_TIME_IN_SECONDS = 15L;
+//    private List<Runnable> waitingBundleProcessingTasks;
+//    private List<Runnable> waitingBundleTransmissionTasks;
+    
+    private boolean stopExecutors() {
+        if (bundleTransmitter != null && bundleProcessor != null) {
+            
+            bundleTransmitter.shutdown();
+            bundleProcessor.shutdown();
+    
+            bundleTransmitter.shutdownNow();
+            bundleProcessor.shutdownNow();
+            
+//            waitingBundleTransmissionTasks = bundleTransmitter.shutdownNow();
+//            waitingBundleProcessingTasks = bundleProcessor.shutdownNow();
+            
+            try {
+                return
+                    bundleTransmitter.awaitTermination(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS) &&
+                    bundleProcessor.awaitTermination(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                return false;
+            }
+            
+        } else return true;
     }
     
     @Override

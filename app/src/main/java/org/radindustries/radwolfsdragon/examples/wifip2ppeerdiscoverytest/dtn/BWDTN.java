@@ -32,6 +32,7 @@ public final class BWDTN {
     private static RadNECTARRoutingTable radNECTARRoutingTable = null;
     private static RadPRoPHETRoutingTable radPRoPHETRoutingTable = null;
     private static RadDaemon radDaemon = null;
+    private static RadNearby radNearby = null;
     
     private static final String ERROR_MSG = "RadDaemon is null";
 
@@ -97,17 +98,29 @@ public final class BWDTN {
         if (radDaemon == null) {
             radDaemon = new RadDaemon();
             
-            radDaemon.setCLA(getCLA(context));
-            radDaemon.setDiscoverer(getPeerDiscoverer(context));
+            /*radDaemon.setCLA(getCLA(context));
+            radDaemon.setDiscoverer(getPeerDiscoverer(context));*/
+            radDaemon.setCLA(getNearbyService(context));
+            radDaemon.setDiscoverer(getNearbyService(context));
             radDaemon.setAdminAA(getAdminAA());
             radDaemon.setFragmentManager(getFragmentManager());
             radDaemon.setRouter(getRouter());
             radDaemon.setNECTARRoutingTable(getNECTARRoutingTable(context));
             radDaemon.setPRoPHETRoutingTable(getPRoPHETRoutingTable(context));
             radDaemon.setManagables(new Daemon2Managable[]{
-                radDiscoverer, radCLA, radPRoPHETRoutingTable
+                /*radDiscoverer, radCLA,*/ radNearby, radPRoPHETRoutingTable
             });
         }
+    }
+    
+    private static RadNearby getNearbyService(@NonNull Context context) {
+        if (radNearby == null) {
+            synchronized (BWDTN.class) {
+                radNearby
+                    = new RadNearby(radDaemon, radDaemon, radDaemon, radDaemon, radDaemon, context);
+            }
+        }
+        return radNearby;
     }
     
     private static Daemon2FragmentManager getFragmentManager() {

@@ -3,7 +3,8 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.c
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 
+import java.util.Set;
+
 public interface Daemon2CLA {
-    void transmit(DTNBundle bundle, DTNBundleNode destinations);
-    void reset();
+    void transmit(DTNBundle bundle, Set<DTNBundleNode> destinations);
 }

@@ -108,7 +108,6 @@ public class MainActivity extends AppCompatActivity {
         
         // set defaults only when app opens for the very first time
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
-//        getDTNSettings();
 
         initUI();
         
@@ -190,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        bind();
+        if (MKDTNService.isRunning(this)) bind();
     }
     
     private void bind() {
@@ -218,7 +217,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        unbind();
+        if (MKDTNService.isRunning(this)) unbind();
     }
     
     private void getPeers() {

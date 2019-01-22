@@ -4,7 +4,8 @@ import java.io.Serializable;
 
 public final class DTNEndpointID implements Serializable {
     
-    public static final String DTN_SCHEME = "dtn";
+    public static final String DTN_SCHEME = "mkdtn";
+    public static final String NULL_EID = DTN_SCHEME + ":null";
     private static final String SEP = ":";
     
     public String scheme;

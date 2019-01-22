@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +34,8 @@ public class PeersActivity extends AppCompatActivity implements AdapterView.OnIt
         = DConstants.MAIN_LOG_TAG + "_" + PeersActivity.class.getSimpleName();
     
     private static ArrayAdapter<String> peersAdapter;
-    private static String dtnClientID = "dtn:null";
+    private static String dtnClientID = DTNEndpointID.NULL_EID;
+    private static String ID_STR = "*** %s ***";
     
     private static ArrayList<String> dataSet = new ArrayList<>();
     
@@ -56,10 +58,10 @@ public class PeersActivity extends AppCompatActivity implements AdapterView.OnIt
         }
         
         private void setClientID(Bundle data) {
-            dtnClientID = data.getString(MKDTNService.DTN_CLIENT_ID_KEY, "dtn:null");
+            dtnClientID = data.getString(MKDTNService.DTN_CLIENT_ID_KEY, DTNEndpointID.NULL_EID);
             Log.i(LOG_TAG, "id = " + dtnClientID);
             
-            String myEID = String.format("MY DTN EID: %s", dtnClientID);
+            String myEID = String.format(ID_STR, dtnClientID);
             if (dataSet.isEmpty()) dataSet.add(0, myEID);
             else dataSet.set(0, myEID);
             
@@ -72,7 +74,7 @@ public class PeersActivity extends AppCompatActivity implements AdapterView.OnIt
             Log.i(LOG_TAG, "peers = " + Arrays.toString(peers));
             
             dataSet.clear();
-            dataSet.add(0, String.format("MY DTN EID: %s", dtnClientID));
+            dataSet.add(0, String.format(ID_STR, dtnClientID));
             if (peers != null) dataSet.addAll(new ArrayList<>(Arrays.asList(peers)));
             peersAdapter.clear();
             peersAdapter.addAll(dataSet);

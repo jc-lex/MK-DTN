@@ -19,6 +19,7 @@
             android:hint="@string/to_eid_hint"
             android:padding="@dimen/main_list_item_padding"
             android:inputType="text"
+
             android:id="@+id/to_eid_tiet"/>
 
         <com.google.android.material.textfield.TextInputEditText
@@ -26,7 +27,7 @@
             android:layout_height="wrap_content"
             android:hint="@string/msg_hint"
             android:padding="@dimen/main_list_item_padding"
-            android:inputType="textLongMessage"
+            android:inputType="textMultiLine|textAutoCorrect|textCapSentences|textLongMessage"
             android:id="@+id/msg_tiet"/>
 
     </androidx.appcompat.widget.LinearLayoutCompat>

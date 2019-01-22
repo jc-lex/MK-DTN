@@ -25,6 +25,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.BW
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNTextMessenger;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
@@ -261,7 +262,8 @@ public class MKDTNService extends Service implements DTNUI {
         }
         
         private void sendOutboundMessage(Bundle messageBundle) {
-            String recipient = messageBundle.getString(RECIPIENT_KEY, "dtn:null");
+            String recipient = messageBundle.getString(RECIPIENT_KEY, DTNEndpointID.NULL_EID);
+            if (recipient.equals(dtnClient.getID())) return;
             
             String text = messageBundle.getString(TEXT_KEY, "hi");
             

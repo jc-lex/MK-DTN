@@ -10,6 +10,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
@@ -91,12 +92,17 @@ public class NewMessageActivity extends AppCompatActivity implements View.OnClic
     
     @Override
     public void onClick(View v) {
-        String recipient = Objects.requireNonNull(toTIET.getText()).toString();
-        String message = Objects.requireNonNull(msgTIET.getText()).toString();
-        
-        sendDTNMessage(recipient, message);
+        if (TextUtils.isEmpty(toTIET.getText()) || TextUtils.isEmpty(msgTIET.getText())) {
+            Toast.makeText(this, R.string.sending_err_msg, Toast.LENGTH_SHORT).show();
+        }
+        else {
+            String recipient = Objects.requireNonNull(toTIET.getText()).toString();
+            String message = Objects.requireNonNull(msgTIET.getText()).toString();
     
-        Toast.makeText(this, "Message sent", Toast.LENGTH_SHORT).show();
+            sendDTNMessage(recipient, message);
+    
+            Toast.makeText(this, R.string.sending_msg_ok, Toast.LENGTH_SHORT).show();
+        }
         finish();
     }
     

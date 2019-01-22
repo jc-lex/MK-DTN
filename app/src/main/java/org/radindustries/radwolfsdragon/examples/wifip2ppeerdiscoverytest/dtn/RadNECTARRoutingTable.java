@@ -1,11 +1,12 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
-import androidx.annotation.NonNull;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.EIDProvider;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
+
+import androidx.annotation.NonNull;
 
 final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     
@@ -23,7 +24,7 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     
     @Override
     public float getMeetingFrequency(DTNEndpointID nodeEID) {
-        if (nodeEID.equals(eidProvider.getThisNodezEID())) return Float.MAX_VALUE;
+        if (eidProvider.isUs(nodeEID)) return Float.MAX_VALUE;
         
         NeighbourhoodIndex ni = routerDBHandler.getIndex(nodeEID.toString());
         
@@ -35,7 +36,7 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     
     @Override
     public void incrementMeetingCount(DTNEndpointID nodeEID) {
-        if (nodeEID.equals(eidProvider.getThisNodezEID())) return;
+        if (eidProvider.isUs(nodeEID)) return;
         
         NeighbourhoodIndex ni = routerDBHandler.getIndex(nodeEID.toString());
         if (ni != null) { // updating

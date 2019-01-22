@@ -18,6 +18,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
@@ -297,11 +298,40 @@ final class RadDaemon
         return BUNDLE_NODE_EID;
     }
     
+    @Override
+    public boolean isForUs(DTNBundle bundle) {
+        if (bundle != null) {
+            PrimaryBlock primaryBlock = bundle.primaryBlock;
+            if (primaryBlock != null) {
+                DTNEndpointID dest = primaryBlock.destinationEID;
+                return dest != null && dest.equals(BUNDLE_NODE_EID);
+            } else return false;
+        } else return false;
+    }
+    
+    @Override
+    public boolean isFromUs(DTNBundle bundle) {
+        if (bundle != null) {
+            PrimaryBlock primaryBlock = bundle.primaryBlock;
+            if (primaryBlock != null) {
+                DTNBundleID bundleID = primaryBlock.bundleID;
+                if (bundleID != null) {
+                    DTNEndpointID src = bundleID.sourceEID;
+                    return src != null && src.equals(BUNDLE_NODE_EID);
+                } else return false;
+            } else return false;
+        } else return false;
+    }
+    
+    @Override
+    public boolean isUs(DTNEndpointID eid) {
+        return eid != null && eid.equals(BUNDLE_NODE_EID);
+    }
+    
     private static DTNEndpointID makeEID() {
-        // short numbers for debugging purposes only
         String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
         //for the first time, do the next line and store it in storage DB.
-        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 8));
+        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 10));
         //the next time, get the EID from storage DB
     }
     

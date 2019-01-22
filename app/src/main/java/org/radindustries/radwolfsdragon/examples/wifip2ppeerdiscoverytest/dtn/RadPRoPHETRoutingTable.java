@@ -55,7 +55,7 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public void updateDeliveryPredictability(DTNEndpointID nodeEID) {
-        if (nodeEID.equals(eidProvider.getThisNodezEID())) return;
+        if (eidProvider.isUs(nodeEID)) return;
         
         DeliveryPredictability dp = routerDBHandler.getDP(nodeEID.toString());
         if (dp != null) { // updating
@@ -77,11 +77,13 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public void calculateDPTransitivity(DTNBundle bundle) {
-        if (bundle.primaryBlock.destinationEID.equals(eidProvider.getThisNodezEID()) ||
-            bundle.primaryBlock.destinationEID.equals(bundle.primaryBlock.custodianEID)) return;
+        if (bundle == null || bundle.canonicalBlocks == null) return;
         
         CanonicalBlock prophetCBlock
-            = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PROPHET_ROUTING_INFO);
+            = bundle.canonicalBlocks.remove(DTNBundle.CBlockNumber.PROPHET_ROUTING_INFO);
+        
+        if (eidProvider.isForUs(bundle) ||
+            bundle.primaryBlock.destinationEID.equals(bundle.primaryBlock.custodianEID)) return;
         
         if (prophetCBlock != null &&
             prophetCBlock.blockType == CanonicalBlock.BlockType.PROPHET_ROUTING_INFO) {
@@ -124,7 +126,7 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public float getDeliveryPredictability(DTNEndpointID nodeEID) {
-        if (nodeEID.equals(eidProvider.getThisNodezEID())) return 1.0F;
+        if (eidProvider.isUs(nodeEID)) return 1.0F;
         
         DeliveryPredictability dp = routerDBHandler.getDP(nodeEID.toString());
         return dp != null ? dp.getProbability() : 0.0F;

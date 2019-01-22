@@ -23,6 +23,21 @@ public class RadAppAATest {
     
     private static final AppAA2Daemon daemon = new AppAA2Daemon() {
         @Override
+        public boolean isUs(DTNEndpointID eid) {
+            return false;
+        }
+    
+        @Override
+        public boolean isForUs(DTNBundle bundle) {
+            return false;
+        }
+    
+        @Override
+        public boolean isFromUs(DTNBundle bundle) {
+            return false;
+        }
+    
+        @Override
         public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
             transmit(bundle);
         }

@@ -24,6 +24,21 @@ public class RadAdminAATest {
     public static void setUpClass() {
         radAdminAA = new RadAdminAA(new AdminAA2Daemon() {
             @Override
+            public boolean isUs(DTNEndpointID eid) {
+                return false;
+            }
+    
+            @Override
+            public boolean isForUs(DTNBundle bundle) {
+                return false;
+            }
+    
+            @Override
+            public boolean isFromUs(DTNBundle bundle) {
+                return false;
+            }
+    
+            @Override
             public void transmit(DTNBundle adminRecord) {
         
             }

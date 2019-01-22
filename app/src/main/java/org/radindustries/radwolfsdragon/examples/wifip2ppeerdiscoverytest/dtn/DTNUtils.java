@@ -11,8 +11,6 @@ import java.util.Scanner;
 final class DTNUtils {
     private DTNUtils() {}
     
-    static final String DTN_REGISTRATION_TYPE = "_dtn._tcp.";
-    
     private static final long DEFAULT_CPU_SPEED = 1_100_000L;
     
     static CanonicalBlock makeAgeCBlock(long creationTimestamp) {

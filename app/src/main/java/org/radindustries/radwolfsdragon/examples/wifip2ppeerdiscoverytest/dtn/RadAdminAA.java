@@ -78,8 +78,7 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     private void processStatusReport(StatusReport report, DTNEndpointID recipient) {
         if (!report.isForAFragment) {
-            if (report.bundleDelivered &&
-                report.subjectBundleID.sourceEID.equals(daemon.getThisNodezEID())) {
+            if (daemon.isUs(report.subjectBundleID.sourceEID) && report.bundleDelivered) {
                 daemon.notifyOutboundBundleDelivered(recipient.toString());
             } else {
                 Log.i(LOG_TAG, "Bundle delivery for "

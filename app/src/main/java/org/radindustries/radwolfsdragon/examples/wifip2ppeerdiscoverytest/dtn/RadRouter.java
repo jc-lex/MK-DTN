@@ -1,7 +1,5 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import androidx.annotation.NonNull;
-
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.NECTARRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
@@ -16,6 +14,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ro
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+
+import androidx.annotation.NonNull;
 
 final class RadRouter implements Daemon2Router {
     
@@ -94,7 +94,7 @@ final class RadRouter implements Daemon2Router {
         DTNEndpointID previousCustodian = bundle.primaryBlock.custodianEID;
         DTNEndpointID source = bundle.primaryBlock.bundleID.sourceEID;
         
-        if (!(source.equals(daemon.getThisNodezEID()) || previousCustodian.equals(source))) {
+        if (!(daemon.isFromUs(bundle) || previousCustodian.equals(source))) {
             // waiting phase
             Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
             
@@ -110,7 +110,7 @@ final class RadRouter implements Daemon2Router {
     }
     
     private Set<DTNBundleNode> doTwoHopRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
-        if (bundle.primaryBlock.bundleID.sourceEID.equals(daemon.getThisNodezEID())) {
+        if (daemon.isFromUs(bundle)) {
             return selectRandomly(neighbours, NUM_MULTICAST_NODES);
         } else {
             return Collections.emptySet();
@@ -120,7 +120,7 @@ final class RadRouter implements Daemon2Router {
     private Set<DTNBundleNode> doEpidemicRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
         DTNEndpointID source = bundle.primaryBlock.bundleID.sourceEID;
         
-        if (source.equals(daemon.getThisNodezEID())) {
+        if (daemon.isFromUs(bundle)) {
             return neighbours;
         } else {
             Set<DTNEndpointID> EIDs = getNeighbourEIDs(neighbours);
@@ -130,7 +130,7 @@ final class RadRouter implements Daemon2Router {
     }
     
     private Set<DTNBundleNode> doPerHopRouting(Set<DTNBundleNode> neighbours, DTNBundle bundle) {
-        if (bundle.primaryBlock.bundleID.sourceEID.equals(daemon.getThisNodezEID())) {
+        if (daemon.isFromUs(bundle)) {
             return selectRandomly(neighbours, NUM_UNICAST_NODES);
         } else {
             return perHopSelectionIfIntermediate(neighbours, bundle);

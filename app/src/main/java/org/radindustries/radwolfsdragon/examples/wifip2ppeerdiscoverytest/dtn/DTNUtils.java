@@ -1,8 +1,11 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AdminRecord;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -76,11 +79,110 @@ final class DTNUtils {
     }
     
     static void setTimeReceived(DTNBundle receivedBundle) {
-        CanonicalBlock ageCBlock = receivedBundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
-        assert ageCBlock != null;
+        if (!isValid(receivedBundle)) return;
         
-        AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-        ageBlock.receivingTimestamp = System.currentTimeMillis();
+        CanonicalBlock ageCBlock = receivedBundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+        if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields != null) {
+            AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+            ageBlock.receivingTimestamp = System.currentTimeMillis();
+        }
+    }
+    
+    static long getTimeReceived(DTNBundle bundle) {
+        if (!isValid(bundle)) return -1L;
+        
+        CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+        if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
+            AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+            return ageBlock.receivingTimestamp;
+        } else return -1L;
+    }
+    
+    static boolean isFragment(DTNBundle bundle) {
+        if (isValid(bundle)) {
+            BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
+            if (bundlePCFs != null) {
+                return bundlePCFs.testBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT);
+            }
+        }
+        return false;
+    }
+    
+    static boolean isAdminRecord(DTNBundle bundle) {
+        if (isValid(bundle)) {
+            BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
+            if (bundlePCFs != null &&
+                bundlePCFs.testBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)) {
+            
+                CanonicalBlock adminRecordCBlock
+                    = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+                
+                return adminRecordCBlock != null && adminRecordCBlock.blockType
+                    .equals(CanonicalBlock.BlockType.ADMIN_RECORD);
+            }
+        }
+        return false;
+    }
+    
+    static boolean isUserData(DTNBundle bundle) {
+        if (isValid(bundle)) {
+            BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
+            if (bundlePCFs != null &&
+                !bundlePCFs.testBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)) {
+    
+                CanonicalBlock adminRecordCBlock
+                    = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+    
+                return adminRecordCBlock != null && adminRecordCBlock.blockType
+                    .equals(CanonicalBlock.BlockType.PAYLOAD);
+            }
+        }
+        return false;
+    }
+    
+    static boolean isCustodySignal(DTNBundle bundle) {
+        if (isAdminRecord(bundle)) {
+            CanonicalBlock custodySignalCBlock
+                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+            if (custodySignalCBlock != null &&
+                custodySignalCBlock.blockTypeSpecificDataFields instanceof CustodySignal) {
+    
+                AdminRecord custodySignal
+                    = (AdminRecord) custodySignalCBlock.blockTypeSpecificDataFields;
+    
+                return custodySignal.recordType.equals(AdminRecord.RecordType.CUSTODY_SIGNAL);
+            }
+        }
+        return false;
+    }
+    
+    static boolean isStatusReport(DTNBundle bundle) {
+        if (isAdminRecord(bundle)) {
+            CanonicalBlock statusReportCBlock
+                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+            if (statusReportCBlock != null &&
+                statusReportCBlock.blockTypeSpecificDataFields instanceof AdminRecord) {
+    
+                AdminRecord statusReport
+                    = (AdminRecord) statusReportCBlock.blockTypeSpecificDataFields;
+    
+                return statusReport.recordType.equals(AdminRecord.RecordType.STATUS_REPORT);
+            }
+        }
+        return false;
+    }
+    
+    static boolean isValid(DTNBundle bundle) {
+        return bundle != null && bundle.primaryBlock != null && bundle.canonicalBlocks != null
+            && !bundle.canonicalBlocks.isEmpty();
+    }
+    
+    static boolean forSingletonDestination(DTNBundle bundle) {
+        if (isValid(bundle)) {
+            BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
+            return bundlePCFs.testBit(PrimaryBlock.BundlePCF.DESTINATION_ENDPOINT_IS_A_SINGLETON);
+        }
+        return false;
     }
     
     /**

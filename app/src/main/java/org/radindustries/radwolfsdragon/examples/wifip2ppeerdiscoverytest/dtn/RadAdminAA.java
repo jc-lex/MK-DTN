@@ -66,11 +66,11 @@ final class RadAdminAA implements Daemon2AdminAA {
                     = signal.detailsIfForAFragment.get(AdminRecord.FragmentField.FRAGMENT_OFFSET);
                 
                 assert fragmentOffset != null;
-                Log.i(LOG_TAG, "Custody transfer for fragment "+ fragmentOffset
+                Log.e(LOG_TAG, "Custody transfer for fragment "+ fragmentOffset
                     +" of bundle "
                     + signal.subjectBundleID + " failed: " + signal.reasonCode);
             } else {
-                Log.i(LOG_TAG, "Custody transfer for bundle "
+                Log.e(LOG_TAG, "Custody transfer for bundle "
                     + signal.subjectBundleID + " failed: " + signal.reasonCode);
             }
         }
@@ -81,8 +81,11 @@ final class RadAdminAA implements Daemon2AdminAA {
             if (daemon.isUs(report.subjectBundleID.sourceEID) && report.bundleDelivered) {
                 daemon.notifyOutboundBundleDelivered(recipient.toString());
             } else {
-                Log.i(LOG_TAG, "Bundle delivery for "
+                Log.e(LOG_TAG, "Bundle delivery for "
                     + report.subjectBundleID + " failed: " + report.reasonCode);
+                daemon.notifyOutboundBundleDeliveryFailed(
+                    recipient.toString(), report.reasonCode.toString()
+                );
             }
         }
     }

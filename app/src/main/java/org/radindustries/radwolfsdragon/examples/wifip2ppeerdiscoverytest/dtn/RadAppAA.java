@@ -134,6 +134,11 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     }
     
     @Override
+    public void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
+        ui.onOutboundBundleDeliveryFailed(recipient, reason);
+    }
+    
+    @Override
     public void notifyPeerListChanged(Set<DTNEndpointID> peers) {
         ArrayList<String> eids = new ArrayList<>();
         for (DTNEndpointID eid : peers) {
@@ -210,8 +215,13 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             
             DTNTextMessage deliveryReportText = new DTNTextMessage();
             deliveryReportText.sender = bundle.primaryBlock.bundleID.sourceEID.toString();
-            deliveryReportText.textMessage
-                = "Message received @ " + statusReport.timeOfDelivery;
+            if (statusReport.bundleDelivered) {
+                deliveryReportText.textMessage
+                    = "Message received @ " + statusReport.timeOfDelivery;
+            } else {
+                deliveryReportText.textMessage
+                    = "Message delivery failed: " + statusReport.reasonCode.toString();
+            }
             deliveryReportText.creationTimestamp
                 = bundle.primaryBlock.bundleID.creationTimestamp;
             deliveryReportText.receivedTimestamp = getReceivedTimestamp(bundle);

@@ -24,6 +24,11 @@ public class RadAdminAATest {
     public static void setUpClass() {
         radAdminAA = new RadAdminAA(new AdminAA2Daemon() {
             @Override
+            public void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
+        
+            }
+    
+            @Override
             public boolean isUs(DTNEndpointID eid) {
                 return false;
             }

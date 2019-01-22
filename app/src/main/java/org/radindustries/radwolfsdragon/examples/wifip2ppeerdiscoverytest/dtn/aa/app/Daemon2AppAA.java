@@ -8,5 +8,6 @@ import java.util.Set;
 public interface Daemon2AppAA {
     void deliver(DTNBundle bundle);
     void notifyOutboundBundleReceived(String recipient);
+    void notifyOutboundBundleDeliveryFailed(String recipient, String reason);
     void notifyPeerListChanged(Set<DTNEndpointID> peers);
 }

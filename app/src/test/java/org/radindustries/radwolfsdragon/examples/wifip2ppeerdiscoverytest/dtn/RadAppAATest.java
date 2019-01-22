@@ -98,6 +98,11 @@ public class RadAppAATest {
         }
     
         @Override
+        public void onOutboundBundleDeliveryFailed(String recipient, String reason) {
+        
+        }
+    
+        @Override
         public void onPeerListChanged(String[] peerList) {
         
         }

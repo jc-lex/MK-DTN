@@ -366,6 +366,11 @@ final class RadDaemon
     }
     
     @Override
+    public void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
+        appAA.notifyOutboundBundleDeliveryFailed(recipient, reason);
+    }
+    
+    @Override
     public void delete(DTNBundleID bundleID) {
         // don't deleteIndex if currentProtocol == EPIDEMIC
     }

@@ -6,13 +6,11 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNTextMessenger;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNTextMessage;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
@@ -25,8 +23,6 @@ public final class BWDTN {
     private static RadAppAA radAppAA = null;
     private static RadAdminAA radAdminAA = null;
     private static RadFragMgr radFragMgr = null;
-    private static RadDiscoverer radDiscoverer = null;
-    private static RadCLA radCLA = null;
     private static RadManager radManager = null;
     private static RadRouter radRouter = null;
     private static RadNECTARRoutingTable radNECTARRoutingTable = null;
@@ -98,8 +94,6 @@ public final class BWDTN {
         if (radDaemon == null) {
             radDaemon = new RadDaemon();
             
-            /*radDaemon.setCLA(getCLA(context));
-            radDaemon.setDiscoverer(getPeerDiscoverer(context));*/
             radDaemon.setCLA(getNearbyService(context));
             radDaemon.setDiscoverer(getNearbyService(context));
             radDaemon.setAdminAA(getAdminAA());
@@ -108,7 +102,7 @@ public final class BWDTN {
             radDaemon.setNECTARRoutingTable(getNECTARRoutingTable(context));
             radDaemon.setPRoPHETRoutingTable(getPRoPHETRoutingTable(context));
             radDaemon.setManagables(new Daemon2Managable[]{
-                /*radDiscoverer, radCLA,*/ radNearby, radPRoPHETRoutingTable
+                radNearby, radPRoPHETRoutingTable
             });
         }
     }
@@ -131,18 +125,6 @@ public final class BWDTN {
     private static Daemon2AdminAA getAdminAA() {
         if (radAppAA == null) radAdminAA = new RadAdminAA(radDaemon);
         return radAdminAA;
-    }
-    
-    private static Daemon2PeerDiscoverer getPeerDiscoverer(@NonNull Context context) {
-        if (radCLA == null) radCLA = new RadCLA(radDaemon, radDaemon, context);
-        else if (radDiscoverer == null)
-            radDiscoverer = new RadDiscoverer(radDaemon, radDaemon, radDaemon, radCLA, context);
-        return radDiscoverer;
-    }
-    
-    private static Daemon2CLA getCLA(@NonNull Context context) {
-        if (radCLA == null) radCLA = new RadCLA(radDaemon, radDaemon, context);
-        return radCLA;
     }
     
     private static Daemon2Router getRouter() {

@@ -52,27 +52,33 @@ public class MKDTNService extends Service implements DTNUI {
         text = String.format(getString(R.string.new_message_text), sender, text);
         notifyUser(Html.fromHtml(text));
     
-//        for (Messenger messenger : theirMessengers) {
-//            Message msg = Message.obtain(null, MSG_GET_RECEIVED_DTN_MESSAGES);
-//            Bundle data = new Bundle();
-//            data.putSerializable(MESSAGES_KEY,
-//                (ArrayList) dtnTextMessenger.getDeliveredTextMessages());
-//            msg.setData(data);
-//            if (messenger != null) {
-//                try {
-//                    messenger.send(msg);
-//                } catch (RemoteException e) {
-//                    e.printStackTrace();
-//                    theirMessengers.remove(messenger);
-//                }
-//            }
-//        }
+        broadcastMessages();
     }
     
     @Override
     public void onOutboundBundleReceived(String recipient) {
         String text = String.format(getString(R.string.delivery_report_text), recipient);
         notifyUser(Html.fromHtml(text));
+    
+        broadcastMessages();
+    }
+    
+    private void broadcastMessages() {
+        for (Messenger messenger : theirMessengers) {
+            Message msg = Message.obtain(null, MSG_GET_RECEIVED_DTN_MESSAGES);
+            Bundle data = new Bundle();
+            data.putSerializable(MESSAGES_KEY,
+                (ArrayList) dtnTextMessenger.getDeliveredTextMessages());
+            msg.setData(data);
+            if (messenger != null) {
+                try {
+                    messenger.send(msg);
+                } catch (RemoteException e) {
+//                    e.printStackTrace();
+                    theirMessengers.remove(messenger);
+                }
+            }
+        }
     }
     
     private static final String MK_DTN_NOTIFICATION_TAG = BuildConfig.APPLICATION_ID;
@@ -126,8 +132,8 @@ public class MKDTNService extends Service implements DTNUI {
         // make notification builder
         NotificationCompat.Builder notificationBuilder = makeNotification(text);
         
-        // create intent for opening main activity
-        Intent intent = new Intent(this, MainActivity.class);
+        // create intent for opening messages activity
+        Intent intent = new Intent(this, MessagesActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
@@ -144,13 +150,17 @@ public class MKDTNService extends Service implements DTNUI {
     public void onPeerListChanged(String[] peerList) {
         peers = peerList;
     
+        broadcastPeers();
+    }
+    
+    private void broadcastPeers() {
         for (Messenger messenger : theirMessengers) {
             Message msg = Message.obtain(null, MSG_GET_PEER_LIST);
-            
+        
             Bundle data = new Bundle();
             data.putStringArray(PEER_LIST_KEY, peers);
             msg.setData(data);
-            
+        
             if (messenger != null) {
                 try {
                     messenger.send(msg);

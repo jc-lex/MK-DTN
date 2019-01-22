@@ -178,11 +178,13 @@ final class RadDaemon
         }
     }
     
-    private List<DTNBundle> deliveredMessages; // temporary storage
+    // temporary storage, for both payloadADUs and status reports
+    private List<DTNBundle> deliveredMessages;
     
     @Override
     public List<DTNBundle> getDeliveredMessages() {
-        return Collections.unmodifiableList(deliveredMessages); // TODO get them from storage
+        // TODO get them from storage, sort by received timestamp DESC
+        return Collections.unmodifiableList(deliveredMessages);
     }
     
 //    private void storeTextMessage(DTNBundle bundle) {

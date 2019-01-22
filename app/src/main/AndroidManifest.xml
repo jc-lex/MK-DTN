@@ -53,6 +53,45 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MainActivity" />
         </activity>
+        <activity
+            android:name=".ui.PeersActivity"
+            android:label="@string/title_activity_peers"
+            android:parentActivityName=".ui.MainActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MainActivity" />
+        </activity>
+        <activity
+            android:name=".ui.MessagesActivity"
+            android:label="@string/title_activity_messages"
+            android:parentActivityName=".ui.MainActivity"
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MainActivity" />
+        </activity>
+        <activity
+            android:name=".ui.NewMessageActivity"
+            android:label="@string/title_activity_new_message"
+            android:parentActivityName=".ui.MessagesActivity"
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MessagesActivity" />
+        </activity>
+        <activity
+            android:name=".ui.ViewMessageActivity"
+            android:label="@string/title_activity_view_message"
+            android:parentActivityName=".ui.MessagesActivity"
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MessagesActivity" />
+        </activity>
     </application>
 
 </manifest>

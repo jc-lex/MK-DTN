@@ -173,6 +173,8 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         return result;
     }
     
+    // TODO take isStatusReport() and isPayloadADU() to DTNUtils
+    
     private boolean isStatusReport(DTNBundle bundle) {
         if (bundle != null) {
             if (bundle.primaryBlock.bundleProcessingControlFlags

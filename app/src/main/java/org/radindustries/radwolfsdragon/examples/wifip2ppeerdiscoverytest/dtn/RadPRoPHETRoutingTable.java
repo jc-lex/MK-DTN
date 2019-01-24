@@ -77,16 +77,15 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public void calculateDPTransitivity(DTNBundle bundle) {
-        if (bundle == null || bundle.canonicalBlocks == null) return;
-        
-        CanonicalBlock prophetCBlock
-            = bundle.canonicalBlocks.remove(DTNBundle.CBlockNumber.PROPHET_ROUTING_INFO);
+        if (!DTNUtils.isValid(bundle)) return;
         
         if (eidProvider.isForUs(bundle) ||
             bundle.primaryBlock.destinationEID.equals(bundle.primaryBlock.custodianEID)) return;
+    
+        CanonicalBlock prophetCBlock
+            = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PROPHET_ROUTING_INFO);
         
-        if (prophetCBlock != null &&
-            prophetCBlock.blockType == CanonicalBlock.BlockType.PROPHET_ROUTING_INFO) {
+        if (DTNUtils.isValidPRoPHETCBlock(prophetCBlock)) {
             
             PRoPHETRoutingInfo info
                 = (PRoPHETRoutingInfo) prophetCBlock.blockTypeSpecificDataFields;

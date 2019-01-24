@@ -1,14 +1,20 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest;
 
 import org.junit.Test;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.Locale;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -60,5 +66,22 @@ public class ExampleUnitTest {
         assertEquals(7, f[8]);
     
 //        ArrayList<int[]> fList = (ArrayList<int[]>) Arrays.asList(f);
+    }
+    
+    @Test
+    public void testSynchronisedInboundQueue() {
+        List<DTNBundle> inboundQueue
+            = Collections.synchronizedList(new LinkedList<DTNBundle>());
+        
+        DTNBundle testBundle = new DTNBundle();
+        
+        assertTrue(inboundQueue.add(testBundle));
+        assertTrue(inboundQueue.add(new DTNBundle()));
+        
+        synchronized (inboundQueue) {
+            ListIterator<DTNBundle> iterator = inboundQueue.listIterator();
+            assertTrue(iterator.hasNext());
+            assertEquals(testBundle, iterator.next());
+        }
     }
 }

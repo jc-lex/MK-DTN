@@ -3,7 +3,7 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.d
 public final class CustodySignal extends AdminRecord {
     
     public enum Reason {
-        NO_OTHER_INFO, DEPLETED_STORAGE, REDUNDANT_RECEPTION
+        NO_OTHER_INFO, DEPLETED_STORAGE, REDUNDANT_RECEPTION, DEPLETED_POWER
     }
     
     public boolean custodyTransferSucceeded;

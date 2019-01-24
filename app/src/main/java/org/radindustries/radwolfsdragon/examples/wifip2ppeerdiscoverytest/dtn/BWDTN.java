@@ -92,7 +92,7 @@ public final class BWDTN {
     
     public static void init(@NonNull Context context) {
         if (radDaemon == null) {
-            radDaemon = new RadDaemon();
+            radDaemon = new RadDaemon(context);
             
             radDaemon.setCLA(getNearbyService(context));
             radDaemon.setDiscoverer(getNearbyService(context));

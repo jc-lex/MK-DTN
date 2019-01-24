@@ -33,7 +33,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     }
     
     @Override
-    public void send(
+    public synchronized void send(
         byte[] message, String recipient, PrimaryBlock.PriorityClass priorityClass,
         PrimaryBlock.LifeTime lifeTime, Daemon2Router.RoutingProtocol routingProtocol
     ) {
@@ -44,7 +44,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         daemon.transmit(bundleToSend, routingProtocol);
     }
     
-    private DTNBundle createUserBundle(
+    private synchronized DTNBundle createUserBundle(
         byte[] message, DTNEndpointID recipient, PrimaryBlock.PriorityClass priorityClass,
         PrimaryBlock.LifeTime lifetime
     ) {
@@ -63,7 +63,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         return userBundle;
     }
     
-    private PrimaryBlock makePrimaryBlock(
+    private synchronized PrimaryBlock makePrimaryBlock(
         DTNEndpointID recipient, PrimaryBlock.PriorityClass priorityClass,
         PrimaryBlock.LifeTime lifeTime
     ) {
@@ -81,7 +81,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         return primaryBlock;
     }
     
-    private BigInteger makeBundlePCFs() {
+    private synchronized BigInteger makeBundlePCFs() {
         
         return BigInteger.ZERO
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_CUSTODY_TRANSFER_REQUESTED)
@@ -92,17 +92,15 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_DELIVERY_REPORT_REQUESTED);
     }
     
-    private CanonicalBlock makePayloadCBlock(byte[] message) {
+    private synchronized CanonicalBlock makePayloadCBlock(byte[] message) {
         CanonicalBlock payloadCBlock = new CanonicalBlock();
         payloadCBlock.blockTypeSpecificDataFields = makePayloadADU(message);
         payloadCBlock.blockType = CanonicalBlock.BlockType.PAYLOAD;
-        payloadCBlock.blockProcessingControlFlags = BigInteger.ZERO.setBit(
-            CanonicalBlock.BlockPCF.BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS
-        );
+        payloadCBlock.mustBeReplicatedInAllFragments = true;
         return payloadCBlock;
     }
     
-    private PayloadADU makePayloadADU(byte[] message) {
+    private synchronized PayloadADU makePayloadADU(byte[] message) {
         
         PayloadADU payload = new PayloadADU();
         payload.ADU = Arrays.copyOf(message, message.length);
@@ -111,7 +109,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     }
     
     @Override
-    public void deliver(DTNBundle bundle) {
+    public synchronized void deliver(DTNBundle bundle) {
         byte[] message;
     
         CanonicalBlock payloadCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PAYLOAD);
@@ -127,17 +125,17 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     }
     
     @Override
-    public void notifyOutboundBundleReceived(String recipient) {
+    public synchronized void notifyOutboundBundleReceived(String recipient) {
         ui.onOutboundBundleReceived(recipient);
     }
     
     @Override
-    public void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
+    public synchronized void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
         ui.onOutboundBundleDeliveryFailed(recipient, reason);
     }
     
     @Override
-    public void notifyPeerListChanged(Set<DTNEndpointID> peers) {
+    public synchronized void notifyPeerListChanged(Set<DTNEndpointID> peers) {
         ArrayList<String> eids = new ArrayList<>();
         for (DTNEndpointID eid : peers) {
             eids.add(eid.toString());
@@ -146,7 +144,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     }
     
     @Override
-    public String[] getPeerList() {
+    public synchronized String[] getPeerList() {
         Set<DTNEndpointID> peers = daemon.getPeerList();
         ArrayList<String> eids = new ArrayList<>();
         for (DTNEndpointID eid : peers) {
@@ -156,12 +154,12 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     }
     
     @Override
-    public String getID() {
+    public synchronized String getID() {
         return daemon.getThisNodezEID().toString();
     }
     
     @Override
-    public List<DTNTextMessage> getDeliveredTextMessages() {
+    public synchronized List<DTNTextMessage> getDeliveredTextMessages() {
         List<DTNTextMessage> result = new ArrayList<>();
         List<DTNBundle> messages = daemon.getDeliveredMessages();
         
@@ -176,7 +174,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         return result;
     }
     
-    private DTNTextMessage getMessageFromStatusReport(DTNBundle bundle) {
+    private synchronized DTNTextMessage getMessageFromStatusReport(DTNBundle bundle) {
         CanonicalBlock adminRecordCBlock
             = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
         
@@ -203,7 +201,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         return new DTNTextMessage();
     }
     
-    private DTNTextMessage getMessageFromPayloadADU(DTNBundle bundle) {
+    private synchronized DTNTextMessage getMessageFromPayloadADU(DTNBundle bundle) {
         CanonicalBlock payloadCBlock
             = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.PAYLOAD);
         if (payloadCBlock != null &&

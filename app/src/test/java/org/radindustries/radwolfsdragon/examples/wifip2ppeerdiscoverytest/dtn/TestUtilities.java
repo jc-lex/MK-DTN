@@ -59,9 +59,7 @@ final class TestUtilities {
         CanonicalBlock payloadCBlock = new CanonicalBlock();
         payloadCBlock.blockTypeSpecificDataFields = makePayloadForUserBundle(message);
         payloadCBlock.blockType = CanonicalBlock.BlockType.PAYLOAD;
-        payloadCBlock.blockProcessingControlFlags = BigInteger.ZERO.setBit(
-            CanonicalBlock.BlockPCF.BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS
-        );
+        payloadCBlock.mustBeReplicatedInAllFragments = true;
         
         DTNBundle userBundle = new DTNBundle();
         userBundle.primaryBlock = primaryBlock;

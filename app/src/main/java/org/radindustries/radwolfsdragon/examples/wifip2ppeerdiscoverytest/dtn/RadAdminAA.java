@@ -24,32 +24,43 @@ final class RadAdminAA implements Daemon2AdminAA {
         = DConstants.MAIN_LOG_TAG + "_" + RadAdminAA.class.getSimpleName();
     
     private AdminAA2Daemon daemon;
+    private DTNBundle bundle;
     
     RadAdminAA(@NonNull AdminAA2Daemon daemon) {
         this.daemon = daemon;
     }
     
     @Override
-    public void processAdminRecord(DTNBundle adminRecord) {
+    public synchronized void processAdminRecord(DTNBundle adminRecord) {
+        bundle = adminRecord;
+        if (!DTNUtils.isAdminRecord(adminRecord)) return;
+    
+        if (!daemon.isForUs(adminRecord)) {
+            DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.add(adminRecord);
+            return;
+        }
+        
         CanonicalBlock adminCBlock
             = adminRecord.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
-        
         assert adminCBlock != null;
+        
         AdminRecord record = (AdminRecord) adminCBlock.blockTypeSpecificDataFields;
+        DTNEndpointID src = adminRecord.primaryBlock.bundleID.sourceEID;
         
         switch (record.recordType) {
             case STATUS_REPORT:
-                processStatusReport((StatusReport) record,
-                    adminRecord.primaryBlock.bundleID.sourceEID);
+                if (DTNUtils.isStatusReport(adminRecord))
+                    processStatusReport((StatusReport) record, src);
                 break;
             case CUSTODY_SIGNAL:
-                processCustodySignal((CustodySignal) record);
+                if (DTNUtils.isCustodySignal(adminRecord))
+                    processCustodySignal((CustodySignal) record);
                 break;
             default: break;
         }
     }
     
-    private void processCustodySignal(CustodySignal signal) {
+    private synchronized void processCustodySignal(CustodySignal signal) {
         if (signal.custodyTransferSucceeded) {
             if (signal.isForAFragment) {
                 String fragmentOffset
@@ -76,9 +87,10 @@ final class RadAdminAA implements Daemon2AdminAA {
         }
     }
     
-    private void processStatusReport(StatusReport report, DTNEndpointID recipient) {
+    private synchronized void processStatusReport(StatusReport report, DTNEndpointID recipient) {
         if (!report.isForAFragment) {
             if (daemon.isUs(report.subjectBundleID.sourceEID) && report.bundleDelivered) {
+                DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
                 daemon.notifyOutboundBundleDelivered(recipient.toString());
             } else {
                 Log.e(LOG_TAG, "Bundle delivery for "
@@ -91,7 +103,7 @@ final class RadAdminAA implements Daemon2AdminAA {
     }
     
     @Override
-    public DTNBundle makeCustodySignal(
+    public synchronized DTNBundle makeCustodySignal(
         DTNBundle userBundle, boolean custodyAccepted, CustodySignal.Reason reasonCode
     ) {
         AdminRecord custodySignalAR = makeCustodySignalForUserBundle(
@@ -101,7 +113,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         return makeAdminRecordBundle(custodySignalAR, userBundle.primaryBlock);
     }
     
-    private AdminRecord makeCustodySignalForUserBundle(
+    private synchronized AdminRecord makeCustodySignalForUserBundle(
         DTNBundle userBundle, boolean custodyAccepted, CustodySignal.Reason reasonCode
     ) {
         CustodySignal signal = new CustodySignal();
@@ -115,7 +127,7 @@ final class RadAdminAA implements Daemon2AdminAA {
     }
     
     @Override
-    public DTNBundle makeStatusReport(
+    public synchronized DTNBundle makeStatusReport(
         DTNBundle userBundle, boolean bundleDelivered, StatusReport.Reason reasonCode
     ) {
         AdminRecord statusReportAR = makeStatusReportForUserBundle(
@@ -125,7 +137,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         return makeAdminRecordBundle(statusReportAR, userBundle.primaryBlock);
     }
     
-    private AdminRecord makeStatusReportForUserBundle(
+    private synchronized AdminRecord makeStatusReportForUserBundle(
         DTNBundle userBundle, boolean bundleDelivered, StatusReport.Reason reasonCode
     ) {
         StatusReport report = new StatusReport();
@@ -138,7 +150,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         return processOtherAdminRecordDetails(userBundle, report);
     }
     
-    private AdminRecord processOtherAdminRecordDetails(
+    private synchronized AdminRecord processOtherAdminRecordDetails(
         DTNBundle userBundle, AdminRecord adminRecord
     ) {
         adminRecord.isForAFragment = userBundle.primaryBlock.bundleProcessingControlFlags
@@ -173,7 +185,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         return adminRecord;
     }
     
-    private DTNBundle makeAdminRecordBundle(
+    private synchronized DTNBundle makeAdminRecordBundle(
         AdminRecord adminRecord, PrimaryBlock userBundlePrimaryBlock
     ) {
         PrimaryBlock primaryBlock = makeAdminRecordPrimaryBlock(userBundlePrimaryBlock);
@@ -191,7 +203,9 @@ final class RadAdminAA implements Daemon2AdminAA {
         return adminBundle;
     }
     
-    private PrimaryBlock makeAdminRecordPrimaryBlock(PrimaryBlock userBundlePrimaryBlock) {
+    private synchronized PrimaryBlock makeAdminRecordPrimaryBlock(
+        PrimaryBlock userBundlePrimaryBlock
+    ) {
         PrimaryBlock primaryBlock = new PrimaryBlock();
         
         primaryBlock.bundleProcessingControlFlags = makeBundlePCFsForAdminRecord();
@@ -206,17 +220,17 @@ final class RadAdminAA implements Daemon2AdminAA {
         return primaryBlock;
     }
     
-    private BigInteger makeBundlePCFsForAdminRecord() {
+    private synchronized BigInteger makeBundlePCFsForAdminRecord() {
         return BigInteger.ZERO
             .setBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)
             .setBit(PrimaryBlock.BundlePCF.BUNDLE_MUST_NOT_BE_FRAGMENTED)
             .setBit(PrimaryBlock.BundlePCF.DESTINATION_ENDPOINT_IS_A_SINGLETON);
     }
     
-    private CanonicalBlock makeAdminCBlock(AdminRecord adminRecord) {
+    private synchronized CanonicalBlock makeAdminCBlock(AdminRecord adminRecord) {
         CanonicalBlock adminCBlock = new CanonicalBlock();
         adminCBlock.blockType = CanonicalBlock.BlockType.ADMIN_RECORD;
-        adminCBlock.blockProcessingControlFlags = BigInteger.ZERO; //for now
+        adminCBlock.mustBeReplicatedInAllFragments = false;
         adminCBlock.blockTypeSpecificDataFields = adminRecord;
         return adminCBlock;
     }

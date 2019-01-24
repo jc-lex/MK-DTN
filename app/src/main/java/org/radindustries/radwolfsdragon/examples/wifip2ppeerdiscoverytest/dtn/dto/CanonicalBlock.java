@@ -1,7 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
 import java.io.Serializable;
-import java.math.BigInteger;
 
 public final class CanonicalBlock implements Serializable {
     
@@ -9,25 +8,17 @@ public final class CanonicalBlock implements Serializable {
         PAYLOAD, ADMIN_RECORD, AGE, NECTAR_ROUTING_INFO, PROPHET_ROUTING_INFO
     }
     
-    public interface BlockPCF {
-        int BLOCK_MUST_BE_REPLICATED_IN_ALL_FRAGMENTS = 0;
-        int TRANSMIT_STATUS_REPORT_IF_BLOCK_CANNOT_BE_PROCESSED = 1;
-        int DELETE_BUNDLE_IF_BLOCK_CANNOT_BE_PROCESSED = 2;
-        int LAST_BLOCK = 3;
-        int DISCARD_BLOCK_IF_IT_CANNOT_BE_PROCESSED = 4;
-    }
-    
     public BlockType blockType;
-    public BigInteger blockProcessingControlFlags;
+    public boolean mustBeReplicatedInAllFragments;
     public BlockTypeSpecificDataFields blockTypeSpecificDataFields;
     
     @Override
     public String toString() {
-        return "CanonicalBlock{"
-            + "blockType=" + blockType
-            + ",blockProcessingControlFlags=" + blockProcessingControlFlags.toString(2)
-            + ",blockTypeSpecificDataFields=" + blockTypeSpecificDataFields
-            + '}';
+        return "CanonicalBlock{" +
+            "blockType=" + blockType +
+            ",mustBeReplicatedInAllFragments=" + mustBeReplicatedInAllFragments +
+            ",blockTypeSpecificDataFields=" + blockTypeSpecificDataFields +
+            '}';
     }
     
     @Override
@@ -37,15 +28,15 @@ public final class CanonicalBlock implements Serializable {
         
         CanonicalBlock that = (CanonicalBlock) o;
         
+        if (mustBeReplicatedInAllFragments != that.mustBeReplicatedInAllFragments) return false;
         if (blockType != that.blockType) return false;
-        if (!blockProcessingControlFlags.equals(that.blockProcessingControlFlags)) return false;
         return blockTypeSpecificDataFields.equals(that.blockTypeSpecificDataFields);
     }
     
     @Override
     public int hashCode() {
         int result = blockType.hashCode();
-        result = 31 * result + blockProcessingControlFlags.hashCode();
+        result = 31 * result + (mustBeReplicatedInAllFragments ? 1 : 0);
         result = 31 * result + blockTypeSpecificDataFields.hashCode();
         return result;
     }

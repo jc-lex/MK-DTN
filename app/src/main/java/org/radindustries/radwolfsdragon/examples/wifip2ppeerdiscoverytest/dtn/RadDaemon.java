@@ -1,5 +1,12 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
+import android.util.Log;
+
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
@@ -14,11 +21,16 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.NECTARRoutingInfo;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PRoPHETRoutingInfo;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
@@ -26,7 +38,9 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ro
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -56,11 +70,12 @@ final class RadDaemon
     private static final DTNEndpointID BUNDLE_NODE_EID = makeEID(); //from persistent storage
     
     private Daemon2Router.RoutingProtocol currentProtocol;
-    private ExecutorService bundleTransmitter;
+    private Thread bundleTransmitter;
     private ExecutorService bundleProcessor;
     
-    RadDaemon() {
-        this.deliveredMessages = new ArrayList<>();
+    RadDaemon(@NonNull Context context) {
+        this.context = context;
+//        this.deliveredMessages = new ArrayList<>();
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
     }
     
@@ -108,10 +123,10 @@ final class RadDaemon
     @Override
     public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
         currentProtocol = routingProtocol;
-    
-        // TODO fragment & store bundle(s)
         
-        bundleTransmitter.submit(new TransmitOutboundBundleTask(bundle));
+        DTNBundle[] fragments = fragmentManager.fragment(bundle);
+        DummyStorage.OUTBOUND_BUNDLES_QUEUE.addAll(Arrays.asList(fragments));
+//        bundleTransmitter.submit(new TransmitOutboundBundleTask(bundle));
         
 //        // proactive fragmentation
 //        DTNBundle[] fragments = fragmentManager.fragment(bundle);
@@ -120,27 +135,39 @@ final class RadDaemon
 //            bundleTransmitter.submit(new TransmitOutboundBundleTask(fragment));
     }
     
-    private class TransmitOutboundBundleTask implements Runnable {
+    private class TransmitOutboundBundlesTask implements Runnable {
         private DTNBundle bundle;
         private Set<DTNBundleNode> nextHops;
     
-        private TransmitOutboundBundleTask(DTNBundle bundle) {
-            this.bundle = bundle;
+        private TransmitOutboundBundlesTask() {
+            bundle = null;
             nextHops = new HashSet<>();
         }
     
         @Override
         public void run() {
-            do {
-                nextHops.addAll(
-                    router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
-                );
-            } while (nextHops.isEmpty());
-    
-            // update the custodian EID prior to transmission
-            bundle.primaryBlock.custodianEID = getThisNodezEID();
-            
-            cla.transmit(bundle, nextHops);
+            int head = 0;
+            Log.i(LOG_TAG, "transmitting...");
+            while (!Thread.interrupted()) {
+                // get what to send
+                if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty()) {
+                    bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
+                } else if (!DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.isEmpty()) {
+                    bundle = DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.remove(head);
+                } else continue;
+        
+                // get who to send it to
+                do {
+                    nextHops.addAll(
+                        router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
+                    );
+                } while (nextHops.isEmpty());
+        
+                // update the custodian EID prior to transmission
+                bundle.primaryBlock.custodianEID = getThisNodezEID();
+        
+                cla.transmit(bundle, nextHops);
+            }
         }
     }
     
@@ -175,17 +202,152 @@ final class RadDaemon
         @Override
         public void run() {
 //            storeTextMessage(bundle);
-            if (deliveredMessages.add(bundle)) appAA.deliver(bundle);
+//            if (deliveredMessages.add(bundle)) appAA.deliver(bundle);
+            if (!DTNUtils.forSingletonDestination(bundle)) return;
+            
+            if (!(keepNECTARBundle(bundle) | keepPRoPHETBundle(bundle))) return;
+            
+            if (DTNUtils.isAdminRecord(bundle)) adminAA.processAdminRecord(bundle);
+            
+            else if (DTNUtils.isUserData(bundle)) {
+                
+                if (isForUs(bundle)) {
+                    if (DTNUtils.isFragment(bundle)) {
+                        DummyStorage.DELIVERED_FRAGMENTS_QUEUE.add(bundle);
+                        
+                        DTNBundle[] similarFragments
+                            = getSimilarFragments(bundle.primaryBlock.bundleID);
+                        
+                        if (fragmentManager.defragmentable(similarFragments)) {
+                            DTNBundle wholeBundle
+                                = fragmentManager.defragment(similarFragments);
+                            insertNewMessage(wholeBundle);
+                        }
+                    } else {
+                        insertNewMessage(bundle);
+                    }
+                } else {
+                    boolean weCan = canAcceptCustody(bundle);
+                    if (weCan) DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.add(bundle);
+                    makeCustodySignal(bundle, weCan);
+                }
+            }
+        }
+        
+        private void insertNewMessage(DTNBundle bundle) {
+            DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
+            appAA.deliver(bundle);
+    
+            makeStatusReport(bundle);
+        }
+        
+        private void makeStatusReport(DTNBundle bundle) {
+            if (DTNUtils.isBundleDeliveryReportRequested(bundle)) {
+                DTNBundle statusReport = adminAA.makeStatusReport(
+                    bundle, true, StatusReport.Reason.NO_OTHER_INFO
+                );
+                
+                DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(statusReport);
+            }
+        }
+        
+        private void makeCustodySignal(DTNBundle bundle, boolean canAcceptCustody) {
+            if (DTNUtils.isCustodyTransferRequested(bundle)) {
+                DTNBundle custodySignal;
+                if (canAcceptCustody) {
+                    custodySignal = adminAA.makeCustodySignal(
+                        bundle, true, CustodySignal.Reason.NO_OTHER_INFO
+                    );
+                } else {
+                    custodySignal = adminAA.makeCustodySignal(
+                        bundle, false, getCustodySignalReason()
+                    );
+                }
+                
+                DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(custodySignal);
+            }
+        }
+        
+        private DTNBundle[] getSimilarFragments(DTNBundleID id) {
+            List<DTNBundle> similarFragments = new ArrayList<>();
+            
+            synchronized (DummyStorage.DELIVERED_FRAGMENTS_QUEUE) {
+                for (DTNBundle bundle : DummyStorage.DELIVERED_FRAGMENTS_QUEUE) {
+                    if (bundle.primaryBlock.bundleID.equals(id)) similarFragments.add(bundle);
+                }
+            }
+            
+            return similarFragments.toArray(new DTNBundle[0]);
         }
     }
     
     // temporary storage, for both payloadADUs and status reports
-    private List<DTNBundle> deliveredMessages;
+//    private List<DTNBundle> deliveredMessages;
     
     @Override
     public List<DTNBundle> getDeliveredMessages() {
         // TODO get them from storage, sort by received timestamp DESC
-        return Collections.unmodifiableList(deliveredMessages);
+        return Collections.unmodifiableList(DummyStorage.DELIVERED_BUNDLES_QUEUE);
+    }
+    
+    private Context context;
+    private static final float MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE = 35.0F;
+    private static final float MKDTN_MIN_FREE_SPACE_PERCENTAGE = 35.0F;
+    private static final String LOG_TAG
+        = DConstants.MAIN_LOG_TAG + "_" + RadDaemon.class.getSimpleName();
+    private synchronized boolean canAcceptCustody(DTNBundle bundle) {
+        
+        // BATTERY LEVEL
+        IntentFilter batteryIntentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent batteryStatus = context.registerReceiver(null, batteryIntentFilter);
+        if (batteryStatus != null) {
+            int current = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int maximum = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            
+            float batteryLevelPercentage = (current / (float) maximum) * 100;
+            Log.i(LOG_TAG, "Battery level = " + batteryLevelPercentage);
+            if (batteryLevelPercentage < MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE) {
+                setCustodySignalReason(CustodySignal.Reason.DEPLETED_POWER);
+                return false;
+            }
+        }
+        
+        // DISK SPACE
+        long freeSpace // getFilesDir() == internal storage directory for your app
+            = new File(context.getFilesDir().getAbsoluteFile().toString()).getFreeSpace();
+        long totalSpace
+            = new File(context.getFilesDir().getAbsoluteFile().toString()).getTotalSpace();
+        
+        float freeSpacePercentage = (freeSpace / (float) totalSpace) * 100;
+        Log.i(LOG_TAG, "Free space = " + freeSpacePercentage);
+        if (freeSpacePercentage < MKDTN_MIN_FREE_SPACE_PERCENTAGE) {
+            setCustodySignalReason(CustodySignal.Reason.DEPLETED_STORAGE);
+            return false;
+        }
+        
+        // REDUNDANT RECEPTION
+        if (DummyStorage.OUTBOUND_BUNDLES_QUEUE.contains(bundle) ||
+            DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.contains(bundle) ||
+            DummyStorage.DELIVERED_BUNDLES_QUEUE.contains(bundle) ||
+            DummyStorage.DELIVERED_FRAGMENTS_QUEUE.contains(bundle)
+        ) {
+            Log.i(LOG_TAG, "redundant reception: " + bundle);
+            setCustodySignalReason(CustodySignal.Reason.REDUNDANT_RECEPTION);
+            return false;
+        }
+        
+        setCustodySignalReason(CustodySignal.Reason.NO_OTHER_INFO);
+        return true;
+    }
+    
+    private CustodySignal.Reason custodySignalReason;
+    
+    private synchronized CustodySignal.Reason getCustodySignalReason() {
+        return custodySignalReason;
+    }
+    
+    private synchronized void setCustodySignalReason(CustodySignal.Reason reason) {
+        custodySignalReason = reason;
     }
     
 //    private void storeTextMessage(DTNBundle bundle) {
@@ -248,15 +410,16 @@ final class RadDaemon
     }
     
     private boolean startExecutors() {
-        bundleTransmitter = Executors.newSingleThreadExecutor();
+        bundleTransmitter = new Thread(new TransmitOutboundBundlesTask());
+        bundleTransmitter.start();
 //        if (waitingBundleTransmissionTasks != null)
 //            for (Runnable task : waitingBundleTransmissionTasks) bundleTransmitter.submit(task);
         
-        bundleProcessor = Executors.newSingleThreadExecutor();
+        bundleProcessor = Executors.newCachedThreadPool();
 //        if (waitingBundleProcessingTasks != null)
 //            for (Runnable task : waitingBundleProcessingTasks) bundleProcessor.submit(task);
         
-        return true;
+        return bundleTransmitter.isAlive();
     }
     
     @Override
@@ -273,18 +436,19 @@ final class RadDaemon
     private boolean stopExecutors() {
         if (bundleTransmitter != null && bundleProcessor != null) {
             
-            bundleTransmitter.shutdown();
+//            bundleTransmitter.shutdown();
+            bundleTransmitter.interrupt();
             bundleProcessor.shutdown();
     
-            bundleTransmitter.shutdownNow();
+//            bundleTransmitter.shutdownNow();
             bundleProcessor.shutdownNow();
             
 //            waitingBundleTransmissionTasks = bundleTransmitter.shutdownNow();
 //            waitingBundleProcessingTasks = bundleProcessor.shutdownNow();
             
             try {
-                return
-                    bundleTransmitter.awaitTermination(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS) &&
+                return bundleTransmitter.isInterrupted() &&
+//                    bundleTransmitter.awaitTermination(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS) &&
                     bundleProcessor.awaitTermination(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 return false;
@@ -305,8 +469,9 @@ final class RadDaemon
             if (primaryBlock != null) {
                 DTNEndpointID dest = primaryBlock.destinationEID;
                 return dest != null && dest.equals(BUNDLE_NODE_EID);
-            } else return false;
-        } else return false;
+            }
+        }
+        return false;
     }
     
     @Override
@@ -318,9 +483,10 @@ final class RadDaemon
                 if (bundleID != null) {
                     DTNEndpointID src = bundleID.sourceEID;
                     return src != null && src.equals(BUNDLE_NODE_EID);
-                } else return false;
-            } else return false;
-        } else return false;
+                }
+            }
+        }
+        return false;
     }
     
     @Override
@@ -343,6 +509,42 @@ final class RadDaemon
     @Override
     public float getMeetingFrequency(DTNEndpointID nodeEID) {
         return nectarRoutingTable.getMeetingFrequency(nodeEID);
+    }
+    
+    private synchronized boolean keepNECTARBundle(DTNBundle bundle) {
+        if (!DTNUtils.isValid(bundle)) return false;
+    
+        CanonicalBlock nectarCBlock
+            = bundle.canonicalBlocks.remove(DTNBundle.CBlockNumber.NECTAR_ROUTING_INFO);
+    
+        if (DTNUtils.isValidNECTARCBlock(nectarCBlock)) {
+        
+            NECTARRoutingInfo info = (NECTARRoutingInfo) nectarCBlock.blockTypeSpecificDataFields;
+            float freqCustodian2Destination = info.meetingFrequency;
+        
+            float freqMe2Destination = getMeetingFrequency(bundle.primaryBlock.destinationEID);
+        
+            return freqMe2Destination > freqCustodian2Destination;
+        }
+        return true;
+    }
+    
+    private synchronized boolean keepPRoPHETBundle(DTNBundle bundle) {
+        if (!DTNUtils.isValid(bundle)) return false;
+        
+        CanonicalBlock prophetCBlock
+            = bundle.canonicalBlocks.remove(DTNBundle.CBlockNumber.PROPHET_ROUTING_INFO);
+        
+        if (DTNUtils.isValidPRoPHETCBlock(prophetCBlock)) {
+    
+            PRoPHETRoutingInfo info = (PRoPHETRoutingInfo) prophetCBlock.blockTypeSpecificDataFields;
+            float probCustodian2Destination = info.deliveryPredictability;
+            
+            float probMe2Destination = getDeliveryPredictability(bundle.primaryBlock.destinationEID);
+            
+            return probMe2Destination > probCustodian2Destination;
+        }
+        return true;
     }
     
     @Override
@@ -372,11 +574,66 @@ final class RadDaemon
     
     @Override
     public void delete(DTNBundleID bundleID) {
-        // don't deleteIndex if currentProtocol == EPIDEMIC
+        // don't delete if currentProtocol == EPIDEMIC
+        if (currentProtocol != Daemon2Router.RoutingProtocol.EPIDEMIC) {
+            synchronized (DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
+                for (DTNBundle bundle : DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
+                    if (bundle.primaryBlock.bundleID.equals(bundleID))
+                        DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(bundle);
+                }
+            }
+            synchronized (DummyStorage.INTERMEDIATE_BUNDLES_QUEUE) {
+                for (DTNBundle bundle : DummyStorage.INTERMEDIATE_BUNDLES_QUEUE) {
+                    if (bundle.primaryBlock.bundleID.equals(bundleID))
+                        DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.remove(bundle);
+                }
+            }
+        }
     }
     
     @Override
     public void delete(DTNBundleID bundleID, int fragmentOffset) {
-        // don't deleteIndex if currentProtocol == EPIDEMIC
+        // don't delete if currentProtocol == EPIDEMIC
+        if (currentProtocol != Daemon2Router.RoutingProtocol.EPIDEMIC) {
+            synchronized (DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
+                for (DTNBundle bundle : DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
+                    if (DTNUtils.isFragment(bundle)) {
+                        
+                        String fragOffsetStr
+                            = bundle.primaryBlock.detailsIfFragment
+                            .get(PrimaryBlock.FragmentField.FRAGMENT_OFFSET);
+                        
+                        int fragOffset;
+                        if (fragOffsetStr != null) fragOffset = Integer.parseInt(fragOffsetStr);
+                        else return;
+                        
+                        if (bundle.primaryBlock.bundleID.equals(bundleID) &&
+                            fragmentOffset == fragOffset)
+                            
+                            DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(bundle);
+                    }
+                }
+            }
+    
+            synchronized (DummyStorage.INTERMEDIATE_BUNDLES_QUEUE) {
+                for (DTNBundle bundle : DummyStorage.INTERMEDIATE_BUNDLES_QUEUE) {
+                    if (DTNUtils.isFragment(bundle)) {
+                
+                        String fragOffsetStr
+                            = bundle.primaryBlock.detailsIfFragment
+                            .get(PrimaryBlock.FragmentField.FRAGMENT_OFFSET);
+                
+                        int fragOffset;
+                        if (fragOffsetStr != null) fragOffset = Integer.parseInt(fragOffsetStr);
+                        else return;
+                
+                        if (bundle.primaryBlock.bundleID.equals(bundleID) &&
+                            fragmentOffset == fragOffset)
+                    
+                            DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.remove(bundle);
+                    }
+                }
+            }
+        }
     }
 }

@@ -17,12 +17,16 @@ final class RadFragMgr implements Daemon2FragmentManager {
     RadFragMgr() {}
     
     @Override
-    public DTNBundle[] fragment(DTNBundle bundleToFragment) {
+    public synchronized DTNBundle[] fragment(DTNBundle bundleToFragment) {
         return fragment(bundleToFragment, DEFAULT_FRAGMENT_PAYLOAD_SIZE_IN_BYTES);
     }
     
     @Override
-    public DTNBundle[] fragment(DTNBundle bundleToFragment, int fragmentPayloadSizeInBytes) {
+    public synchronized DTNBundle[] fragment(
+        DTNBundle bundleToFragment, int fragmentPayloadSizeInBytes
+    ) {
+        if (!DTNUtils.isUserData(bundleToFragment)) return new DTNBundle[]{bundleToFragment};
+        
         if (bundleToFragment.primaryBlock.bundleProcessingControlFlags
             .testBit(PrimaryBlock.BundlePCF.BUNDLE_MUST_NOT_BE_FRAGMENTED) ||
             bundleToFragment.primaryBlock.bundleProcessingControlFlags
@@ -67,7 +71,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         return fragments;
     }
     
-    private DTNBundle makeFragment(
+    private synchronized DTNBundle makeFragment(
         DTNBundle bundleToFragment, int fragmentOffset, int totalADULength, int start, int stop
     ) {
         PrimaryBlock fragmentPrimaryBlock = generateFragmentPrimaryBlock(
@@ -92,7 +96,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         return fragment;
     }
     
-    private PrimaryBlock generateFragmentPrimaryBlock(
+    private synchronized PrimaryBlock generateFragmentPrimaryBlock(
         DTNBundle bundleToFragment, int fragmentOffset, int totalADULength
     ) {
         PrimaryBlock fragmentPrimaryBlock = new PrimaryBlock();
@@ -135,7 +139,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         return fragmentPrimaryBlock;
     }
     
-    private CanonicalBlock generateFragmentAgeBlock(DTNBundle bundleToFragment) {
+    private synchronized CanonicalBlock generateFragmentAgeBlock(DTNBundle bundleToFragment) {
         CanonicalBlock bundleAgeCBlock = bundleToFragment.canonicalBlocks
             .get(DTNBundle.CBlockNumber.AGE);
         
@@ -147,14 +151,13 @@ final class RadFragMgr implements Daemon2FragmentManager {
         
         fragmentAgeCBlock.blockTypeSpecificDataFields = fragmentAgeBlock;
         fragmentAgeCBlock.blockType = CanonicalBlock.BlockType.AGE;
-        fragmentAgeCBlock.blockProcessingControlFlags = new BigInteger(
-            bundleAgeCBlock.blockProcessingControlFlags.toString()
-        );
+        fragmentAgeCBlock.mustBeReplicatedInAllFragments
+            = bundleAgeCBlock.mustBeReplicatedInAllFragments;
         
         return fragmentAgeCBlock;
     }
     
-    private CanonicalBlock generateFragmentPayloadBlock(
+    private synchronized CanonicalBlock generateFragmentPayloadBlock(
         DTNBundle bundleToFragment, int start, int stop
     ) {
         CanonicalBlock bundlePayloadCBlock = bundleToFragment.canonicalBlocks.get(
@@ -164,8 +167,8 @@ final class RadFragMgr implements Daemon2FragmentManager {
         
         CanonicalBlock payloadCBlock = new CanonicalBlock();
         payloadCBlock.blockType = CanonicalBlock.BlockType.PAYLOAD;
-        payloadCBlock.blockProcessingControlFlags
-            = new BigInteger(bundlePayloadCBlock.blockProcessingControlFlags.toString());
+        payloadCBlock.mustBeReplicatedInAllFragments
+            = bundlePayloadCBlock.mustBeReplicatedInAllFragments;
         
         PayloadADU bundlePayload
             = (PayloadADU) bundlePayloadCBlock.blockTypeSpecificDataFields;
@@ -178,7 +181,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
     }
     
     @Override
-    public DTNBundle defragment(DTNBundle[] fragmentsToCombine) {
+    public synchronized DTNBundle defragment(DTNBundle[] fragmentsToCombine) {
         //template
         DTNBundle first = fragmentsToCombine[0];
     
@@ -202,7 +205,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         return originalBundle;
     }
     
-    private PrimaryBlock generateDefragmentedBundlePrimaryBlock(DTNBundle fragment) {
+    private synchronized PrimaryBlock generateDefragmentedBundlePrimaryBlock(DTNBundle fragment) {
         PrimaryBlock pbForOriginalBundle = new PrimaryBlock();
         PrimaryBlock fragPrimaryBlock = fragment.primaryBlock;
         
@@ -233,38 +236,41 @@ final class RadFragMgr implements Daemon2FragmentManager {
         return pbForOriginalBundle;
     }
     
-    private CanonicalBlock generateDefragmentedBundleAgeCBlock(DTNBundle templateFragment) {
+    private synchronized CanonicalBlock generateDefragmentedBundleAgeCBlock(
+        DTNBundle templateFragment
+    ) {
         CanonicalBlock ageCBlock = new CanonicalBlock();
         CanonicalBlock fragAgeCBlock
             = templateFragment.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         
         assert fragAgeCBlock != null;
         ageCBlock.blockType = CanonicalBlock.BlockType.AGE;
-        ageCBlock.blockProcessingControlFlags
-            = new BigInteger(fragAgeCBlock.blockProcessingControlFlags.toString());
+        ageCBlock.mustBeReplicatedInAllFragments
+            = fragAgeCBlock.mustBeReplicatedInAllFragments;
         ageCBlock.blockTypeSpecificDataFields
             = AgeBlock.from((AgeBlock) fragAgeCBlock.blockTypeSpecificDataFields);
         
         return ageCBlock;
     }
     
-    private CanonicalBlock generateDefragmentedBundlePayloadCBlock(DTNBundle[] fragmentsToCombine) {
+    private synchronized CanonicalBlock generateDefragmentedBundlePayloadCBlock(
+        DTNBundle[] fragmentsToCombine
+    ) {
         CanonicalBlock payloadCBlock = new CanonicalBlock();
         CanonicalBlock fragPayloadCBlock = fragmentsToCombine[0].canonicalBlocks
             .get(DTNBundle.CBlockNumber.PAYLOAD);
         
         assert fragPayloadCBlock != null;
         payloadCBlock.blockType = CanonicalBlock.BlockType.PAYLOAD;
-        payloadCBlock.blockProcessingControlFlags
-            = new BigInteger(fragPayloadCBlock
-            .blockProcessingControlFlags.toString());
+        payloadCBlock.mustBeReplicatedInAllFragments
+            = fragPayloadCBlock.mustBeReplicatedInAllFragments;
         payloadCBlock.blockTypeSpecificDataFields
             = combineFragmentADUs(fragmentsToCombine, fragPayloadCBlock);
         
         return payloadCBlock;
     }
     
-    private PayloadADU combineFragmentADUs(
+    private synchronized PayloadADU combineFragmentADUs(
         DTNBundle[] fragmentsToCombine, CanonicalBlock firstFragPayloadCBlock
     ) {
         PayloadADU originalADU = new PayloadADU();
@@ -284,7 +290,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         return originalADU;
     }
     
-    private byte[] concatenateData(byte[] augend, byte[] addend) {
+    private synchronized byte[] concatenateData(byte[] augend, byte[] addend) {
         int len = augend.length + addend.length;
         byte[] result = new byte[len];
         
@@ -298,12 +304,12 @@ final class RadFragMgr implements Daemon2FragmentManager {
     }
     
     @Override
-    public boolean defragmentable(DTNBundle[] fragmentsToCombine) {
+    public synchronized boolean defragmentable(DTNBundle[] fragmentsToCombine) {
         return fromSameDTNBundle(fragmentsToCombine)
             && matchSizeOfOriginalDTNBundle(fragmentsToCombine);
     }
     
-    private boolean fromSameDTNBundle(DTNBundle[] fragments) {
+    private synchronized boolean fromSameDTNBundle(DTNBundle[] fragments) {
         boolean result = true;
         DTNBundle first = fragments[0];
         
@@ -326,7 +332,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
         return result;
     }
     
-    private boolean matchSizeOfOriginalDTNBundle(DTNBundle[] fragments) {
+    private synchronized boolean matchSizeOfOriginalDTNBundle(DTNBundle[] fragments) {
         
         String aduLength = fragments[0].primaryBlock.detailsIfFragment
             .get(PrimaryBlock.FragmentField.TOTAL_ADU_LENGTH);

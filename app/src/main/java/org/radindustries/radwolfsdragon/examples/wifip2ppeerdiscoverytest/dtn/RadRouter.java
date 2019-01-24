@@ -65,7 +65,7 @@ final class RadRouter implements Daemon2Router {
         
         CanonicalBlock prophetCBlock = new CanonicalBlock();
         prophetCBlock.blockType = CanonicalBlock.BlockType.PROPHET_ROUTING_INFO;
-        prophetCBlock.blockProcessingControlFlags = DTNUtils.makeRoutingInfoBlockPCFs();
+        prophetCBlock.mustBeReplicatedInAllFragments = true;
         prophetCBlock.blockTypeSpecificDataFields = prophetRoutingInfo;
         
         bundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PROPHET_ROUTING_INFO, prophetCBlock);
@@ -80,7 +80,7 @@ final class RadRouter implements Daemon2Router {
     
         CanonicalBlock nectarCBlock = new CanonicalBlock();
         nectarCBlock.blockType = CanonicalBlock.BlockType.NECTAR_ROUTING_INFO;
-        nectarCBlock.blockProcessingControlFlags = DTNUtils.makeRoutingInfoBlockPCFs();
+        nectarCBlock.mustBeReplicatedInAllFragments = true;
         nectarCBlock.blockTypeSpecificDataFields = nectarRoutingInfo;
         
         bundle.canonicalBlocks.put(DTNBundle.CBlockNumber.NECTAR_ROUTING_INFO, nectarCBlock);

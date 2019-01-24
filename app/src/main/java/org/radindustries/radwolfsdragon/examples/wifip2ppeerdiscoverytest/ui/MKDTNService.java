@@ -25,7 +25,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.BW
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNTextMessenger;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
@@ -204,8 +203,14 @@ public class MKDTNService extends Service implements DTNUI {
     public static final String MESSAGES_KEY = "messages";
     public static final String DTN_CLIENT_ID_KEY = "dtnClientID";
     
-    private final Messenger ourMessenger = new Messenger(new UIMessageHandler());
+    private final Messenger ourMessenger = new Messenger(new UIMessageHandler(this));
     private static class UIMessageHandler extends Handler {
+        private Context context;
+    
+        private UIMessageHandler(Context context) {
+            this.context = context;
+        }
+    
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
@@ -272,24 +277,29 @@ public class MKDTNService extends Service implements DTNUI {
         }
         
         private void sendOutboundMessage(Bundle messageBundle) {
-            String recipient = messageBundle.getString(RECIPIENT_KEY, DTNEndpointID.NULL_EID);
+            String recipient = messageBundle.getString(RECIPIENT_KEY,
+                context.getString(R.string.mkdtn_null_endpoint_id));
             if (recipient.equals(dtnClient.getID())) return;
             
-            String text = messageBundle.getString(TEXT_KEY, "hi");
+            String text = messageBundle.getString(TEXT_KEY,
+                context.getString(R.string.mkdtn_hello_message));
             
             Daemon2Router.RoutingProtocol protocol
                 = Daemon2Router.RoutingProtocol.valueOf(
-                messageBundle.getString(PROTOCOL_KEY, "PER_HOP")
+                messageBundle.getString(PROTOCOL_KEY,
+                    context.getString(R.string.pref_default_routing_protocol))
             );
             
             PrimaryBlock.PriorityClass priority
                 = PrimaryBlock.PriorityClass.valueOf(
-                messageBundle.getString(PRIORITY_KEY, "NORMAL")
+                messageBundle.getString(PRIORITY_KEY,
+                    context.getString(R.string.pref_default_priority_class))
             );
             
             PrimaryBlock.LifeTime lifeTime
                 = PrimaryBlock.LifeTime.valueOf(
-                messageBundle.getString(LIFETIME_KEY, "THREE_DAYS")
+                messageBundle.getString(LIFETIME_KEY,
+                    context.getString(R.string.pref_default_lifetime))
             );
             
             dtnClient.send(

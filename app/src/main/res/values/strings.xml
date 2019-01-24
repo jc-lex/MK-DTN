@@ -348,4 +348,5 @@
     <string name="bundle_delivery_failed_notification_message">
         &lt;b>%1$s&lt;/b> Message delivery failed: %2$s
     </string>
+    <string name="mkdtn_null_endpoint_id">mkdtn:null</string>
 </resources>

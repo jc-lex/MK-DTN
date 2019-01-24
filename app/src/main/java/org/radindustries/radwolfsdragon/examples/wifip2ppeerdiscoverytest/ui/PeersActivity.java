@@ -19,7 +19,6 @@ import android.widget.TextView;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,16 +33,21 @@ public class PeersActivity extends AppCompatActivity implements AdapterView.OnIt
         = DConstants.MAIN_LOG_TAG + "_" + PeersActivity.class.getSimpleName();
     
     private static ArrayAdapter<String> peersAdapter;
-    private static String dtnClientID = DTNEndpointID.NULL_EID;
+    private static String dtnClientID = "";
     private static String ID_STR = "*** %s ***";
     
     private static ArrayList<String> dataSet = new ArrayList<>();
     
     private Messenger dtnServiceMessenger = null;
     private static int regNum;
-    private final Messenger ourMessenger = new Messenger(new MKDTNServiceMessageHandler());
-    
+    private final Messenger ourMessenger = new Messenger(new MKDTNServiceMessageHandler(this));
     private static class MKDTNServiceMessageHandler extends Handler {
+        private Context context;
+    
+        private MKDTNServiceMessageHandler(Context context) {
+            this.context = context;
+        }
+    
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
@@ -58,7 +62,8 @@ public class PeersActivity extends AppCompatActivity implements AdapterView.OnIt
         }
         
         private void setClientID(Bundle data) {
-            dtnClientID = data.getString(MKDTNService.DTN_CLIENT_ID_KEY, DTNEndpointID.NULL_EID);
+            dtnClientID = data.getString(MKDTNService.DTN_CLIENT_ID_KEY,
+                context.getString(R.string.mkdtn_null_endpoint_id));
             Log.i(LOG_TAG, "id = " + dtnClientID);
             
             String myEID = String.format(ID_STR, dtnClientID);

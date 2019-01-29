@@ -36,7 +36,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         if (!DTNUtils.isAdminRecord(adminRecord)) return;
     
         if (!daemon.isForUs(adminRecord)) {
-            DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.add(adminRecord);
+            DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(adminRecord);
             return;
         }
         
@@ -89,15 +89,16 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     private synchronized void processStatusReport(StatusReport report, DTNEndpointID recipient) {
         if (!report.isForAFragment) {
-            if (daemon.isUs(report.subjectBundleID.sourceEID) && report.bundleDelivered) {
+            if (daemon.isUs(report.subjectBundleID.sourceEID)) {
                 DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
-                daemon.notifyOutboundBundleDelivered(recipient.toString());
-            } else {
-                Log.e(LOG_TAG, "Bundle delivery for "
-                    + report.subjectBundleID + " failed: " + report.reasonCode);
-                daemon.notifyOutboundBundleDeliveryFailed(
-                    recipient.toString(), report.reasonCode.toString()
-                );
+                
+                if (report.bundleDelivered) {
+                    daemon.notifyOutboundBundleDelivered(recipient.toString());
+                } else {
+                    daemon.notifyOutboundBundleDeliveryFailed(
+                        recipient.toString(), report.reasonCode.toString()
+                    );
+                }
             }
         }
     }
@@ -192,8 +193,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         
         CanonicalBlock adminCBlock = makeAdminCBlock(adminRecord);
         
-        CanonicalBlock ageBlock
-            = DTNUtils.makeAgeCBlock(primaryBlock.bundleID.creationTimestamp);
+        CanonicalBlock ageBlock = DTNUtils.makeAgeCBlock();
     
         DTNBundle adminBundle = new DTNBundle();
         adminBundle.primaryBlock = primaryBlock;

@@ -6,5 +6,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import java.util.Set;
 
 public interface Daemon2CLA {
-    void transmit(DTNBundle bundle, Set<DTNBundleNode> destinations);
+    int transmit(DTNBundle bundle, Set<DTNBundleNode> destinations);
+    boolean transmit(DTNBundle bundle, DTNBundleNode destination);
 }

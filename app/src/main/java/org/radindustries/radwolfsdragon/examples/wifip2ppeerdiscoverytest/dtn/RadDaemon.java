@@ -21,6 +21,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
@@ -67,7 +68,11 @@ final class RadDaemon
     private Daemon2PRoPHETRoutingTable prophetRoutingTable;
     private Daemon2Managable[] managables;
     
-    private static final DTNEndpointID BUNDLE_NODE_EID = makeEID(); //from persistent storage
+    private static final DTNEndpointID BUNDLE_NODE_EID = makeEID();
+    private static DTNEndpointID makeEID() {
+        String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
+        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 4));
+    }
     
     private Daemon2Router.RoutingProtocol currentProtocol;
     private Thread bundleTransmitter;
@@ -75,7 +80,6 @@ final class RadDaemon
     
     RadDaemon(@NonNull Context context) {
         this.context = context;
-//        this.deliveredMessages = new ArrayList<>();
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
     }
     
@@ -126,48 +130,117 @@ final class RadDaemon
         
         DTNBundle[] fragments = fragmentManager.fragment(bundle);
         DummyStorage.OUTBOUND_BUNDLES_QUEUE.addAll(Arrays.asList(fragments));
-//        bundleTransmitter.submit(new TransmitOutboundBundleTask(bundle));
-        
-//        // proactive fragmentation
-//        DTNBundle[] fragments = fragmentManager.fragment(bundle);
-//
-//        for (DTNBundle fragment : fragments)
-//            bundleTransmitter.submit(new TransmitOutboundBundleTask(fragment));
     }
     
     private class TransmitOutboundBundlesTask implements Runnable {
-        private DTNBundle bundle;
         private Set<DTNBundleNode> nextHops;
     
         private TransmitOutboundBundlesTask() {
-            bundle = null;
             nextHops = new HashSet<>();
         }
-    
+        
+        private static final long OFF_CYCLE_DURATION_MILLIS = 1_200_000L; // 20 min
+        private static final long ON_CYCLE_DURATION_MILLIS = 600_000L; // 10 min
+        
         @Override
         public void run() {
-            int head = 0;
-            Log.i(LOG_TAG, "transmitting...");
             while (!Thread.interrupted()) {
-                // get what to send
-                if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty()) {
-                    bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
-                } else if (!DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.isEmpty()) {
-                    bundle = DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.remove(head);
-                } else continue;
+                Log.i(LOG_TAG, "entering ON cycle...");
+                int randMode = (int) (Math.random() * 2); // Z : {0 => src, 1 => sink}
+                switch (randMode) {
+                    case 0: doSrcMode(); break;
+                    case 1: doSinkMode(); break;
+                    default: break;
+                }
+                
+                Log.i(LOG_TAG, "entering OFF cycle...");
+                try {
+                    Thread.sleep(OFF_CYCLE_DURATION_MILLIS);
+                } catch (InterruptedException e) {
+                    Log.e(LOG_TAG, "transmit task: off cycle interrupted");
+                }
+            }
+        }
         
-                // get who to send it to
+        private void doSrcMode() {
+            if (noSufficientBatteryPower()) return;
+            
+            Log.i(LOG_TAG, "entering SOURCE mode...");
+            discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
+            long stopTime = System.currentTimeMillis() + ON_CYCLE_DURATION_MILLIS;
+            int head = 0;
+    
+            while (System.currentTimeMillis() < stopTime) {
+                // get what to send
+                DTNBundle bundle = null;
+                do {
+                    if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty())
+                        bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
+                } while (bundle == null && System.currentTimeMillis() < stopTime);
+                if (System.currentTimeMillis() >= stopTime) break;
+                
+                assert bundle != null;
+                
+                // get who to send to
+                nextHops.clear();
                 do {
                     nextHops.addAll(
                         router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
                     );
-                } while (nextHops.isEmpty());
-        
-                // update the custodian EID prior to transmission
+                } while (nextHops.isEmpty() && System.currentTimeMillis() < stopTime);
+                if (System.currentTimeMillis() >= stopTime) break;
+                
+                // update bundle details
                 bundle.primaryBlock.custodianEID = getThisNodezEID();
-        
-                cla.transmit(bundle, nextHops);
+                setSendingTime(bundle);
+
+                // send bundle
+                if (cla.transmit(bundle, nextHops) == 0) {
+                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(bundle);
+                }
             }
+    
+            Log.i(LOG_TAG, "leaving SOURCE mode...");
+            discoverer.stop(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
+        }
+        
+        private void doSinkMode() {
+            if (noSufficientBatteryPower() && noSufficientStorageSpace()) return;
+            
+            Log.i(LOG_TAG, "entering SINK mode...");
+            discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SINK);
+            
+            try {
+                Thread.sleep(ON_CYCLE_DURATION_MILLIS);
+            } catch (InterruptedException e) {
+                Log.e(LOG_TAG, "doSinkMode(): sleep interrupted");
+            }
+    
+            Log.i(LOG_TAG, "leaving SINK mode...");
+            discoverer.stop(Daemon2PeerDiscoverer.ServiceMode.SINK);
+        }
+        
+        private void setSendingTime(DTNBundle bundle) {
+            long bundleCreationTimestamp
+                = bundle.primaryBlock.bundleID.creationTimestamp;
+    
+            CanonicalBlock ageCBlock
+                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+            assert ageCBlock != null;
+    
+            AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+    
+            ageBlock.sendingTimestamp = System.currentTimeMillis();
+    
+            if (isFromUs(bundle)) { // initial conditions from bundle's src
+                ageBlock.agePrime = 0;
+                ageBlock.T = bundleCreationTimestamp;
+            }
+    
+            // NOTE general equation for bundle aging, where now == sendingTimestamp
+            ageBlock.age = ageBlock.agePrime + (long)
+                ((DTNUtils.getMaxCPUFrequencyInKHz() / (float) ageBlock.sourceCPUSpeedInKHz)
+                    * (ageBlock.sendingTimestamp - ageBlock.T));
         }
     }
     
@@ -201,11 +274,11 @@ final class RadDaemon
         // NOTE save the bundle as it is. Don't update the custodian EID on custody acceptance.
         @Override
         public void run() {
-//            storeTextMessage(bundle);
-//            if (deliveredMessages.add(bundle)) appAA.deliver(bundle);
             if (!DTNUtils.forSingletonDestination(bundle)) return;
             
             if (!(keepNECTARBundle(bundle) | keepPRoPHETBundle(bundle))) return;
+            
+            processAgeAtReceipt(bundle);
             
             if (DTNUtils.isAdminRecord(bundle)) adminAA.processAdminRecord(bundle);
             
@@ -222,23 +295,47 @@ final class RadDaemon
                             DTNBundle wholeBundle
                                 = fragmentManager.defragment(similarFragments);
                             insertNewMessage(wholeBundle);
+                            DummyStorage.DELIVERED_FRAGMENTS_QUEUE
+                                .removeAll(Arrays.asList(similarFragments));
                         }
                     } else {
                         insertNewMessage(bundle);
                     }
                 } else {
                     boolean weCan = canAcceptCustody(bundle);
-                    if (weCan) DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.add(bundle);
+                    if (weCan) DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(bundle);
                     makeCustodySignal(bundle, weCan);
                 }
             }
         }
         
-        private void insertNewMessage(DTNBundle bundle) {
-            DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
-            appAA.deliver(bundle);
+        private void processAgeAtReceipt(DTNBundle bundle) {
+            if (DTNUtils.isValid(bundle)) {
+                long cts = bundle.primaryBlock.bundleID.creationTimestamp;
+                CanonicalBlock ageCBlock
+                    = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+                assert ageCBlock != null;
     
-            makeStatusReport(bundle);
+                AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+    
+                float A1 = (float) ageBlock.sourceCPUSpeedInKHz * ageBlock.sendingTimestamp;
+                float A2 = (DTNUtils.getMaxCPUFrequencyInKHz() * ageBlock.receivingTimestamp) /
+                    (float) ageBlock.sourceCPUSpeedInKHz;
+                long transmissionAge = (long) (Math.abs(A2 - A1) / ageBlock.sourceCPUSpeedInKHz);
+    
+                ageBlock.agePrime = ageBlock.age + transmissionAge;
+                ageBlock.T = cts + ageBlock.agePrime;
+            }
+        }
+        
+        private void insertNewMessage(DTNBundle bundle) {
+            boolean weCan = canAcceptCustody(bundle);
+            if (weCan) {
+                DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
+                appAA.deliver(bundle);
+                makeStatusReport(bundle);
+            }
+            makeCustodySignal(bundle, weCan);
         }
         
         private void makeStatusReport(DTNBundle bundle) {
@@ -281,9 +378,6 @@ final class RadDaemon
         }
     }
     
-    // temporary storage, for both payloadADUs and status reports
-//    private List<DTNBundle> deliveredMessages;
-    
     @Override
     public List<DTNBundle> getDeliveredMessages() {
         // TODO get them from storage, sort by received timestamp DESC
@@ -292,52 +386,63 @@ final class RadDaemon
     
     private Context context;
     private static final float MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE = 35.0F;
-    private static final float MKDTN_MIN_FREE_SPACE_PERCENTAGE = 35.0F;
+    private static final float MKDTN_MIN_FREE_SPACE_PERCENTAGE = 10.0F;
     private static final String LOG_TAG
         = DConstants.MAIN_LOG_TAG + "_" + RadDaemon.class.getSimpleName();
+    
     private synchronized boolean canAcceptCustody(DTNBundle bundle) {
         
-        // BATTERY LEVEL
-        IntentFilter batteryIntentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        Intent batteryStatus = context.registerReceiver(null, batteryIntentFilter);
-        if (batteryStatus != null) {
-            int current = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-            int maximum = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-            
-            float batteryLevelPercentage = (current / (float) maximum) * 100;
-            Log.i(LOG_TAG, "Battery level = " + batteryLevelPercentage);
-            if (batteryLevelPercentage < MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE) {
-                setCustodySignalReason(CustodySignal.Reason.DEPLETED_POWER);
-                return false;
-            }
+        if (noSufficientBatteryPower()) {
+            setCustodySignalReason(CustodySignal.Reason.DEPLETED_POWER);
+            return false;
         }
         
-        // DISK SPACE
-        long freeSpace // getFilesDir() == internal storage directory for your app
-            = new File(context.getFilesDir().getAbsoluteFile().toString()).getFreeSpace();
-        long totalSpace
-            = new File(context.getFilesDir().getAbsoluteFile().toString()).getTotalSpace();
-        
-        float freeSpacePercentage = (freeSpace / (float) totalSpace) * 100;
-        Log.i(LOG_TAG, "Free space = " + freeSpacePercentage);
-        if (freeSpacePercentage < MKDTN_MIN_FREE_SPACE_PERCENTAGE) {
+        if (noSufficientStorageSpace()) {
             setCustodySignalReason(CustodySignal.Reason.DEPLETED_STORAGE);
             return false;
         }
         
         // REDUNDANT RECEPTION
         if (DummyStorage.OUTBOUND_BUNDLES_QUEUE.contains(bundle) ||
-            DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.contains(bundle) ||
             DummyStorage.DELIVERED_BUNDLES_QUEUE.contains(bundle) ||
             DummyStorage.DELIVERED_FRAGMENTS_QUEUE.contains(bundle)
         ) {
-            Log.i(LOG_TAG, "redundant reception: " + bundle);
+            Log.i(LOG_TAG, "redundant reception");
             setCustodySignalReason(CustodySignal.Reason.REDUNDANT_RECEPTION);
             return false;
         }
         
         setCustodySignalReason(CustodySignal.Reason.NO_OTHER_INFO);
         return true;
+    }
+    
+    private synchronized boolean noSufficientBatteryPower() {
+        IntentFilter batteryIntentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent batteryStatus = context.registerReceiver(null, batteryIntentFilter);
+        if (batteryStatus != null) {
+            int current = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int maximum = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+        
+            float batteryLevelPercentage = (current / (float) maximum) * 100;
+            Log.i(LOG_TAG, "Battery level = " + batteryLevelPercentage);
+            
+            return batteryLevelPercentage < MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE;
+        }
+        return false;
+    }
+    
+    private synchronized boolean noSufficientStorageSpace() {
+        String ourAppsDir = context.getFilesDir().getAbsoluteFile().toString();
+        File dir = new File(ourAppsDir);
+        Log.i(LOG_TAG, "our app's directory = " + ourAppsDir);
+        
+        long freeSpace = dir.getFreeSpace();
+        long totalSpace = dir.getTotalSpace();
+    
+        float freeSpacePercentage = (freeSpace / (float) totalSpace) * 100;
+        Log.i(LOG_TAG, "Free space = " + freeSpacePercentage);
+        
+        return freeSpacePercentage < MKDTN_MIN_FREE_SPACE_PERCENTAGE;
     }
     
     private CustodySignal.Reason custodySignalReason;
@@ -350,58 +455,6 @@ final class RadDaemon
         custodySignalReason = reason;
     }
     
-//    private void storeTextMessage(DTNBundle bundle) {
-//        if (bundle.primaryBlock.bundleProcessingControlFlags
-//            .testBit(PrimaryBlock.BundlePCF.ADU_IS_AN_ADMIN_RECORD)) {
-//
-//            CanonicalBlock adminRecordCBlock
-//                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
-//            assert adminRecordCBlock != null;
-//
-//            AdminRecord adminRecord = (AdminRecord) adminRecordCBlock.blockTypeSpecificDataFields;
-//
-//            if (adminRecord.recordType.equals(AdminRecord.RecordType.CUSTODY_SIGNAL)) return;
-//        }
-//        deliveredMessages.add(bundle);
-//    }
-//
-//    private void collectFragmentBundleID(DTNBundle deliveredBundle) {
-//        // this set of fragment IDs is collected by the Daemon, not router
-//        if (deliveredBundle.primaryBlock.destinationEID.equals(BUNDLE_NODE_EID)) {
-//            if (deliveredBundle.primaryBlock.bundleProcessingControlFlags
-//                .testBit(PrimaryBlock.BundlePCF.BUNDLE_IS_A_FRAGMENT)) {
-//                DTNBundleID fragmentID = deliveredBundle.primaryBlock.bundleID;
-//                deliveredFragments.add(fragmentID); //step 1
-////                Log.i(LOG_TAG, "Delivered fragment: " + fragmentID);
-////                Log.d(LOG_TAG, "Accumulated fragments: " + deliveredFragments);
-//                 /*
-//                 2. daemon will store the "deliveredBundle" in the delivered queue in storage.
-//                 3. daemon will then use the "deliveredFragments" set to query the delivered queue
-//                 for all fragments having a common bundle ID.
-//                 4. for each set of related fragments (fragments with a common bundleID),
-//                 daemon will call the fragment manager to check for their defragmentability.
-//                 5. if defragmentable, daemon will tell fragment manager to defragment them.
-//                 6. the returned bundle is immediately sent to the user via App AA.
-//
-//                 This means the delivered queue in storage will only contain fragments
-//                 were this node is the destination.
-//                 */
-//            } /*else {
-//                // daemon sends delivered bundle to app aa immediately.
-////                Log.i(LOG_TAG, "Bundle not a fragment. Sending to App AA...");
-//            }*/
-//        }
-//    }
-    
-//    @Override
-//    public void onTransmissionComplete(int numNodesSentTo) {
-//        if (numNodesSentTo < chosenPeers.size()) {
-//            cla.transmit(bundleToTransmit, chosenPeers.get(numNodesSentTo));
-//        } else {
-//            cla.reset();
-//        }
-//    }
-    
     @Override
     public boolean start() {
         boolean state = startExecutors();
@@ -412,12 +465,8 @@ final class RadDaemon
     private boolean startExecutors() {
         bundleTransmitter = new Thread(new TransmitOutboundBundlesTask());
         bundleTransmitter.start();
-//        if (waitingBundleTransmissionTasks != null)
-//            for (Runnable task : waitingBundleTransmissionTasks) bundleTransmitter.submit(task);
         
         bundleProcessor = Executors.newCachedThreadPool();
-//        if (waitingBundleProcessingTasks != null)
-//            for (Runnable task : waitingBundleProcessingTasks) bundleProcessor.submit(task);
         
         return bundleTransmitter.isAlive();
     }
@@ -429,27 +478,14 @@ final class RadDaemon
         return state;
     }
     
-    private static final long WAITING_TIME_IN_SECONDS = 15L;
-//    private List<Runnable> waitingBundleProcessingTasks;
-//    private List<Runnable> waitingBundleTransmissionTasks;
-    
     private boolean stopExecutors() {
         if (bundleTransmitter != null && bundleProcessor != null) {
-            
-//            bundleTransmitter.shutdown();
             bundleTransmitter.interrupt();
             bundleProcessor.shutdown();
-    
-//            bundleTransmitter.shutdownNow();
-            bundleProcessor.shutdownNow();
-            
-//            waitingBundleTransmissionTasks = bundleTransmitter.shutdownNow();
-//            waitingBundleProcessingTasks = bundleProcessor.shutdownNow();
             
             try {
                 return bundleTransmitter.isInterrupted() &&
-//                    bundleTransmitter.awaitTermination(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS) &&
-                    bundleProcessor.awaitTermination(WAITING_TIME_IN_SECONDS, TimeUnit.SECONDS);
+                    bundleProcessor.awaitTermination(5L, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 return false;
             }
@@ -459,6 +495,7 @@ final class RadDaemon
     
     @Override
     public DTNEndpointID getThisNodezEID() {
+        // TODO if we have one, get it. else, make one and keep it, then get it.
         return BUNDLE_NODE_EID;
     }
     
@@ -492,13 +529,6 @@ final class RadDaemon
     @Override
     public boolean isUs(DTNEndpointID eid) {
         return eid != null && eid.equals(BUNDLE_NODE_EID);
-    }
-    
-    private static DTNEndpointID makeEID() {
-        String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
-        //for the first time, do the next line and store it in storage DB.
-        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 10));
-        //the next time, get the EID from storage DB
     }
     
     @Override
@@ -574,7 +604,6 @@ final class RadDaemon
     
     @Override
     public void delete(DTNBundleID bundleID) {
-        // don't delete if currentProtocol == EPIDEMIC
         if (currentProtocol != Daemon2Router.RoutingProtocol.EPIDEMIC) {
             synchronized (DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
                 for (DTNBundle bundle : DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
@@ -582,18 +611,11 @@ final class RadDaemon
                         DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(bundle);
                 }
             }
-            synchronized (DummyStorage.INTERMEDIATE_BUNDLES_QUEUE) {
-                for (DTNBundle bundle : DummyStorage.INTERMEDIATE_BUNDLES_QUEUE) {
-                    if (bundle.primaryBlock.bundleID.equals(bundleID))
-                        DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.remove(bundle);
-                }
-            }
         }
     }
     
     @Override
     public void delete(DTNBundleID bundleID, int fragmentOffset) {
-        // don't delete if currentProtocol == EPIDEMIC
         if (currentProtocol != Daemon2Router.RoutingProtocol.EPIDEMIC) {
             synchronized (DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
                 for (DTNBundle bundle : DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
@@ -611,26 +633,6 @@ final class RadDaemon
                             fragmentOffset == fragOffset)
                             
                             DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(bundle);
-                    }
-                }
-            }
-    
-            synchronized (DummyStorage.INTERMEDIATE_BUNDLES_QUEUE) {
-                for (DTNBundle bundle : DummyStorage.INTERMEDIATE_BUNDLES_QUEUE) {
-                    if (DTNUtils.isFragment(bundle)) {
-                
-                        String fragOffsetStr
-                            = bundle.primaryBlock.detailsIfFragment
-                            .get(PrimaryBlock.FragmentField.FRAGMENT_OFFSET);
-                
-                        int fragOffset;
-                        if (fragOffsetStr != null) fragOffset = Integer.parseInt(fragOffsetStr);
-                        else return;
-                
-                        if (bundle.primaryBlock.bundleID.equals(bundleID) &&
-                            fragmentOffset == fragOffset)
-                    
-                            DummyStorage.INTERMEDIATE_BUNDLES_QUEUE.remove(bundle);
                     }
                 }
             }

@@ -283,6 +283,8 @@ public class MKDTNService extends Service implements DTNUI {
             
             String text = messageBundle.getString(TEXT_KEY,
                 context.getString(R.string.mkdtn_hello_message));
+            if (text.equals(context.getString(R.string.long_text_indicator)))
+                text = context.getString(R.string.mkdtn_long_hello_message);
             
             Daemon2Router.RoutingProtocol protocol
                 = Daemon2Router.RoutingProtocol.valueOf(
@@ -350,7 +352,7 @@ public class MKDTNService extends Service implements DTNUI {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NOTIFICATION_VISIBILITY);
     
-        // create intent for opening main activity
+        // create intent for opening manager activity
         Intent intent = new Intent(this, ManagerActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(

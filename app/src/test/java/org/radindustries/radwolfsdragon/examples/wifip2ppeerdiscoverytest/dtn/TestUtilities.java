@@ -53,7 +53,7 @@ final class TestUtilities {
         PrimaryBlock primaryBlock = makePrimaryBlockForUserBundle();
         
         
-        CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock(primaryBlock.bundleID.creationTimestamp);
+        CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock();
         
         
         CanonicalBlock payloadCBlock = new CanonicalBlock();

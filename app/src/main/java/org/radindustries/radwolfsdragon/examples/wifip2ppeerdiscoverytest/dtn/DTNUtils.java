@@ -18,51 +18,19 @@ import java.util.Scanner;
 final class DTNUtils {
     private DTNUtils() {}
     
-    private static final long DEFAULT_CPU_SPEED = 1_100_000L;
+    private static final long DEFAULT_CPU_SPEED_IN_KHZ = 1_100_000L;
     
-    static CanonicalBlock makeAgeCBlock(long creationTimestamp) {
+    static CanonicalBlock makeAgeCBlock() {
         CanonicalBlock ageCBlock = new CanonicalBlock();
+    
+        AgeBlock ageBlock = new AgeBlock();
+        ageBlock.sourceCPUSpeedInKHz = getMaxCPUFrequencyInKHz();
         
-        ageCBlock.blockTypeSpecificDataFields = makeAgeBlock(creationTimestamp);
+        ageCBlock.blockTypeSpecificDataFields = ageBlock;
         ageCBlock.blockType = CanonicalBlock.BlockType.AGE;
         ageCBlock.mustBeReplicatedInAllFragments = true;
         
         return ageCBlock;
-    }
-    
-    private static AgeBlock makeAgeBlock(long bundleCreationTimestamp) {
-        // at the source or sender,
-        AgeBlock ageBlock = new AgeBlock();
-        
-        try {
-            ageBlock.sourceCPUSpeedInKHz = getMaxCPUFrequencyInKHz();
-        } catch (Exception e) {
-            // we can't do anything without this clock speed. for now, lets assume a default.
-            ageBlock.sourceCPUSpeedInKHz = DEFAULT_CPU_SPEED;
-        }
-        
-        /*because ppl live in different timezones, there is need to have them all use
-         * a common time reference (timezone). Therefore we use the standard UTC time for
-         * everyone. This simplifies the process for determining the bundle's age.*/
-        ageBlock.sendingTimestamp = System.currentTimeMillis();
-        
-        ageBlock.age = ageBlock.sendingTimestamp - bundleCreationTimestamp;
-        ageBlock.agePrime = 0;
-        ageBlock.T = bundleCreationTimestamp;
-        
-        /*
-        at the receiver,
-        ageBlock.agePrime = ageBlock.age.plus(TA); // where TA -> transmission age
-        ageBlock.T = bundleCreationTimestamp.plus(ageBlock.agePrime);
-
-         when we are gonna forward the bundle or at any other time
-        ageBlock.sendingTimestamp = Instant.now();
-        ageBlock.age = ageBlock.agePrime.plus(
-            Duration.between(ageBlock.T, ageBlock.sendingTimestamp)
-        );
-        */
-        
-        return ageBlock;
     }
     
     static void setTimeReceived(DTNBundle receivedBundle) {
@@ -81,7 +49,7 @@ final class DTNUtils {
         CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-            return ageBlock.receivingTimestamp;
+            return ageBlock.receivingTimestamp; // find out how to use T instead
         } else return -1L;
     }
     
@@ -192,16 +160,18 @@ final class DTNUtils {
     }
     
     private static boolean isValidAgeCBlock(CanonicalBlock cBlock) {
-        if (cBlock != null &&
+//        if (cBlock != null &&
+//            cBlock.blockType == CanonicalBlock.BlockType.AGE &&
+//            cBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
+//
+//            AgeBlock ageBlock = (AgeBlock) cBlock.blockTypeSpecificDataFields;
+//            return ageBlock.sendingTimestamp > 0L &&
+//                ageBlock.receivingTimestamp > 0L &&
+//                ageBlock.sourceCPUSpeedInKHz > 0L;
+//        }
+        return cBlock != null &&
             cBlock.blockType == CanonicalBlock.BlockType.AGE &&
-            cBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
-            
-            AgeBlock ageBlock = (AgeBlock) cBlock.blockTypeSpecificDataFields;
-            return ageBlock.sendingTimestamp > 0L &&
-                ageBlock.receivingTimestamp > 0L &&
-                ageBlock.sourceCPUSpeedInKHz > 0L;
-        }
-        return false;
+            cBlock.blockTypeSpecificDataFields instanceof AgeBlock;
     }
     
     private static boolean isValidPayloadCBlock(CanonicalBlock cBlock) {
@@ -281,8 +251,12 @@ final class DTNUtils {
      * @author Nicolas Gramlich
      * @since 15:50:31 - 14.07.2010
      */
-    private static int getMaxCPUFrequencyInKHz() throws Exception {
-        return readCPUSystemFileAsInt();
+    static long getMaxCPUFrequencyInKHz() {
+        try {
+            return readCPUSystemFileAsInt();
+        } catch (Exception e) {
+            return DEFAULT_CPU_SPEED_IN_KHZ;
+        }
     }
     
     private static int readCPUSystemFileAsInt() throws Exception {

@@ -50,8 +50,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     ) {
         PrimaryBlock primaryBlock = makePrimaryBlock(recipient, priorityClass, lifetime);
     
-        CanonicalBlock ageCBlock
-            = DTNUtils.makeAgeCBlock(primaryBlock.bundleID.creationTimestamp);
+        CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock();
         
         CanonicalBlock payloadCBlock = makePayloadCBlock(message);
     

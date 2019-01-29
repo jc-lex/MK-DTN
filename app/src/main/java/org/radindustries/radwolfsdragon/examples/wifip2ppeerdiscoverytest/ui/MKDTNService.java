@@ -143,12 +143,12 @@ public class MKDTNService extends Service implements DTNUI {
         NotificationCompat.Builder notificationBuilder = makeNotification(text);
         
         // create intent for opening messages activity
-        Intent intent = new Intent(this, MessagesActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
-        );
-        notificationBuilder.setContentIntent(pendingIntent);
+//        Intent intent = new Intent(this, MessagesActivity.class);
+//        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+//        PendingIntent pendingIntent = PendingIntent.getActivity(
+//            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
+//        );
+//        notificationBuilder.setContentIntent(pendingIntent);
         
         notificationManagerCompat.notify(
             (int) (Math.random() * Integer.MAX_VALUE),

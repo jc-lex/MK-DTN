@@ -13,8 +13,8 @@ final class DummyStorage {
     static final List<DTNBundle> OUTBOUND_BUNDLES_QUEUE
         = Collections.synchronizedList(new LinkedList<DTNBundle>());
     
-//    static final List<DTNBundle> INTERMEDIATE_BUNDLES_QUEUE
-//        = Collections.synchronizedList(new LinkedList<DTNBundle>());
+    static final List<DTNBundle> TRANSMITTED_BUNDLES_QUEUE
+        = Collections.synchronizedList(new LinkedList<DTNBundle>());
     
     static final List<DTNBundle> DELIVERED_FRAGMENTS_QUEUE
         = Collections.synchronizedList(new LinkedList<DTNBundle>());

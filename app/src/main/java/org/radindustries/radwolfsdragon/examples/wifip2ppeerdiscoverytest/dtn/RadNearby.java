@@ -72,24 +72,25 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         ) {
             String bundleNodeEID = discoveredEndpointInfo.getEndpointName();
             String serviceId = discoveredEndpointInfo.getServiceId();
+            String targetServiceId
+                = mode.equals(ServiceMode.SOURCE) ? SINK_SERVICE : SOURCE_SERVICE;
     
             DTNBundleNode foundNode = DTNBundleNode.from(bundleNodeEID, nearbyEndpointID);
     
-            if (serviceId.equals(DTN_SERVICE_ID)) {
+            if (serviceId.equals(targetServiceId)) {
                 DTNEndpointID eid = DTNEndpointID.parse(bundleNodeEID);
                 nectarPeerDiscoverer2Daemon.incrementMeetingCount(eid);
                 prophetPeerDiscoverer2Daemon.updateDeliveryPredictability(eid);
         
-                if (sinkNodes.contains(foundNode)) updateCLAAddress(foundNode, nearbyEndpointID);
-                else sinkNodes.add(foundNode);
+                if (discoveredNodes.contains(foundNode))
+                    updateCLAAddress(foundNode, nearbyEndpointID);
+                else discoveredNodes.add(foundNode);
                 peerDiscoverer2Daemon.notifyPeerListChanged();
-                
-                connectionsClient.stopDiscovery();
             }
         }
     
         private void updateCLAAddress(DTNBundleNode staleNode, String newCLAAddress) {
-            for (DTNBundleNode node : sinkNodes) {
+            for (DTNBundleNode node : discoveredNodes) {
                 if (node.equals(staleNode)) {
                     node.CLAAddresses.remove(DTNBundleNode.CLAKey.NEARBY);
                     node.CLAAddresses.put(DTNBundleNode.CLAKey.NEARBY, newCLAAddress);
@@ -102,15 +103,13 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         public void onEndpointLost(@NonNull String nearbyEndpointID) {
             forgetDTNNode(nearbyEndpointID);
             peerDiscoverer2Daemon.notifyPeerListChanged();
-            
-            discover();
         }
     
         private void forgetDTNNode(String CLAAddress) {
-            for (DTNBundleNode node : sinkNodes) {
+            for (DTNBundleNode node : discoveredNodes) {
                 String claAddress = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
                 if (CLAAddress.equals(claAddress)) {
-                    sinkNodes.remove(node);
+                    discoveredNodes.remove(node);
                     break;
                 }
             }
@@ -133,36 +132,12 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
             int status = connectionResolution.getStatus().getStatusCode();
             
             if (status == ConnectionsStatusCodes.STATUS_OK) {
-                if (!isInbound) forward(bundle, nearbyEndpointID);
+                if (!isInbound) {
+                    connectedNodes.add(nearbyEndpointID);
+                    forward(bundle, nearbyEndpointID);
+                }
             } else {
                 Log.e(LOG_TAG, "Connection was not OK");
-            }
-        }
-    
-        private void forward(final DTNBundle bundle, String claAddress) {
-            try {
-                final ParcelFileDescriptor[] payloadPipe = ParcelFileDescriptor.createPipe();
-            
-                connectionsClient.sendPayload(
-                    claAddress,
-                    Payload.fromStream(payloadPipe[0]) // reading side
-                ).addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        try (
-                            ObjectOutputStream out = new ObjectOutputStream(
-                                new ParcelFileDescriptor
-                                    .AutoCloseOutputStream(payloadPipe[1]) // writing side
-                            )
-                        ) {
-                            out.writeObject(bundle);
-                        } catch (IOException e) {
-                            Log.e(LOG_TAG, "Could not create or write to output stream.", e);
-                        }
-                    }
-                });
-            } catch (IOException e) {
-                Log.e(LOG_TAG, "Could not create pipe to transfer data.", e);
             }
         }
     
@@ -171,6 +146,9 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
             if (isInbound) {
                 isInbound = false;
                 Log.i(LOG_TAG, "onDisconnect(): inbound = false");
+            } else {
+                Log.i(LOG_TAG, "onDisconnect(): disconnected from " + nearbyEndpointID);
+                connectedNodes.remove(nearbyEndpointID);
             }
         }
     };
@@ -211,16 +189,20 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
                         } catch (Exception e) {
                             Log.e(LOG_TAG, "Could not open or read from input stream.", e);
                         }
+                        
+                        connectionsClient.disconnectFromEndpoint(nearbyEndpointID);
                     } else {
                         Log.i(LOG_TAG, "bundle sent");
                         sent = true;
                     }
                     break;
                 case PayloadTransferUpdate.Status.FAILURE:
-                    if (isInbound) inboundPayloads.remove(payloadId);
+                    if (isInbound) {
+                        inboundPayloads.remove(payloadId);
+                        connectionsClient.disconnectFromEndpoint(nearbyEndpointID);
+                    }
                     else {
                         Log.e(LOG_TAG, "bundle sending failed");
-                        sent = false;
                     }
                     break;
                 default:
@@ -245,7 +227,8 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         this.peerDiscoverer2Daemon = peerDiscoverer2Daemon;
         this.nectarPeerDiscoverer2Daemon = nectarPeerDiscoverer2Daemon;
         this.prophetPeerDiscoverer2Daemon = prophetPeerDiscoverer2Daemon;
-        sinkNodes = new HashSet<>();
+        discoveredNodes = new HashSet<>();
+        connectedNodes = new HashSet<>();
     }
     
     private boolean sent;
@@ -264,14 +247,17 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         return numSent;
     }
     
+    private static final long CONTACT_WINDOW_MILLIS = 10_000L;
+    
     @Override
     public boolean transmit(DTNBundle bundle, final DTNBundleNode destination) {
         sent = false;
         
         String claAddress = destination.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
         assert claAddress != null;
-    
-        connectionsClient.requestConnection(
+        
+        if (connectedNodes.contains(claAddress)) forward(bundle, claAddress);
+        else connectionsClient.requestConnection(
             cla2Daemon.getThisNodezEID().toString(),
             claAddress,
             connectionLifecycleCallback
@@ -283,69 +269,97 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         });
         
         try {
-            Thread.sleep(5_000); // contact window (5 sec)
+            Thread.sleep(CONTACT_WINDOW_MILLIS);
         } catch (InterruptedException e) {
             Log.e(LOG_TAG, "transmit(): waiting interrupted");
         }
         
-        connectionsClient.disconnectFromEndpoint(claAddress);
         Log.i(LOG_TAG, "transmit(): sent = " + sent);
         return sent;
     }
     
+    private void forward(final DTNBundle bundle, String claAddress) {
+        try {
+            final ParcelFileDescriptor[] payloadPipe = ParcelFileDescriptor.createPipe();
+            
+            connectionsClient.sendPayload(
+                claAddress,
+                Payload.fromStream(payloadPipe[0]) // reading side
+            ).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    try (
+                        ObjectOutputStream out = new ObjectOutputStream(
+                            new ParcelFileDescriptor
+                                .AutoCloseOutputStream(payloadPipe[1]) // writing side
+                        )
+                    ) {
+                        out.writeObject(bundle);
+                    } catch (IOException e) {
+                        Log.e(LOG_TAG, "Could not create or write to output stream.", e);
+                    }
+                }
+            });
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "Could not create pipe to transfer data.", e);
+        }
+    }
+    
     @Override
     public boolean start() {
-//        connectionsClient.stopAllEndpoints();
+        connectedNodes.clear();
+        discoveredNodes.clear();
+        peerDiscoverer2Daemon.notifyPeerListChanged();
         return true;
     }
     
-    private void advertise() {
+    private void advertise(String serviceId) {
+        final String service = serviceId.equals(SOURCE_SERVICE) ? "SOURCE" : "SINK";
+        
         connectionsClient.startAdvertising(
             cla2Daemon.getThisNodezEID().toString(),
-            DTN_SERVICE_ID,
+            serviceId,
             connectionLifecycleCallback,
             ADVERTISING_OPTIONS
         ).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                Log.e(LOG_TAG, "Advertising failed. Retrying...", e);
-                connectionsClient.stopAllEndpoints();
-                advertise();
+                Log.e(LOG_TAG, "Advertising failed.", e);
             }
         }).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
-                Log.i(LOG_TAG, "Advertising sink service");
+                Log.i(LOG_TAG, "Advertising " + service + " service");
             }
         });
     }
     
-    private void discover() {
+    private void discover(String serviceId) {
+        final String service = serviceId.equals(SOURCE_SERVICE) ? "SOURCE" : "SINK";
+        
         connectionsClient.startDiscovery(
-            DTN_SERVICE_ID,
+            serviceId,
             endpointDiscoveryCallback,
             DISCOVERY_OPTIONS
         ).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                Log.e(LOG_TAG, "Discovery failed. Retrying...", e);
-                connectionsClient.stopAllEndpoints();
-                discover();
+                Log.e(LOG_TAG, "Discovery failed.", e);
             }
         }).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
-                Log.i(LOG_TAG, "Discovering sink nodes");
+                Log.i(LOG_TAG, "Discovering " + service + " nodes");
             }
         });
     }
     
     @Override
     public boolean stop() {
-        sinkNodes.clear();
+        connectedNodes.clear();
+        discoveredNodes.clear();
         peerDiscoverer2Daemon.notifyPeerListChanged();
         
-        Log.i(LOG_TAG, "stopping advertising and discovery...");
         connectionsClient.stopAdvertising();
         connectionsClient.stopDiscovery();
         
@@ -360,38 +374,23 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         mode = serviceMode;
         
         switch (serviceMode) {
-            case SOURCE: discover(); break;
-            case SINK: advertise(); break;
+            case SOURCE: advertise(SOURCE_SERVICE); discover(SINK_SERVICE); break;
+            case SINK: advertise(SINK_SERVICE); discover(SOURCE_SERVICE); break;
             default: break;
         }
     }
     
     @Override
     public void stop(ServiceMode serviceMode) {
-        if (serviceMode.equals(mode)) {
-            switch (serviceMode) {
-                case SOURCE:
-                    sinkNodes.clear();
-                    peerDiscoverer2Daemon.notifyPeerListChanged();
-                    Log.i(LOG_TAG, "stopping discovery...");
-                    connectionsClient.stopDiscovery();
-                    break;
-                case SINK:
-                    Log.i(LOG_TAG, "stopping advertising...");
-                    connectionsClient.stopAdvertising(); break;
-                default: break;
-            }
-            
-            connectionsClient.stopAllEndpoints();
-        }
-        else stop();
+        stop();
     }
     
-    private Set<DTNBundleNode> sinkNodes;
+    private Set<DTNBundleNode> discoveredNodes;
+    private Set<String> connectedNodes;
     
     @Override
     public synchronized Set<DTNBundleNode> getPeerList() {
-        return Collections.unmodifiableSet(sinkNodes);
+        return Collections.unmodifiableSet(discoveredNodes);
     }
 
 //    private void markAsUpContact(String claAddress) {

@@ -144,40 +144,49 @@ final class RadDaemon
         
         @Override
         public void run() {
+            Log.i(LOG_TAG, "transmitting");
             while (!Thread.interrupted()) {
-                Log.i(LOG_TAG, "entering ON cycle...");
-                int randMode = (int) (Math.random() * 2); // Z : {0 => src, 1 => sink}
-                switch (randMode) {
-                    case 0: doSrcMode(); break;
-                    case 1: doSinkMode(); break;
-                    default: break;
-                }
+                Log.i(LOG_TAG, "entering ON cycle");
+                int randMode = (int) (Math.random() * 100);
                 
-                Log.i(LOG_TAG, "entering OFF cycle...");
+                if (randMode < 50) doSinkMode();
+                else doSrcMode();
+                Log.i(LOG_TAG, "leaving ON cycle");
+//                switch (randMode) {
+//                    case 0: doSrcMode(); break;
+//                    case 1: doSinkMode(); break;
+//                    default: break;
+//                }
+                if (Thread.interrupted()) break;
+                
+                Log.i(LOG_TAG, "entering OFF cycle");
                 try {
                     Thread.sleep(OFF_CYCLE_DURATION_MILLIS);
                 } catch (InterruptedException e) {
                     Log.e(LOG_TAG, "transmit task: off cycle interrupted");
                 }
+                Log.i(LOG_TAG, "leaving OFF cycle");
             }
+            Log.i(LOG_TAG, "transmission stopped");
         }
         
         private void doSrcMode() {
             if (noSufficientBatteryPower()) return;
             
-            Log.i(LOG_TAG, "entering SOURCE mode...");
+            Log.i(LOG_TAG, "entering SOURCE mode");
             discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
             long stopTime = System.currentTimeMillis() + ON_CYCLE_DURATION_MILLIS;
             int head = 0;
     
-            while (System.currentTimeMillis() < stopTime) {
+            while (System.currentTimeMillis() < stopTime && !Thread.interrupted()) {
                 // get what to send
                 DTNBundle bundle = null;
                 do {
                     if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty())
                         bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
-                } while (bundle == null && System.currentTimeMillis() < stopTime);
-                if (System.currentTimeMillis() >= stopTime) break;
+                } while (bundle == null && System.currentTimeMillis() < stopTime &&
+                    !Thread.interrupted());
+                if (System.currentTimeMillis() >= stopTime || Thread.interrupted()) break;
                 
                 assert bundle != null;
                 
@@ -187,8 +196,9 @@ final class RadDaemon
                     nextHops.addAll(
                         router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
                     );
-                } while (nextHops.isEmpty() && System.currentTimeMillis() < stopTime);
-                if (System.currentTimeMillis() >= stopTime) break;
+                } while (nextHops.isEmpty() && System.currentTimeMillis() < stopTime &&
+                    !Thread.interrupted());
+                if (System.currentTimeMillis() >= stopTime || Thread.interrupted()) break;
                 
                 // update bundle details
                 bundle.primaryBlock.custodianEID = getThisNodezEID();
@@ -197,17 +207,19 @@ final class RadDaemon
                 // send bundle
                 if (cla.transmit(bundle, nextHops) == 0) {
                     DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(bundle);
+                } else {
+                    DummyStorage.TRANSMITTED_BUNDLES_QUEUE.add(bundle);
                 }
             }
     
-            Log.i(LOG_TAG, "leaving SOURCE mode...");
+            Log.i(LOG_TAG, "leaving SOURCE mode");
             discoverer.stop(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
         }
         
         private void doSinkMode() {
             if (noSufficientBatteryPower() && noSufficientStorageSpace()) return;
             
-            Log.i(LOG_TAG, "entering SINK mode...");
+            Log.i(LOG_TAG, "entering SINK mode");
             discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SINK);
             
             try {
@@ -216,7 +228,7 @@ final class RadDaemon
                 Log.e(LOG_TAG, "doSinkMode(): sleep interrupted");
             }
     
-            Log.i(LOG_TAG, "leaving SINK mode...");
+            Log.i(LOG_TAG, "leaving SINK mode");
             discoverer.stop(Daemon2PeerDiscoverer.ServiceMode.SINK);
         }
         
@@ -333,6 +345,8 @@ final class RadDaemon
             if (weCan) {
                 DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
                 appAA.deliver(bundle);
+                
+                // TODO make status report reasons useful
                 makeStatusReport(bundle);
             }
             makeCustodySignal(bundle, weCan);
@@ -434,7 +448,7 @@ final class RadDaemon
     private synchronized boolean noSufficientStorageSpace() {
         String ourAppsDir = context.getFilesDir().getAbsoluteFile().toString();
         File dir = new File(ourAppsDir);
-        Log.i(LOG_TAG, "our app's directory = " + ourAppsDir);
+//        Log.i(LOG_TAG, "our app's directory = " + ourAppsDir);
         
         long freeSpace = dir.getFreeSpace();
         long totalSpace = dir.getTotalSpace();
@@ -605,10 +619,10 @@ final class RadDaemon
     @Override
     public void delete(DTNBundleID bundleID) {
         if (currentProtocol != Daemon2Router.RoutingProtocol.EPIDEMIC) {
-            synchronized (DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
-                for (DTNBundle bundle : DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
+            synchronized (DummyStorage.TRANSMITTED_BUNDLES_QUEUE) {
+                for (DTNBundle bundle : DummyStorage.TRANSMITTED_BUNDLES_QUEUE) {
                     if (bundle.primaryBlock.bundleID.equals(bundleID))
-                        DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(bundle);
+                        DummyStorage.TRANSMITTED_BUNDLES_QUEUE.remove(bundle);
                 }
             }
         }
@@ -617,8 +631,8 @@ final class RadDaemon
     @Override
     public void delete(DTNBundleID bundleID, int fragmentOffset) {
         if (currentProtocol != Daemon2Router.RoutingProtocol.EPIDEMIC) {
-            synchronized (DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
-                for (DTNBundle bundle : DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
+            synchronized (DummyStorage.TRANSMITTED_BUNDLES_QUEUE) {
+                for (DTNBundle bundle : DummyStorage.TRANSMITTED_BUNDLES_QUEUE) {
                     if (DTNUtils.isFragment(bundle)) {
                         
                         String fragOffsetStr
@@ -632,7 +646,7 @@ final class RadDaemon
                         if (bundle.primaryBlock.bundleID.equals(bundleID) &&
                             fragmentOffset == fragOffset)
                             
-                            DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(bundle);
+                            DummyStorage.TRANSMITTED_BUNDLES_QUEUE.remove(bundle);
                     }
                 }
             }

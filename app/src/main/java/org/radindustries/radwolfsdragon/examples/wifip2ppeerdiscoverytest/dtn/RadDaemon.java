@@ -81,7 +81,7 @@ final class RadDaemon
     
     RadDaemon(@NonNull Context context) {
         this.context = context;
-        wallClock = RadWallClock.getClock(context);
+        wallClock = RadWallClock.getWallClock(context);
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
     }
     

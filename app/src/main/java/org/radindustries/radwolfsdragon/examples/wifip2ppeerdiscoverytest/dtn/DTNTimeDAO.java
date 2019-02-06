@@ -19,6 +19,6 @@ interface DTNTimeDAO {
     void delete(DTNTime time);
     
     @Query("SELECT * FROM " + DTNTimeDB.CLOCK_TABLE_NAME
-        + " WHERE " + DTNTimeDB.COL_ID + " = " + DTNTime.MY_TIME)
+        + " WHERE " + DTNTimeDB.COL_ID + " = " + DTNTime.DEFAULT_TIME_ID)
     DTNTime getTime();
 }

@@ -1,9 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
-import android.util.Log;
-
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 
 import java.math.BigInteger;
 import java.util.concurrent.Callable;
@@ -15,26 +12,28 @@ import java.util.concurrent.TimeUnit;
 import androidx.annotation.NonNull;
 
 final class RadWallClock {
-    private static final String LOG_TAG
-        = DConstants.MAIN_LOG_TAG + "_" + RadWallClock.class.getSimpleName();
+//    private static final String LOG_TAG
+//        = DConstants.MAIN_LOG_TAG + "_" + RadWallClock.class.getSimpleName();
     
+    // INSTANTIATION
+    private static RadWallClock wallClock = null;
+    private RadWallClock(@NonNull Context context) {
+        DTNTimeDB timeDB = DTNTimeDB.getTimeDB(context);
+        timeDAO = timeDB.getTimeDAO();
+        timeKeeper = Executors.newSingleThreadExecutor();
+    }
+    static synchronized RadWallClock getWallClock(@NonNull Context context) {
+        if (wallClock == null) wallClock = new RadWallClock(context);
+        return wallClock;
+    }
+    
+    // WALL CLOCK
     private BigInteger currentTime;
     synchronized BigInteger getCurrentTime() {
         return currentTime;
     }
     private synchronized void setCurrentTime(BigInteger currentTime) {
         this.currentTime = currentTime;
-    }
-    
-    private static RadWallClock clock = null;
-    private RadWallClock(@NonNull Context context) {
-        DTNTimeDB timeDB = DTNTimeDB.getTimeDB(context);
-        timeDAO = timeDB.getTimeDAO();
-        timeKeeper = Executors.newSingleThreadExecutor();
-    }
-    static synchronized RadWallClock getClock(@NonNull Context context) {
-        if (clock == null) clock = new RadWallClock(context);
-        return clock;
     }
     
     private void tick() {
@@ -44,28 +43,23 @@ final class RadWallClock {
     private class TicktockTask implements Runnable {
         @Override
         public void run() {
-            Log.i(LOG_TAG, "DTN wall clock started");
-            while (!Thread.interrupted()) {
-                tick();
-            }
-            Log.i(LOG_TAG, "DTN wall clock stopped");
+            while (!Thread.interrupted()) tick();
         }
     }
     
-    private ExecutorService counter;
+    private Thread counter;
     
     void start() {
         while (getTime() == null) insertTime(new DTNTime()); // first-time initialisation
         
         setCurrentTime(new BigInteger(getTime().getCurrentTime()));
     
-        counter = Executors.newSingleThreadExecutor();
-        counter.submit(new TicktockTask());
+        counter = new Thread(new TicktockTask());
+        counter.start();
     }
     
     void stop() {
-        counter.shutdown();
-        counter.shutdownNow();
+        if (counter != null) counter.interrupt();
     
         if (getTime() != null) {
             DTNTime time = getTime();
@@ -73,14 +67,9 @@ final class RadWallClock {
         
             updateTime(time);
         }
-    
-        try {
-            counter.awaitTermination(5L, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
     
+    // TIME KEEPING
     private ExecutorService timeKeeper;
     private DTNTimeDAO timeDAO;
     

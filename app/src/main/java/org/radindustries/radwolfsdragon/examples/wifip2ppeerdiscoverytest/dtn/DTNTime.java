@@ -16,10 +16,10 @@ final class DTNTime {
     @ColumnInfo(name = DTNTimeDB.COL_CURRENT_TIME)
     private String currentTime;
     
-    static final long MY_TIME = 1L;
+    static final long DEFAULT_TIME_ID = 1L;
     
     DTNTime() {
-        id = MY_TIME;
+        id = DEFAULT_TIME_ID;
         currentTime = BigInteger.ZERO.toString();
     }
     

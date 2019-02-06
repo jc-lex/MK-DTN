@@ -77,9 +77,11 @@ final class RadDaemon
     private Daemon2Router.RoutingProtocol currentProtocol;
     private Thread bundleTransmitter;
     private ExecutorService bundleProcessor;
+    private RadWallClock wallClock;
     
     RadDaemon(@NonNull Context context) {
         this.context = context;
+        wallClock = RadWallClock.getClock(context);
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
     }
     
@@ -144,14 +146,14 @@ final class RadDaemon
         
         @Override
         public void run() {
-            Log.i(LOG_TAG, "transmitting");
+            Log.i(LOG_TAG, "transmitting @ " + wallClock.getCurrentTime().toString());
             while (!Thread.interrupted()) {
-                Log.i(LOG_TAG, "entering ON cycle");
+                Log.i(LOG_TAG, "entering ON cycle @ " + wallClock.getCurrentTime().toString());
                 int randMode = (int) (Math.random() * 100);
                 
                 if (randMode < 50) doSinkMode();
                 else doSrcMode();
-                Log.i(LOG_TAG, "leaving ON cycle");
+                Log.i(LOG_TAG, "leaving ON cycle @ " + wallClock.getCurrentTime().toString());
 //                switch (randMode) {
 //                    case 0: doSrcMode(); break;
 //                    case 1: doSinkMode(); break;
@@ -159,15 +161,15 @@ final class RadDaemon
 //                }
                 if (Thread.interrupted()) break;
                 
-                Log.i(LOG_TAG, "entering OFF cycle");
+                Log.i(LOG_TAG, "entering OFF cycle @ " + wallClock.getCurrentTime().toString());
                 try {
                     Thread.sleep(OFF_CYCLE_DURATION_MILLIS);
                 } catch (InterruptedException e) {
                     Log.e(LOG_TAG, "transmit task: off cycle interrupted");
                 }
-                Log.i(LOG_TAG, "leaving OFF cycle");
+                Log.i(LOG_TAG, "leaving OFF cycle @ " + wallClock.getCurrentTime().toString());
             }
-            Log.i(LOG_TAG, "transmission stopped");
+            Log.i(LOG_TAG, "transmission stopped @ " + wallClock.getCurrentTime().toString());
         }
         
         private void doSrcMode() {
@@ -471,6 +473,7 @@ final class RadDaemon
     
     @Override
     public boolean start() {
+        wallClock.start();
         boolean state = startExecutors();
         for (Daemon2Managable managable : managables) state &= managable.start();
         return state;
@@ -487,6 +490,7 @@ final class RadDaemon
     
     @Override
     public boolean stop() {
+        wallClock.stop();
         boolean state = stopExecutors();
         for (Daemon2Managable managable : managables) state &= managable.stop();
         return state;

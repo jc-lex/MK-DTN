@@ -1,5 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
@@ -51,10 +52,21 @@ final class TestUtilities {
     static DTNBundle createTestUserBundle(byte[] message) {
         
         PrimaryBlock primaryBlock = makePrimaryBlockForUserBundle();
+    
+    
+        CanonicalBlock ageCBlock = new CanonicalBlock();
+    
+        AgeBlock ageBlock = new AgeBlock();
+        ageBlock.sourceCPUSpeedInKHz = DTNUtils.getMaxCPUFrequencyInKHz();
+        ageBlock.receivingTimestamp = BigInteger.valueOf(System.currentTimeMillis());
+        ageBlock.sendingTimestamp = BigInteger.valueOf(System.currentTimeMillis());
+        ageBlock.agePrime = BigInteger.ZERO;
+        ageBlock.age = BigInteger.ZERO;
+        ageBlock.T = BigInteger.ZERO;
         
-        
-        CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock();
-        
+        ageCBlock.blockTypeSpecificDataFields = ageBlock;
+        ageCBlock.blockType = CanonicalBlock.BlockType.AGE;
+        ageCBlock.mustBeReplicatedInAllFragments = true;
         
         CanonicalBlock payloadCBlock = new CanonicalBlock();
         payloadCBlock.blockTypeSpecificDataFields = makePayloadForUserBundle(message);
@@ -97,7 +109,7 @@ final class TestUtilities {
             = generateBundlePCFsForUserBundle();
         primaryBlock.priorityClass = TEST_PRIORITY;
         primaryBlock.bundleID = DTNBundleID.from(
-            DTNEndpointID.parse(TEST_SENDER), System.currentTimeMillis()
+            DTNEndpointID.parse(TEST_SENDER), BigInteger.valueOf(System.currentTimeMillis())
         );
         primaryBlock.lifeTime = TEST_LIFETIME.getPeriod();
         primaryBlock.destinationEID = makeDTNEID();

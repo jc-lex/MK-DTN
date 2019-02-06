@@ -1,5 +1,7 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DTNUtils;
+
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -27,20 +29,18 @@ public final class PrimaryBlock implements Serializable {
     public enum PriorityClass {EXPEDITED, NORMAL, BULK}
     
     public enum LifeTime {
-        THREE_DAYS(LifeTime.DAY * 3),
-        ONE_WEEK(LifeTime.DAY * 7),
-        THREE_WEEKS(LifeTime.DAY * 7 * 3),
-        TWO_MONTHS(LifeTime.DAY * 7 * 4 * 2);
-    
-        private static final long DAY = 1000 * 60 * 60 * 24;
+        THREE_DAYS(DTNUtils.DAY.multiply(BigInteger.valueOf(3))),
+        ONE_WEEK(DTNUtils.DAY.multiply(BigInteger.valueOf(7))),
+        THREE_WEEKS(DTNUtils.DAY.multiply(BigInteger.valueOf(7 * 3))),
+        TWO_MONTHS(DTNUtils.DAY.multiply(BigInteger.valueOf(7 * 4 * 2)));
         
-        private long period;
+        private BigInteger period;
         
-        LifeTime(long period) {
+        LifeTime(BigInteger period) {
             this.period = period;
         }
         
-        public long getPeriod() {
+        public BigInteger getPeriod() {
             return this.period;
         }
     }
@@ -51,7 +51,7 @@ public final class PrimaryBlock implements Serializable {
     public DTNEndpointID destinationEID;
     public DTNEndpointID reportToEID;
     public DTNEndpointID custodianEID;
-    public long lifeTime;
+    public BigInteger lifeTime;
     public HashMap<String, String> detailsIfFragment = new HashMap<>(2);
     
     @Override
@@ -75,13 +75,13 @@ public final class PrimaryBlock implements Serializable {
         
         PrimaryBlock that = (PrimaryBlock) o;
         
-        if (lifeTime != that.lifeTime) return false;
         if (!bundleProcessingControlFlags.equals(that.bundleProcessingControlFlags)) return false;
         if (priorityClass != that.priorityClass) return false;
         if (!bundleID.equals(that.bundleID)) return false;
         if (!destinationEID.equals(that.destinationEID)) return false;
         if (!reportToEID.equals(that.reportToEID)) return false;
         if (!custodianEID.equals(that.custodianEID)) return false;
+        if (!lifeTime.equals(that.lifeTime)) return false;
         return detailsIfFragment.equals(that.detailsIfFragment);
     }
     
@@ -93,7 +93,7 @@ public final class PrimaryBlock implements Serializable {
         result = 31 * result + destinationEID.hashCode();
         result = 31 * result + reportToEID.hashCode();
         result = 31 * result + custodianEID.hashCode();
-        result = 31 * result + (int) (lifeTime ^ (lifeTime >>> 32));
+        result = 31 * result + lifeTime.hashCode();
         result = 31 * result + detailsIfFragment.hashCode();
         return result;
     }

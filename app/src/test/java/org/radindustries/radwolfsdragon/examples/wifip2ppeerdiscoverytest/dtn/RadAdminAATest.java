@@ -5,12 +5,15 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AdminAA2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
+
+import java.math.BigInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -22,6 +25,12 @@ public class RadAdminAATest {
     
     @BeforeClass
     public static void setUpClass() {
+        WallClock clock = new WallClock() {
+            @Override
+            public BigInteger getCurrentTime() {
+                return BigInteger.valueOf(System.currentTimeMillis());
+            }
+        };
         radAdminAA = new RadAdminAA(new AdminAA2Daemon() {
             @Override
             public void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
@@ -67,7 +76,7 @@ public class RadAdminAATest {
             public DTNEndpointID getThisNodezEID() {
                 return TestUtilities.makeDTNEID();
             }
-        });
+        }, clock);
     }
     
     @Test

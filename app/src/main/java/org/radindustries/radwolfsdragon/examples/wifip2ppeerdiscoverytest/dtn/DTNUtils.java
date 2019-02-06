@@ -15,10 +15,13 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.Scanner;
 
-final class DTNUtils {
+public final class DTNUtils {
     private DTNUtils() {}
     
     private static final long DEFAULT_CPU_SPEED_IN_KHZ = 1_100_000L;
+    
+    public static final BigInteger DAY = BigInteger.valueOf(getMaxCPUFrequencyInKHz())
+        .multiply(BigInteger.valueOf(60 * 60 * 24));
     
     static CanonicalBlock makeAgeCBlock() {
         CanonicalBlock ageCBlock = new CanonicalBlock();
@@ -33,24 +36,24 @@ final class DTNUtils {
         return ageCBlock;
     }
     
-    static void setTimeReceived(DTNBundle receivedBundle) {
+    static void setTimeReceived(DTNBundle receivedBundle, BigInteger currentTime) {
         if (!isValid(receivedBundle)) return;
         
         CanonicalBlock ageCBlock = receivedBundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields != null) {
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-            ageBlock.receivingTimestamp = System.currentTimeMillis();
+            ageBlock.receivingTimestamp = currentTime;
         }
     }
     
-    static long getTimeReceived(DTNBundle bundle) {
-        if (!isValid(bundle)) return -1L;
+    static BigInteger getTimeReceived(DTNBundle bundle) {
+        if (!isValid(bundle)) return BigInteger.ZERO.subtract(BigInteger.ONE);
         
         CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-            return ageBlock.receivingTimestamp; // find out how to use T instead
-        } else return -1L;
+            return ageBlock.T;
+        } else return BigInteger.ZERO.subtract(BigInteger.ONE);
     }
     
     static boolean isFragment(DTNBundle bundle) {
@@ -110,7 +113,7 @@ final class DTNUtils {
                     = (CustodySignal) custodySignalCBlock.blockTypeSpecificDataFields;
     
                 return custodySignal.recordType == AdminRecord.RecordType.CUSTODY_SIGNAL &&
-                    custodySignal.timeOfSignal > 0L;
+                    custodySignal.timeOfSignal.compareTo(BigInteger.ZERO) > 0; // t > 0
             }
         }
         return false;
@@ -127,7 +130,7 @@ final class DTNUtils {
                     = (StatusReport) statusReportCBlock.blockTypeSpecificDataFields;
     
                 return statusReport.recordType == AdminRecord.RecordType.STATUS_REPORT &&
-                    statusReport.timeOfDelivery > 0L;
+                    statusReport.timeOfDelivery.compareTo(BigInteger.ZERO) > 0; // t > 0
             }
         }
         return false;
@@ -149,14 +152,14 @@ final class DTNUtils {
     
     private static boolean isValidPrimaryBlock(PrimaryBlock primaryBlock) {
         return primaryBlock.bundleID != null &&
-            primaryBlock.bundleID.creationTimestamp > 0L &&
+            primaryBlock.bundleID.creationTimestamp.compareTo(BigInteger.ZERO) > 0 && // t > 0
             primaryBlock.bundleID.sourceEID != null &&
             primaryBlock.destinationEID != null &&
             primaryBlock.custodianEID != null &&
             primaryBlock.reportToEID != null &&
             primaryBlock.bundleProcessingControlFlags != null &&
             primaryBlock.priorityClass != null &&
-            primaryBlock.lifeTime > 0L;
+            primaryBlock.lifeTime.compareTo(BigInteger.ZERO) > 0; // t > 0
     }
     
     private static boolean isValidAgeCBlock(CanonicalBlock cBlock) {
@@ -251,7 +254,7 @@ final class DTNUtils {
      * @author Nicolas Gramlich
      * @since 15:50:31 - 14.07.2010
      */
-    static long getMaxCPUFrequencyInKHz() {
+    public static long getMaxCPUFrequencyInKHz() {
         try {
             return readCPUSystemFileAsInt();
         } catch (Exception e) {

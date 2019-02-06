@@ -10,7 +10,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNTextMessage;
 
-import java.util.Locale;
 import java.util.Objects;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -45,8 +44,8 @@ public class ViewMessageActivity extends AppCompatActivity implements View.OnCli
                 
                 senderEID = msg.sender;
                 senderTV.setText(senderEID);
-                recvdTSTV.setText(String.format(Locale.ENGLISH, "%d", msg.receivedTimestamp));
-                createdTSTV.setText(String.format(Locale.ENGLISH, "%d", msg.creationTimestamp));
+                recvdTSTV.setText(msg.receivedTimestamp);
+                createdTSTV.setText(msg.creationTimestamp);
                 messageTV.setText(msg.textMessage);
             }
         }

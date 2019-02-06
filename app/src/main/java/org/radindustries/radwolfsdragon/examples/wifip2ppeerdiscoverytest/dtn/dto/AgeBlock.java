@@ -1,22 +1,24 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
+import java.math.BigInteger;
+
 public final class AgeBlock extends BlockTypeSpecificDataFields {
     
     public long sourceCPUSpeedInKHz;
-    public long sendingTimestamp;
-    public long receivingTimestamp;
-    public long age;
-    public long agePrime;
-    public long T;
+    public BigInteger sendingTimestamp;
+    public BigInteger receivingTimestamp;
+    public BigInteger age;
+    public BigInteger agePrime;
+    public BigInteger T;
     
     public static AgeBlock from(AgeBlock other) {
         AgeBlock newOne = new AgeBlock();
         newOne.sourceCPUSpeedInKHz = other.sourceCPUSpeedInKHz;
-        newOne.sendingTimestamp = other.sendingTimestamp;
-        newOne.receivingTimestamp = other.receivingTimestamp;
-        newOne.T = other.T;
-        newOne.age = other.age;
-        newOne.agePrime = other.agePrime;
+        newOne.sendingTimestamp = new BigInteger(other.sendingTimestamp.toString());
+        newOne.receivingTimestamp = new BigInteger(other.receivingTimestamp.toString());
+        newOne.T = new BigInteger(other.T.toString());
+        newOne.age = new BigInteger(other.age.toString());
+        newOne.agePrime = new BigInteger(other.agePrime.toString());
         return newOne;
     }
     
@@ -40,21 +42,21 @@ public final class AgeBlock extends BlockTypeSpecificDataFields {
         AgeBlock ageBlock = (AgeBlock) o;
         
         if (sourceCPUSpeedInKHz != ageBlock.sourceCPUSpeedInKHz) return false;
-        if (sendingTimestamp != ageBlock.sendingTimestamp) return false;
-        if (receivingTimestamp != ageBlock.receivingTimestamp) return false;
-        if (age != ageBlock.age) return false;
-        if (agePrime != ageBlock.agePrime) return false;
-        return T == ageBlock.T;
+        if (!sendingTimestamp.equals(ageBlock.sendingTimestamp)) return false;
+        if (!receivingTimestamp.equals(ageBlock.receivingTimestamp)) return false;
+        if (!age.equals(ageBlock.age)) return false;
+        if (!agePrime.equals(ageBlock.agePrime)) return false;
+        return T.equals(ageBlock.T);
     }
     
     @Override
     public int hashCode() {
         int result = (int) (sourceCPUSpeedInKHz ^ (sourceCPUSpeedInKHz >>> 32));
-        result = 31 * result + (int) (sendingTimestamp ^ (sendingTimestamp >>> 32));
-        result = 31 * result + (int) (receivingTimestamp ^ (receivingTimestamp >>> 32));
-        result = 31 * result + (int) (age ^ (age >>> 32));
-        result = 31 * result + (int) (agePrime ^ (agePrime >>> 32));
-        result = 31 * result + (int) (T ^ (T >>> 32));
+        result = 31 * result + sendingTimestamp.hashCode();
+        result = 31 * result + receivingTimestamp.hashCode();
+        result = 31 * result + age.hashCode();
+        result = 31 * result + agePrime.hashCode();
+        result = 31 * result + T.hashCode();
         return result;
     }
 }

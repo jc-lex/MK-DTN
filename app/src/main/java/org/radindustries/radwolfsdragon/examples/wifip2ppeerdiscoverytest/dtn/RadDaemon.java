@@ -21,6 +21,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
@@ -40,6 +41,9 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ro
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.io.File;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,7 +60,7 @@ import androidx.annotation.NonNull;
 final class RadDaemon
     implements AppAA2Daemon, AdminAA2Daemon, CLA2Daemon, PeerDiscoverer2Daemon, DTNManager2Daemon,
         Router2Daemon, NECTARRouter2Daemon, NECTARPeerDiscoverer2Daemon,
-        PRoPHETRouter2Daemon, PRoPHETPeerDiscoverer2Daemon, PRoPHETCLA2Daemon {
+        PRoPHETRouter2Daemon, PRoPHETPeerDiscoverer2Daemon, PRoPHETCLA2Daemon, WallClock {
     
     private Daemon2CLA cla;
     private Daemon2PeerDiscoverer discoverer;
@@ -83,6 +87,11 @@ final class RadDaemon
         this.context = context;
         wallClock = RadWallClock.getWallClock(context);
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
+    }
+    
+    @Override
+    public BigInteger getCurrentTime() {
+        return wallClock.getCurrentTime();
     }
     
     void setCLA(@NonNull Daemon2CLA cla) {
@@ -146,14 +155,14 @@ final class RadDaemon
         
         @Override
         public void run() {
-            Log.i(LOG_TAG, "transmitting @ " + wallClock.getCurrentTime().toString());
+            Log.i(LOG_TAG, "transmitting @ " + getCurrentTime().toString());
             while (!Thread.interrupted()) {
-                Log.i(LOG_TAG, "entering ON cycle @ " + wallClock.getCurrentTime().toString());
+                Log.i(LOG_TAG, "entering ON cycle @ " + getCurrentTime().toString());
                 int randMode = (int) (Math.random() * 100);
                 
                 if (randMode < 50) doSinkMode();
                 else doSrcMode();
-                Log.i(LOG_TAG, "leaving ON cycle @ " + wallClock.getCurrentTime().toString());
+                Log.i(LOG_TAG, "leaving ON cycle @ " + getCurrentTime().toString());
 //                switch (randMode) {
 //                    case 0: doSrcMode(); break;
 //                    case 1: doSinkMode(); break;
@@ -161,15 +170,15 @@ final class RadDaemon
 //                }
                 if (Thread.interrupted()) break;
                 
-                Log.i(LOG_TAG, "entering OFF cycle @ " + wallClock.getCurrentTime().toString());
+                Log.i(LOG_TAG, "entering OFF cycle @ " + getCurrentTime().toString());
                 try {
                     Thread.sleep(OFF_CYCLE_DURATION_MILLIS);
                 } catch (InterruptedException e) {
                     Log.e(LOG_TAG, "transmit task: off cycle interrupted");
                 }
-                Log.i(LOG_TAG, "leaving OFF cycle @ " + wallClock.getCurrentTime().toString());
+                Log.i(LOG_TAG, "leaving OFF cycle @ " + getCurrentTime().toString());
             }
-            Log.i(LOG_TAG, "transmission stopped @ " + wallClock.getCurrentTime().toString());
+            Log.i(LOG_TAG, "transmission stopped @ " + getCurrentTime().toString());
         }
         
         private void doSrcMode() {
@@ -235,7 +244,7 @@ final class RadDaemon
         }
         
         private void setSendingTime(DTNBundle bundle) {
-            long bundleCreationTimestamp
+            BigInteger bundleCreationTimestamp
                 = bundle.primaryBlock.bundleID.creationTimestamp;
     
             CanonicalBlock ageCBlock
@@ -244,17 +253,28 @@ final class RadDaemon
     
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
     
-            ageBlock.sendingTimestamp = System.currentTimeMillis();
+            ageBlock.sendingTimestamp = getCurrentTime();
     
             if (isFromUs(bundle)) { // initial conditions from bundle's src
-                ageBlock.agePrime = 0;
-                ageBlock.T = bundleCreationTimestamp;
+                ageBlock.agePrime = BigInteger.ZERO;
+                ageBlock.T = new BigInteger(bundleCreationTimestamp.toString());
             }
     
             // NOTE general equation for bundle aging, where now == sendingTimestamp
-            ageBlock.age = ageBlock.agePrime + (long)
-                ((DTNUtils.getMaxCPUFrequencyInKHz() / (float) ageBlock.sourceCPUSpeedInKHz)
-                    * (ageBlock.sendingTimestamp - ageBlock.T));
+            ageBlock.age
+                = ageBlock.agePrime.add(
+                    
+                    BigDecimal.valueOf(
+                        DTNUtils.getMaxCPUFrequencyInKHz() / (float) ageBlock.sourceCPUSpeedInKHz
+                    )
+                    
+                    .multiply(new BigDecimal(
+                        ageBlock.sendingTimestamp.subtract(ageBlock.T)
+                    ))
+                    
+                    .toBigInteger()
+                    
+                );
         }
     }
     
@@ -325,20 +345,34 @@ final class RadDaemon
         
         private void processAgeAtReceipt(DTNBundle bundle) {
             if (DTNUtils.isValid(bundle)) {
-                long cts = bundle.primaryBlock.bundleID.creationTimestamp;
+                
+                BigInteger cts = bundle.primaryBlock.bundleID.creationTimestamp;
+                
                 CanonicalBlock ageCBlock
                     = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
                 assert ageCBlock != null;
     
                 AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+                BigDecimal srcSpeed = new BigDecimal(ageBlock.sourceCPUSpeedInKHz);
+                
+                BigDecimal A1 = new BigDecimal(
+                    ageBlock.sendingTimestamp.multiply(
+                        BigInteger.valueOf(ageBlock.sourceCPUSpeedInKHz)
+                    )
+                );
+                
+                BigDecimal A2
+                    = new BigDecimal(
+                        ageBlock.receivingTimestamp.multiply(
+                            BigInteger.valueOf(DTNUtils.getMaxCPUFrequencyInKHz())
+                        ))
+                    .divide(srcSpeed, RoundingMode.UP);
+                
+                BigInteger transmissionAge = A2.subtract(A1).abs()
+                    .divide(srcSpeed, RoundingMode.UP).toBigInteger();
     
-                float A1 = (float) ageBlock.sourceCPUSpeedInKHz * ageBlock.sendingTimestamp;
-                float A2 = (DTNUtils.getMaxCPUFrequencyInKHz() * ageBlock.receivingTimestamp) /
-                    (float) ageBlock.sourceCPUSpeedInKHz;
-                long transmissionAge = (long) (Math.abs(A2 - A1) / ageBlock.sourceCPUSpeedInKHz);
-    
-                ageBlock.agePrime = ageBlock.age + transmissionAge;
-                ageBlock.T = cts + ageBlock.agePrime;
+                ageBlock.agePrime = ageBlock.age.add(transmissionAge);
+                ageBlock.T = cts.add(ageBlock.agePrime);
             }
         }
         

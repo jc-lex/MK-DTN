@@ -5,6 +5,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AppAA2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
@@ -12,6 +13,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Set;
 
@@ -108,11 +110,18 @@ public class RadAppAATest {
         }
     };
     
+    private static final WallClock clock = new WallClock() {
+        @Override
+        public BigInteger getCurrentTime() {
+            return BigInteger.valueOf(System.currentTimeMillis());
+        }
+    };
+    
     private static RadAppAA appAA;
     
     @BeforeClass
     public static void setUp() {
-        appAA = new RadAppAA(ui, daemon);
+        appAA = new RadAppAA(ui, daemon, clock);
     }
     
     @Test

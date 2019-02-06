@@ -5,6 +5,7 @@ import android.util.Log;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AdminAA2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AdminRecord;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
@@ -25,9 +26,11 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     private AdminAA2Daemon daemon;
     private DTNBundle bundle;
+    private WallClock clock;
     
-    RadAdminAA(@NonNull AdminAA2Daemon daemon) {
+    RadAdminAA(@NonNull AdminAA2Daemon daemon, @NonNull WallClock clock) {
         this.daemon = daemon;
+        this.clock = clock;
     }
     
     @Override
@@ -122,7 +125,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         signal.recordType = AdminRecord.RecordType.CUSTODY_SIGNAL;
         signal.reasonCode = reasonCode;
         signal.custodyTransferSucceeded = custodyAccepted;
-        signal.timeOfSignal = System.currentTimeMillis();
+        signal.timeOfSignal = clock.getCurrentTime();
         
         return processOtherAdminRecordDetails(userBundle, signal);
     }
@@ -146,7 +149,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         report.recordType = AdminRecord.RecordType.STATUS_REPORT;
         report.reasonCode = reasonCode;
         report.bundleDelivered = bundleDelivered;
-        report.timeOfDelivery = System.currentTimeMillis();
+        report.timeOfDelivery = clock.getCurrentTime();
         
         return processOtherAdminRecordDetails(userBundle, report);
     }
@@ -211,7 +214,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         primaryBlock.bundleProcessingControlFlags = makeBundlePCFsForAdminRecord();
         primaryBlock.priorityClass = userBundlePrimaryBlock.priorityClass;
         primaryBlock.bundleID
-            = DTNBundleID.from(daemon.getThisNodezEID(), System.currentTimeMillis());
+            = DTNBundleID.from(daemon.getThisNodezEID(), clock.getCurrentTime());
         primaryBlock.destinationEID = DTNEndpointID.from(userBundlePrimaryBlock.bundleID.sourceEID);
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);

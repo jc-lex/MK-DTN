@@ -28,6 +28,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETCLA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETPeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
@@ -61,6 +62,7 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
     private PRoPHETPeerDiscoverer2Daemon prophetPeerDiscoverer2Daemon;
     private PRoPHETCLA2Daemon prophetCLA2Daemon;
     private ConnectionsClient connectionsClient;
+    private WallClock clock;
     
     private boolean isInbound;
     private final EndpointDiscoveryCallback endpointDiscoveryCallback
@@ -182,7 +184,7 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
                             )
                         ) {
                             DTNBundle receivedBundle = (DTNBundle) in.readObject();
-                            DTNUtils.setTimeReceived(receivedBundle);
+                            DTNUtils.setTimeReceived(receivedBundle, clock.getCurrentTime());
                     
                             prophetCLA2Daemon.calculateDPTransitivity(receivedBundle);
                             cla2Daemon.onBundleReceived(receivedBundle);
@@ -219,6 +221,7 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         @NonNull PRoPHETCLA2Daemon prophetCLA2Daemon,
         @NonNull PRoPHETPeerDiscoverer2Daemon prophetPeerDiscoverer2Daemon,
         @NonNull NECTARPeerDiscoverer2Daemon nectarPeerDiscoverer2Daemon,
+        @NonNull WallClock clock,
         @NonNull Context context
     ) {
         connectionsClient = Nearby.getConnectionsClient(context);
@@ -227,6 +230,7 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         this.peerDiscoverer2Daemon = peerDiscoverer2Daemon;
         this.nectarPeerDiscoverer2Daemon = nectarPeerDiscoverer2Daemon;
         this.prophetPeerDiscoverer2Daemon = prophetPeerDiscoverer2Daemon;
+        this.clock = clock;
         discoveredNodes = new HashSet<>();
         connectedNodes = new HashSet<>();
     }

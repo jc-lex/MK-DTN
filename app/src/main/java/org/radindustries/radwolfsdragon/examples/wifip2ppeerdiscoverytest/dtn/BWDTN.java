@@ -68,7 +68,7 @@ public final class BWDTN {
     
     private static RadAppAA getRadAppAA(@NonNull DTNUI ui) {
         if (radAppAA == null) {
-            radAppAA = new RadAppAA(ui, radDaemon);
+            radAppAA = new RadAppAA(ui, radDaemon, radDaemon);
             radDaemon.setAppAA(radAppAA);
         }
         return radAppAA;
@@ -111,7 +111,8 @@ public final class BWDTN {
         if (radNearby == null) {
             synchronized (BWDTN.class) {
                 radNearby
-                    = new RadNearby(radDaemon, radDaemon, radDaemon, radDaemon, radDaemon, context);
+                    = new RadNearby(radDaemon, radDaemon, radDaemon,
+                    radDaemon, radDaemon, radDaemon, context);
             }
         }
         return radNearby;
@@ -123,7 +124,7 @@ public final class BWDTN {
     }
     
     private static Daemon2AdminAA getAdminAA() {
-        if (radAppAA == null) radAdminAA = new RadAdminAA(radDaemon);
+        if (radAppAA == null) radAdminAA = new RadAdminAA(radDaemon, radDaemon);
         return radAdminAA;
     }
     
@@ -134,7 +135,7 @@ public final class BWDTN {
     
     private static Daemon2NECTARRoutingTable getNECTARRoutingTable(@NonNull Context context) {
         if (radNECTARRoutingTable == null)
-            radNECTARRoutingTable = new RadNECTARRoutingTable(context, radDaemon);
+            radNECTARRoutingTable = new RadNECTARRoutingTable(context, radDaemon, radDaemon);
         return radNECTARRoutingTable;
     }
     

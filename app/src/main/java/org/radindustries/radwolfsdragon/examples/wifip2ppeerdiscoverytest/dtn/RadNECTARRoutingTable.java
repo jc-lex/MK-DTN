@@ -3,23 +3,30 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 import android.content.Context;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.EIDProvider;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 
 import androidx.annotation.NonNull;
 
 final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     
-    private static final long DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
-    
     private static RouterDBHandler routerDBHandler;
     private EIDProvider eidProvider;
+    private WallClock clock;
     
     private RadNECTARRoutingTable() {}
     
-    RadNECTARRoutingTable(@NonNull Context context, @NonNull EIDProvider eidProvider) {
+    RadNECTARRoutingTable(
+        @NonNull Context context, @NonNull EIDProvider eidProvider, @NonNull WallClock clock
+    ) {
         routerDBHandler = RouterDBHandler.getHandler(context);
         this.eidProvider = eidProvider;
+        this.clock = clock;
     }
     
     @Override
@@ -29,8 +36,15 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
         NeighbourhoodIndex ni = routerDBHandler.getIndex(nodeEID.toString());
         
         return ni != null ?
-            (ni.getMeetingCount() * DAY_IN_MILLIS) /
-            (System.currentTimeMillis() - ni.getFirstEncounterTimestamp()) :
+            new BigDecimal(DTNUtils.DAY.multiply(BigInteger.valueOf(ni.getMeetingCount())))
+                
+                .divide(new BigDecimal(
+                    
+                    clock.getCurrentTime().subtract(new BigInteger(ni.getFirstEncounterTimestamp()))
+                
+                ), RoundingMode.UP)
+                
+                .floatValue() :
             0.0F;
     }
     
@@ -45,7 +59,7 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
         } else { // inserting
             NeighbourhoodIndex newNI = new NeighbourhoodIndex();
             newNI.setNodeEID(nodeEID.toString());
-            newNI.setFirstEncounterTimestamp(System.currentTimeMillis());
+            newNI.setFirstEncounterTimestamp(clock.getCurrentTime().toString());
             newNI.setMeetingCount(1);
             routerDBHandler.insert(newNI);
         }

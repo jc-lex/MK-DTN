@@ -1,5 +1,7 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
+import java.math.BigInteger;
+
 public final class StatusReport extends AdminRecord {
     
     public enum Reason {
@@ -9,7 +11,7 @@ public final class StatusReport extends AdminRecord {
     
     public boolean bundleDelivered;
     public Reason reasonCode;
-    public long timeOfDelivery;
+    public BigInteger timeOfDelivery;
     
     @Override
     public String toString() {
@@ -33,7 +35,7 @@ public final class StatusReport extends AdminRecord {
         StatusReport report = (StatusReport) o;
         
         if (bundleDelivered != report.bundleDelivered) return false;
-        if (timeOfDelivery != report.timeOfDelivery) return false;
+        if (!timeOfDelivery.equals(report.timeOfDelivery)) return false;
         return reasonCode == report.reasonCode;
     }
     
@@ -42,7 +44,7 @@ public final class StatusReport extends AdminRecord {
         int result = super.hashCode();
         result = 31 * result + (bundleDelivered ? 1 : 0);
         result = 31 * result + reasonCode.hashCode();
-        result = 31 * result + (int) (timeOfDelivery ^ (timeOfDelivery >>> 32));
+        result = 31 * result + timeOfDelivery.hashCode();
         return result;
     }
 }

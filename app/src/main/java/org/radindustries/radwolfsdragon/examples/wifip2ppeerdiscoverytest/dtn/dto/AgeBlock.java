@@ -5,11 +5,11 @@ import java.math.BigInteger;
 public final class AgeBlock extends BlockTypeSpecificDataFields {
     
     public long sourceCPUSpeedInKHz;
-    public BigInteger sendingTimestamp;
-    public BigInteger receivingTimestamp;
-    public BigInteger age;
-    public BigInteger agePrime;
-    public BigInteger T;
+    public BigInteger sendingTimestamp = BigInteger.ZERO;
+    public BigInteger receivingTimestamp = BigInteger.ZERO;
+    public BigInteger age = BigInteger.ZERO;
+    public BigInteger agePrime = BigInteger.ZERO;
+    public BigInteger T = BigInteger.ZERO;
     
     public static AgeBlock from(AgeBlock other) {
         AgeBlock newOne = new AgeBlock();

@@ -36,7 +36,7 @@ public final class DTNUtils {
         return ageCBlock;
     }
     
-    static void setTimeReceived(DTNBundle receivedBundle, BigInteger currentTime) {
+    static void setTimeReceivedByWRTRx(DTNBundle receivedBundle, BigInteger currentTime) {
         if (!isValid(receivedBundle)) return;
         
         CanonicalBlock ageCBlock = receivedBundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
@@ -46,7 +46,7 @@ public final class DTNUtils {
         }
     }
     
-    static BigInteger getTimeReceived(DTNBundle bundle) {
+    static BigInteger getTimeReceivedWRTSrc(DTNBundle bundle) {
         if (!isValid(bundle)) return BigInteger.ZERO.subtract(BigInteger.ONE);
         
         CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
@@ -254,7 +254,7 @@ public final class DTNUtils {
      * @author Nicolas Gramlich
      * @since 15:50:31 - 14.07.2010
      */
-    public static long getMaxCPUFrequencyInKHz() {
+    static long getMaxCPUFrequencyInKHz() {
         try {
             return readCPUSystemFileAsInt();
         } catch (Exception e) {

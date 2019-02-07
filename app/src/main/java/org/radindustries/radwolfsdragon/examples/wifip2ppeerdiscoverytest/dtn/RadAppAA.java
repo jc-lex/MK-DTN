@@ -196,7 +196,8 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             }
             deliveryReportText.creationTimestamp
                 = bundle.primaryBlock.bundleID.creationTimestamp.toString();
-            deliveryReportText.receivedTimestamp = DTNUtils.getTimeReceived(bundle).toString();
+            deliveryReportText.receivedTimestamp
+                = DTNUtils.getTimeReceivedWRTSrc(bundle).toString();
             
             return deliveryReportText;
         }
@@ -216,7 +217,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             msgFromSender.textMessage = new String(payloadADU.ADU);
             msgFromSender.creationTimestamp
                 = bundle.primaryBlock.bundleID.creationTimestamp.toString();
-            msgFromSender.receivedTimestamp = DTNUtils.getTimeReceived(bundle).toString();
+            msgFromSender.receivedTimestamp = DTNUtils.getTimeReceivedWRTSrc(bundle).toString();
             
             return msgFromSender;
         } else return new DTNTextMessage();

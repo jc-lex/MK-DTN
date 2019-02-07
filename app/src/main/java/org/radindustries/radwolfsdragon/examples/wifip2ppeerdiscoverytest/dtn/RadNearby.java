@@ -184,7 +184,7 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
                             )
                         ) {
                             DTNBundle receivedBundle = (DTNBundle) in.readObject();
-                            DTNUtils.setTimeReceived(receivedBundle, clock.getCurrentTime());
+                            DTNUtils.setTimeReceivedByWRTRx(receivedBundle, clock.getCurrentTime());
                     
                             prophetCLA2Daemon.calculateDPTransitivity(receivedBundle);
                             cla2Daemon.onBundleReceived(receivedBundle);

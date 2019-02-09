@@ -160,18 +160,14 @@ final class DTNUtils {
     }
     
     private static boolean isValidAgeCBlock(CanonicalBlock cBlock) {
-//        if (cBlock != null &&
-//            cBlock.blockType == CanonicalBlock.BlockType.AGE &&
-//            cBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
-//
-//            AgeBlock ageBlock = (AgeBlock) cBlock.blockTypeSpecificDataFields;
-//            return ageBlock.sendingTimestamp > 0L &&
-//                ageBlock.receivingTimestamp > 0L &&
-//                ageBlock.sourceCPUSpeedInKHz > 0L;
-//        }
-        return cBlock != null &&
+        if (cBlock != null &&
             cBlock.blockType == CanonicalBlock.BlockType.AGE &&
-            cBlock.blockTypeSpecificDataFields instanceof AgeBlock;
+            cBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
+
+            AgeBlock ageBlock = (AgeBlock) cBlock.blockTypeSpecificDataFields;
+            return ageBlock.sourceCPUSpeedInKHz > 0L;
+        }
+        return false;
     }
     
     private static boolean isValidPayloadCBlock(CanonicalBlock cBlock) {
@@ -203,15 +199,18 @@ final class DTNUtils {
             cBlock.blockTypeSpecificDataFields instanceof AdminRecord) {
             
             AdminRecord adminRecord = (AdminRecord) cBlock.blockTypeSpecificDataFields;
-            if (adminRecord.subjectBundleID != null && adminRecord.isForAFragment) {
+            if (adminRecord.subjectBundleID != null) {
                 
-                if (adminRecord.detailsIfForAFragment != null &&
-                    !adminRecord.detailsIfForAFragment.isEmpty()) {
-                    String fragmentLength = adminRecord.detailsIfForAFragment
-                        .get(AdminRecord.FragmentField.FRAGMENT_LENGTH);
+                if (adminRecord.isForAFragment) {
+                    if (adminRecord.detailsIfForAFragment != null &&
+                        !adminRecord.detailsIfForAFragment.isEmpty()) {
+                        String fragmentLength = adminRecord.detailsIfForAFragment
+                            .get(AdminRecord.FragmentField.FRAGMENT_LENGTH);
         
-                    return fragmentLength != null && Integer.parseInt(fragmentLength) > 0;
+                        return fragmentLength != null && Integer.parseInt(fragmentLength) > 0;
+                    }
                 }
+                else return true;
             }
         }
         return false;

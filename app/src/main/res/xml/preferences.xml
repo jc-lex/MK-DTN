@@ -26,7 +26,8 @@
     <SwitchPreferenceCompat
         android:key="@string/pref_enable_manual_transmission_key"
         android:title="@string/pref_enable_manual_transmission_title"
-        android:defaultValue="@bool/pref_enable_manual_transmission_default" />
+        android:defaultValue="@bool/pref_enable_manual_transmission_default"
+        android:summary="@string/pref_enable_manual_transmission_summary" />
     <ListPreference
         android:key="@string/pref_transmission_mode_key"
         android:title="@string/pref_transmission_mode_title"

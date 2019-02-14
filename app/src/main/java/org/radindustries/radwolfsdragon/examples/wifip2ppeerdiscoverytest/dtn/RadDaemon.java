@@ -502,13 +502,18 @@ final class RadDaemon
             bundleTransmitter.interrupt();
             bundleProcessor.shutdown();
             
+            boolean done;
             try {
-                return bundleTransmitter.isInterrupted() &&
+                done = bundleTransmitter.isInterrupted() &&
                     bundleProcessor.awaitTermination(5L, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
-                return false;
+                done = false;
             }
             
+            bundleTransmitter = null;
+            bundleProcessor = null;
+            
+            return done;
         } else return true;
     }
     

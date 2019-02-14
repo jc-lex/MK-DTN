@@ -25,23 +25,26 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
         
         @Override
         public void run() {
-            while (!Thread.interrupted()) {
-                List<DeliveryPredictability> dps = routerDBHandler.getAllDPs();
-                float lambda = (float) Math.log(2) / HALF_LIFE_IN_SECONDS;
+            try {
+                while (!Thread.interrupted()) {
+                    List<DeliveryPredictability> dps = routerDBHandler.getAllDPs();
         
-                if (!dps.isEmpty()) {
-                    for (DeliveryPredictability dp : dps) {
-                        dp.setProbability(
-                            dp.getProbability() * (1 / (1 + lambda))
-                        );
+                    if (!dps.isEmpty()) {
+                        float lambda = (float) Math.log(2) / HALF_LIFE_IN_SECONDS;
+            
+                        for (DeliveryPredictability dp : dps) {
+                            dp.setProbability(
+                                dp.getProbability() * (1 / (1 + lambda))
+                            );
+                        }
+            
+                        routerDBHandler.update(dps);
                     }
-                }
         
-                try {
                     Thread.sleep(1000); // one second
-                } catch (InterruptedException e) {
-                    break;
                 }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -144,7 +147,9 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     public boolean stop() {
         if (dpAgingExecutor != null) {
             dpAgingExecutor.interrupt();
-            return dpAgingExecutor.isInterrupted();
+            boolean done = dpAgingExecutor.isInterrupted();
+            dpAgingExecutor = null;
+            return done;
         } else return true;
     }
 }

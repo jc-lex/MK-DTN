@@ -134,59 +134,67 @@ final class RadDaemon
     
     private class TransmitOutboundBundlesTask implements Runnable {
         private Set<DTNBundleNode> nextHops;
-    
         private TransmitOutboundBundlesTask() {
             nextHops = new HashSet<>();
         }
         
-        private static final long OFF_CYCLE_DURATION_MILLIS = 1_200_000L; // 20 min
-        private static final long ON_CYCLE_DURATION_MILLIS = 600_000L; // 10 min
+        private static final long ONE_MINUTE_MILLIS = 60_000L;
+        private static final long ON_CYCLE_DURATION_MILLIS = 3 * ONE_MINUTE_MILLIS;
         
         @Override
         public void run() {
-            Log.i(LOG_TAG, "transmitting");
-            while (!Thread.interrupted()) {
-                Log.i(LOG_TAG, "entering ON cycle");
-                int randMode = (int) (Math.random() * 100);
-                
-                if (randMode < 50) doSinkMode();
-                else doSrcMode();
-                Log.i(LOG_TAG, "leaving ON cycle");
-//                switch (randMode) {
-//                    case 0: doSrcMode(); break;
-//                    case 1: doSinkMode(); break;
-//                    default: break;
-//                }
-                if (Thread.interrupted()) break;
-                
-                Log.i(LOG_TAG, "entering OFF cycle");
-                try {
-                    Thread.sleep(OFF_CYCLE_DURATION_MILLIS);
-                } catch (InterruptedException e) {
-                    Log.e(LOG_TAG, "transmit task: off cycle interrupted");
+            try {
+                while (!Thread.interrupted()) {
+                    srcPhase();
+                    sinkPhase();
                 }
-                Log.i(LOG_TAG, "leaving OFF cycle");
+            } catch (InterruptedException e) {
+                Log.e(LOG_TAG, "transmission interrupted", e);
+                discoverer.stop();
             }
-            Log.i(LOG_TAG, "transmission stopped");
         }
         
-        private void doSrcMode() {
-            if (noSufficientBatteryPower()) return;
+        private void srcPhase() throws InterruptedException {
+            Log.i(LOG_TAG, "entering ON cycle");
+            doSrcMode();
+            Log.i(LOG_TAG, "leaving ON cycle");
+    
+            doSleep();
+        }
+        
+        private void sinkPhase() throws InterruptedException {
+            Log.i(LOG_TAG, "entering ON cycle");
+            doSinkMode();
+            Log.i(LOG_TAG, "leaving ON cycle");
+            
+            doSleep();
+        }
+        
+        private void doSleep() throws InterruptedException {
+            long offCycleDurationMillis
+                = (long) ((4 * ON_CYCLE_DURATION_MILLIS) / (float) 3);
+            
+            Log.i(LOG_TAG, "entering OFF cycle");
+            Thread.sleep(offCycleDurationMillis);
+            Log.i(LOG_TAG, "leaving OFF cycle");
+        }
+        
+        private void doSrcMode() throws InterruptedException {
+            if (insufficientBatteryPower()) return;
             
             Log.i(LOG_TAG, "entering SOURCE mode");
             discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
             long stopTime = System.currentTimeMillis() + ON_CYCLE_DURATION_MILLIS;
             int head = 0;
     
-            while (System.currentTimeMillis() < stopTime && !Thread.interrupted()) {
+            while (System.currentTimeMillis() < stopTime) {
                 // get what to send
                 DTNBundle bundle = null;
                 do {
                     if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty())
                         bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
-                } while (bundle == null && System.currentTimeMillis() < stopTime &&
-                    !Thread.interrupted());
-                if (System.currentTimeMillis() >= stopTime || Thread.interrupted()) break;
+                } while (bundle == null && System.currentTimeMillis() < stopTime);
+                if (System.currentTimeMillis() >= stopTime) break;
                 
                 assert bundle != null;
                 
@@ -196,9 +204,8 @@ final class RadDaemon
                     nextHops.addAll(
                         router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
                     );
-                } while (nextHops.isEmpty() && System.currentTimeMillis() < stopTime &&
-                    !Thread.interrupted());
-                if (System.currentTimeMillis() >= stopTime || Thread.interrupted()) break;
+                } while (nextHops.isEmpty() && System.currentTimeMillis() < stopTime);
+                if (System.currentTimeMillis() >= stopTime) break;
                 
                 // update bundle details
                 bundle.primaryBlock.custodianEID = getThisNodezEID();
@@ -206,30 +213,26 @@ final class RadDaemon
 
                 // send bundle
                 if (cla.transmit(bundle, nextHops) == 0) {
-                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(bundle);
+                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(head, bundle);
                 } else {
                     DummyStorage.TRANSMITTED_BUNDLES_QUEUE.add(bundle);
                 }
             }
     
             Log.i(LOG_TAG, "leaving SOURCE mode");
-            discoverer.stop(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
+            discoverer.stop();
         }
         
-        private void doSinkMode() {
-            if (noSufficientBatteryPower() && noSufficientStorageSpace()) return;
+        private void doSinkMode() throws InterruptedException {
+            if (insufficientBatteryPower() && insufficientStorageSpace()) return;
             
             Log.i(LOG_TAG, "entering SINK mode");
             discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SINK);
-            
-            try {
-                Thread.sleep(ON_CYCLE_DURATION_MILLIS);
-            } catch (InterruptedException e) {
-                Log.e(LOG_TAG, "doSinkMode(): sleep interrupted");
-            }
+    
+            Thread.sleep(ON_CYCLE_DURATION_MILLIS);
     
             Log.i(LOG_TAG, "leaving SINK mode");
-            discoverer.stop(Daemon2PeerDiscoverer.ServiceMode.SINK);
+            discoverer.stop();
         }
         
         private void setSendingTime(DTNBundle bundle) {
@@ -278,7 +281,6 @@ final class RadDaemon
     
     private class ProcessInboundBundleTask implements Runnable {
         private DTNBundle bundle;
-    
         private ProcessInboundBundleTask(DTNBundle bundle) {
             this.bundle = bundle;
         }
@@ -315,7 +317,7 @@ final class RadDaemon
                     }
                 } else {
                     boolean weCan = canAcceptCustody(bundle);
-                    if (weCan) DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(bundle);
+                    if (weCan) transmit(bundle);
                     makeCustodySignal(bundle, weCan);
                 }
             }
@@ -358,7 +360,7 @@ final class RadDaemon
                     bundle, true, StatusReport.Reason.NO_OTHER_INFO
                 );
                 
-                DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(statusReport);
+                transmit(statusReport);
             }
         }
         
@@ -375,7 +377,7 @@ final class RadDaemon
                     );
                 }
                 
-                DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(custodySignal);
+                transmit(custodySignal);
             }
         }
         
@@ -399,19 +401,19 @@ final class RadDaemon
     }
     
     private Context context;
-    private static final float MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE = 35.0F;
-    private static final float MKDTN_MIN_FREE_SPACE_PERCENTAGE = 10.0F;
+    private static final float MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE = 15.0F;
+    private static final float MKDTN_MIN_FREE_SPACE_PERCENTAGE = 5.0F;
     private static final String LOG_TAG
         = DConstants.MAIN_LOG_TAG + "_" + RadDaemon.class.getSimpleName();
     
     private synchronized boolean canAcceptCustody(DTNBundle bundle) {
         
-        if (noSufficientBatteryPower()) {
+        if (insufficientBatteryPower()) {
             setCustodySignalReason(CustodySignal.Reason.DEPLETED_POWER);
             return false;
         }
         
-        if (noSufficientStorageSpace()) {
+        if (insufficientStorageSpace()) {
             setCustodySignalReason(CustodySignal.Reason.DEPLETED_STORAGE);
             return false;
         }
@@ -419,9 +421,10 @@ final class RadDaemon
         // REDUNDANT RECEPTION
         if (DummyStorage.OUTBOUND_BUNDLES_QUEUE.contains(bundle) ||
             DummyStorage.DELIVERED_BUNDLES_QUEUE.contains(bundle) ||
-            DummyStorage.DELIVERED_FRAGMENTS_QUEUE.contains(bundle)
+            DummyStorage.DELIVERED_FRAGMENTS_QUEUE.contains(bundle) ||
+            DummyStorage.TRANSMITTED_BUNDLES_QUEUE.contains(bundle)
         ) {
-            Log.i(LOG_TAG, "redundant reception");
+//            Log.i(LOG_TAG, "redundant reception");
             setCustodySignalReason(CustodySignal.Reason.REDUNDANT_RECEPTION);
             return false;
         }
@@ -430,7 +433,7 @@ final class RadDaemon
         return true;
     }
     
-    private synchronized boolean noSufficientBatteryPower() {
+    private synchronized boolean insufficientBatteryPower() {
         IntentFilter batteryIntentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = context.registerReceiver(null, batteryIntentFilter);
         if (batteryStatus != null) {
@@ -438,14 +441,14 @@ final class RadDaemon
             int maximum = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
         
             float batteryLevelPercentage = (current / (float) maximum) * 100;
-            Log.i(LOG_TAG, "Battery level = " + batteryLevelPercentage);
+//            Log.i(LOG_TAG, "Battery level = " + batteryLevelPercentage);
             
             return batteryLevelPercentage < MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE;
         }
         return false;
     }
     
-    private synchronized boolean noSufficientStorageSpace() {
+    private synchronized boolean insufficientStorageSpace() {
         String ourAppsDir = context.getFilesDir().getAbsoluteFile().toString();
         File dir = new File(ourAppsDir);
 //        Log.i(LOG_TAG, "our app's directory = " + ourAppsDir);
@@ -454,7 +457,7 @@ final class RadDaemon
         long totalSpace = dir.getTotalSpace();
     
         float freeSpacePercentage = (freeSpace / (float) totalSpace) * 100;
-        Log.i(LOG_TAG, "Free space = " + freeSpacePercentage);
+//        Log.i(LOG_TAG, "Free space = " + freeSpacePercentage);
         
         return freeSpacePercentage < MKDTN_MIN_FREE_SPACE_PERCENTAGE;
     }
@@ -477,12 +480,14 @@ final class RadDaemon
     }
     
     private boolean startExecutors() {
-        bundleTransmitter = new Thread(new TransmitOutboundBundlesTask());
-        bundleTransmitter.start();
-        
-        bundleProcessor = Executors.newCachedThreadPool();
-        
-        return bundleTransmitter.isAlive();
+        if (bundleTransmitter == null && bundleProcessor == null) {
+            bundleTransmitter = new Thread(new TransmitOutboundBundlesTask());
+            bundleTransmitter.start();
+    
+            bundleProcessor = Executors.newCachedThreadPool();
+    
+            return bundleTransmitter.isAlive();
+        } else return true;
     }
     
     @Override

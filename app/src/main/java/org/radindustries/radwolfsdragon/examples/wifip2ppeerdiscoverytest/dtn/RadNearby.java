@@ -31,7 +31,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 
 import java.io.IOException;
@@ -45,7 +44,7 @@ import java.util.Set;
 import androidx.annotation.NonNull;
 import androidx.collection.SimpleArrayMap;
 
-final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Managable {
+final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
     private static final String LOG_TAG
         = DConstants.MAIN_LOG_TAG + "_" + RadNearby.class.getSimpleName();
     
@@ -235,13 +234,14 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
     private DTNBundle bundle;
     
     @Override
-    public int transmit(DTNBundle bundle, Set<DTNBundleNode> destinations) {
+    public int transmit(DTNBundle bundle, Set<DTNBundleNode> destinations)
+        throws InterruptedException {
         this.bundle = bundle;
-        Log.i(LOG_TAG, "bundle to send = " + bundle);
+//        Log.i(LOG_TAG, "bundle to send = " + bundle);
         
         int numSent = 0;
         for (DTNBundleNode node : destinations) {
-            Log.i(LOG_TAG, "sending to " + node);
+//            Log.i(LOG_TAG, "sending to " + node);
             if (transmit(bundle, node)) numSent++;
         }
         return numSent;
@@ -250,29 +250,29 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
     private static final long CONTACT_WINDOW_MILLIS = 10_000L;
     
     @Override
-    public boolean transmit(DTNBundle bundle, final DTNBundleNode destination) {
+    public boolean transmit(DTNBundle bundle, final DTNBundleNode destination)
+        throws InterruptedException {
         sent = false;
         
         String claAddress = destination.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
         assert claAddress != null;
         
-        if (connectedNodes.contains(claAddress)) forward(bundle, claAddress);
-        else connectionsClient.requestConnection(
-            cla2Daemon.getThisNodezEID().toString(),
-            claAddress,
-            connectionLifecycleCallback
-        ).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                Log.e(LOG_TAG, "connection request to " + destination + " failed", e);
-            }
-        });
-        
-        try {
-            Thread.sleep(CONTACT_WINDOW_MILLIS);
-        } catch (InterruptedException e) {
-            Log.e(LOG_TAG, "transmit(): waiting interrupted");
+        if (connectedNodes.contains(claAddress)) {
+            forward(bundle, claAddress);
+        } else {
+            connectionsClient.requestConnection(
+                cla2Daemon.getThisNodezEID().toString(),
+                claAddress,
+                connectionLifecycleCallback
+            ).addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    Log.e(LOG_TAG, "connection request to " + destination + " failed", e);
+                }
+            });
         }
+        
+        Thread.sleep(CONTACT_WINDOW_MILLIS);
         
         Log.i(LOG_TAG, "transmit(): sent = " + sent);
         return sent;
@@ -303,14 +303,6 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         } catch (IOException e) {
             Log.e(LOG_TAG, "Could not create pipe to transfer data.", e);
         }
-    }
-    
-    @Override
-    public boolean start() {
-        connectedNodes.clear();
-        discoveredNodes.clear();
-        peerDiscoverer2Daemon.notifyPeerListChanged();
-        return true;
     }
     
     private void advertise(String serviceId) {
@@ -354,19 +346,6 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
         });
     }
     
-    @Override
-    public boolean stop() {
-        connectedNodes.clear();
-        discoveredNodes.clear();
-        peerDiscoverer2Daemon.notifyPeerListChanged();
-        
-        connectionsClient.stopAdvertising();
-        connectionsClient.stopDiscovery();
-        
-        connectionsClient.stopAllEndpoints();
-        return true;
-    }
-    
     private ServiceMode mode;
     
     @Override
@@ -381,8 +360,15 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
     }
     
     @Override
-    public void stop(ServiceMode serviceMode) {
-        stop();
+    public void stop() {
+        connectedNodes.clear();
+        discoveredNodes.clear();
+        peerDiscoverer2Daemon.notifyPeerListChanged();
+    
+        connectionsClient.stopAdvertising();
+        connectionsClient.stopDiscovery();
+    
+        connectionsClient.stopAllEndpoints();
     }
     
     private Set<DTNBundleNode> discoveredNodes;

@@ -2,22 +2,22 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MainActivity">
-    <item
-        android:id="@+id/action_manager"
-        android:orderInCategory="9"
-        android:title="@string/title_manager"
-        app:showAsAction="never" />
+    <!--<item-->
+        <!--android:id="@+id/action_manager"-->
+        <!--android:orderInCategory="9"-->
+        <!--android:title="@string/title_manager"-->
+        <!--app:showAsAction="never" />-->
     <item
         android:id="@+id/action_settings"
         android:orderInCategory="10"
         android:title="@string/action_settings"
         app:showAsAction="never" />
-    <!--<item-->
-        <!--android:id="@+id/action_start_dtn"-->
-        <!--android:orderInCategory="1"-->
-        <!--android:title="@string/action_start_dtn"-->
-        <!--app:showAsAction="ifRoom"-->
-        <!--android:icon="@android:drawable/ic_media_play"/>-->
+    <item
+        android:id="@+id/action_start_dtn"
+        android:orderInCategory="1"
+        android:title="@string/action_start_dtn"
+        app:showAsAction="ifRoom"
+        android:icon="@android:drawable/ic_media_play"/>
     <!--<item-->
         <!--android:id="@+id/action_stop_dtn"-->
         <!--android:orderInCategory="2"-->

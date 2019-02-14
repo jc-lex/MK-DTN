@@ -133,9 +133,11 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     
     @Override
     public boolean start() {
-        dpAgingExecutor = new Thread(new AgeDeliveryPredictabilityTask());
-        dpAgingExecutor.start();
-        return dpAgingExecutor.isAlive();
+        if (dpAgingExecutor == null) {
+            dpAgingExecutor = new Thread(new AgeDeliveryPredictabilityTask());
+            dpAgingExecutor.start();
+            return dpAgingExecutor.isAlive();
+        } else return true;
     }
     
     @Override

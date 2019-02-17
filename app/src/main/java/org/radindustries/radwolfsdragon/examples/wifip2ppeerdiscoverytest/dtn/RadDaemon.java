@@ -578,7 +578,7 @@ final class RadDaemon
         
             float freqMe2Destination = getMeetingFrequency(bundle.primaryBlock.destinationEID);
         
-            return freqMe2Destination > freqCustodian2Destination;
+            return Float.compare(freqMe2Destination, freqCustodian2Destination) >= 0;
         }
         return true;
     }
@@ -596,7 +596,7 @@ final class RadDaemon
             
             float probMe2Destination = getDeliveryPredictability(bundle.primaryBlock.destinationEID);
             
-            return probMe2Destination > probCustodian2Destination;
+            return Float.compare(probMe2Destination, probCustodian2Destination) >= 0;
         }
         return true;
     }

@@ -23,10 +23,6 @@ public class RadAdminAATest {
     @BeforeClass
     public static void setUpClass() {
         radAdminAA = new RadAdminAA(new AdminAA2Daemon() {
-            @Override
-            public void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
-        
-            }
     
             @Override
             public boolean isUs(DTNEndpointID eid) {
@@ -49,7 +45,7 @@ public class RadAdminAATest {
             }
     
             @Override
-            public void notifyOutboundBundleDelivered(String recipient) {
+            public void notifyBundleStatus(String recipient, String msg) {
         
             }
     
@@ -139,7 +135,8 @@ public class RadAdminAATest {
         );
         
         DTNBundle statusReport = radAdminAA.makeStatusReport(
-            testUserBundle, true, StatusReport.Reason.NO_OTHER_INFO
+            testUserBundle, StatusReport.StatusFlags.BUNDLE_DELIVERED,
+            StatusReport.Reason.NO_OTHER_INFO
         );
         
         CanonicalBlock adminCBlock
@@ -158,8 +155,8 @@ public class RadAdminAATest {
         assertNotNull(report.detailsIfForAFragment);
         assertEquals(0, report.detailsIfForAFragment.size());
         
-        assertTrue(report.bundleDelivered);
-        
+        assertTrue(report.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELIVERED));
+        assertFalse(report.statusTimes.isEmpty());
         assertEquals(StatusReport.Reason.NO_OTHER_INFO, report.reasonCode);
     }
     
@@ -170,7 +167,8 @@ public class RadAdminAATest {
         );
     
         DTNBundle statusReport = radAdminAA.makeStatusReport(
-            testUserBundle, true, StatusReport.Reason.NO_OTHER_INFO
+            testUserBundle, StatusReport.StatusFlags.BUNDLE_DELIVERED,
+            StatusReport.Reason.NO_OTHER_INFO
         );
     
         CanonicalBlock adminCBlock
@@ -189,9 +187,32 @@ public class RadAdminAATest {
         assertNotNull(report.detailsIfForAFragment);
         assertTrue(report.detailsIfForAFragment.size() > 0);
     
-        assertTrue(report.bundleDelivered);
-    
+        assertTrue(report.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELIVERED));
+        assertFalse(report.statusTimes.isEmpty());
         assertEquals(StatusReport.Reason.NO_OTHER_INFO, report.reasonCode);
+    }
+    
+    @Test
+    public void testFakeStatusReportInputs() {
+        DTNBundle testUserBundle = TestUtilities.createTestUserBundle(
+            TestUtilities.TEST_SHORT_TEXT_MESSAGE.getBytes()
+        );
+    
+        DTNBundle statusReport = radAdminAA.makeStatusReport(
+            testUserBundle, 9, StatusReport.Reason.LIFETIME_EXPIRED
+        );
+    
+        CanonicalBlock adminCBlock
+            = statusReport.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
+    
+        assertNotNull(adminCBlock);
+    
+        assertTrue(adminCBlock.blockTypeSpecificDataFields instanceof StatusReport);
+    
+        StatusReport report = (StatusReport) adminCBlock.blockTypeSpecificDataFields;
+        
+        assertTrue(report.statusFlags.testBit(StatusReport.StatusFlags.INVALID_FLAG_SET));
+        assertEquals(report.reasonCode, StatusReport.Reason.NO_OTHER_INFO);
     }
     
     @AfterClass

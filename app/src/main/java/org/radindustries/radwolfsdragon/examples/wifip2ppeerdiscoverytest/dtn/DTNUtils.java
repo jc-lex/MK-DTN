@@ -20,7 +20,7 @@ final class DTNUtils {
     
     private static final long DEFAULT_CPU_SPEED_IN_KHZ = 1_100_000L;
     
-    static CanonicalBlock makeAgeCBlock() {
+    static synchronized CanonicalBlock makeAgeCBlock() {
         CanonicalBlock ageCBlock = new CanonicalBlock();
     
         AgeBlock ageBlock = new AgeBlock();
@@ -33,7 +33,7 @@ final class DTNUtils {
         return ageCBlock;
     }
     
-    static void setTimeReceived(DTNBundle receivedBundle) {
+    static synchronized void setTimeReceived(DTNBundle receivedBundle) {
         if (!isValid(receivedBundle)) return;
         
         CanonicalBlock ageCBlock = receivedBundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
@@ -43,7 +43,7 @@ final class DTNUtils {
         }
     }
     
-    static long getTimeReceived(DTNBundle bundle) {
+    static synchronized long getTimeReceived(DTNBundle bundle) {
         if (!isValid(bundle)) return -1L;
         
         CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
@@ -53,7 +53,7 @@ final class DTNUtils {
         } else return -1L;
     }
     
-    static boolean isFragment(DTNBundle bundle) {
+    static synchronized boolean isFragment(DTNBundle bundle) {
         if (isValid(bundle)) {
             BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
             if (bundlePCFs != null &&
@@ -71,7 +71,7 @@ final class DTNUtils {
         return false;
     }
     
-    static boolean isAdminRecord(DTNBundle bundle) {
+    static synchronized boolean isAdminRecord(DTNBundle bundle) {
         if (isValid(bundle)) {
             BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
             if (bundlePCFs != null &&
@@ -85,7 +85,7 @@ final class DTNUtils {
         return false;
     }
     
-    static boolean isUserData(DTNBundle bundle) {
+    static synchronized boolean isUserData(DTNBundle bundle) {
         if (isValid(bundle)) {
             BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
             if (bundlePCFs != null &&
@@ -99,7 +99,7 @@ final class DTNUtils {
         return false;
     }
     
-    static boolean isCustodySignal(DTNBundle bundle) {
+    static synchronized boolean isCustodySignal(DTNBundle bundle) {
         if (isAdminRecord(bundle)) {
             CanonicalBlock custodySignalCBlock
                 = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
@@ -116,7 +116,7 @@ final class DTNUtils {
         return false;
     }
     
-    static boolean isStatusReport(DTNBundle bundle) {
+    static synchronized boolean isStatusReport(DTNBundle bundle) {
         if (isAdminRecord(bundle)) {
             CanonicalBlock statusReportCBlock
                 = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
@@ -127,13 +127,15 @@ final class DTNUtils {
                     = (StatusReport) statusReportCBlock.blockTypeSpecificDataFields;
     
                 return statusReport.recordType == AdminRecord.RecordType.STATUS_REPORT &&
-                    statusReport.timeOfDelivery > 0L;
+                    statusReport.statusTimes != null &&
+                    !statusReport.statusTimes.isEmpty() &&
+                    statusReport.statusFlags != null;
             }
         }
         return false;
     }
     
-    static boolean isValid(DTNBundle bundle) {
+    static synchronized boolean isValid(DTNBundle bundle) {
         return bundle != null &&
             isValidPrimaryBlock(bundle.primaryBlock) &&
             bundle.canonicalBlocks != null &&
@@ -147,7 +149,7 @@ final class DTNUtils {
             ));
     }
     
-    private static boolean isValidPrimaryBlock(PrimaryBlock primaryBlock) {
+    private static synchronized boolean isValidPrimaryBlock(PrimaryBlock primaryBlock) {
         return primaryBlock.bundleID != null &&
             primaryBlock.bundleID.creationTimestamp > 0L &&
             primaryBlock.bundleID.sourceEID != null &&
@@ -159,7 +161,7 @@ final class DTNUtils {
             primaryBlock.lifeTime > 0L;
     }
     
-    private static boolean isValidAgeCBlock(CanonicalBlock cBlock) {
+    private static synchronized boolean isValidAgeCBlock(CanonicalBlock cBlock) {
         if (cBlock != null &&
             cBlock.blockType == CanonicalBlock.BlockType.AGE &&
             cBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
@@ -170,7 +172,7 @@ final class DTNUtils {
         return false;
     }
     
-    private static boolean isValidPayloadCBlock(CanonicalBlock cBlock) {
+    private static synchronized boolean isValidPayloadCBlock(CanonicalBlock cBlock) {
         if (cBlock != null &&
             cBlock.blockType == CanonicalBlock.BlockType.PAYLOAD &&
             cBlock.blockTypeSpecificDataFields instanceof PayloadADU) {
@@ -181,19 +183,19 @@ final class DTNUtils {
         return false;
     }
     
-    static boolean isValidNECTARCBlock(CanonicalBlock cBlock) {
+    static synchronized boolean isValidNECTARCBlock(CanonicalBlock cBlock) {
         return cBlock != null &&
             cBlock.blockType == CanonicalBlock.BlockType.NECTAR_ROUTING_INFO &&
             cBlock.blockTypeSpecificDataFields instanceof NECTARRoutingInfo;
     }
     
-    static boolean isValidPRoPHETCBlock(CanonicalBlock cBlock) {
+    static synchronized boolean isValidPRoPHETCBlock(CanonicalBlock cBlock) {
         return cBlock != null &&
             cBlock.blockType == CanonicalBlock.BlockType.PROPHET_ROUTING_INFO &&
             cBlock.blockTypeSpecificDataFields instanceof PRoPHETRoutingInfo;
     }
     
-    private static boolean isValidAdminRecord(CanonicalBlock cBlock) {
+    private static synchronized boolean isValidAdminRecord(CanonicalBlock cBlock) {
         if (cBlock != null &&
             cBlock.blockType == CanonicalBlock.BlockType.ADMIN_RECORD &&
             cBlock.blockTypeSpecificDataFields instanceof AdminRecord) {
@@ -216,7 +218,7 @@ final class DTNUtils {
         return false;
     }
     
-    static boolean forSingletonDestination(DTNBundle bundle) {
+    static synchronized boolean forSingletonDestination(DTNBundle bundle) {
         if (isValid(bundle)) {
             BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
             return bundlePCFs != null &&
@@ -225,7 +227,7 @@ final class DTNUtils {
         return false;
     }
     
-    static boolean isBundleDeliveryReportRequested(DTNBundle bundle) {
+    static synchronized boolean isBundleDeliveryReportRequested(DTNBundle bundle) {
         if (isValid(bundle)) {
             BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
             return bundlePCFs != null &&
@@ -234,7 +236,31 @@ final class DTNUtils {
         return false;
     }
     
-    static boolean isCustodyTransferRequested(DTNBundle bundle) {
+    static synchronized boolean isBundleDeletionReportRequested(DTNBundle bundle) {
+        if (isValid(bundle)) {
+            BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
+            return bundlePCFs != null &&
+                bundlePCFs.testBit(PrimaryBlock.BundlePCF.BUNDLE_DELETION_REPORT_REQUESTED);
+        }
+        return false;
+    }
+    
+    static synchronized boolean expired(DTNBundle bundle) {
+        if (isValid(bundle)) {
+            CanonicalBlock ageCBlock
+                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+            assert ageCBlock != null;
+            
+            AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+            long lifetime = bundle.primaryBlock.lifeTime;
+            long age = ageBlock.age;
+            
+            return age > lifetime;
+        }
+        return true;
+    }
+    
+    static synchronized boolean isCustodyTransferRequested(DTNBundle bundle) {
         if (isValid(bundle)) {
             BigInteger bundlePCFs = bundle.primaryBlock.bundleProcessingControlFlags;
             return bundlePCFs != null &&
@@ -250,7 +276,7 @@ final class DTNUtils {
      * @author Nicolas Gramlich
      * @since 15:50:31 - 14.07.2010
      */
-    static long getMaxCPUFrequencyInKHz() {
+    static synchronized long getMaxCPUFrequencyInKHz() {
         try {
             return readCPUSystemFileAsInt();
         } catch (Exception e) {
@@ -258,7 +284,7 @@ final class DTNUtils {
         }
     }
     
-    private static int readCPUSystemFileAsInt() throws Exception {
+    private static synchronized int readCPUSystemFileAsInt() throws Exception {
         InputStream in;
         try {
             final Process process = new ProcessBuilder(
@@ -273,7 +299,7 @@ final class DTNUtils {
         }
     }
     
-    private static String readFully(final InputStream pInputStream) {
+    private static synchronized String readFully(final InputStream pInputStream) {
         final StringBuilder sb = new StringBuilder();
         final Scanner sc = new Scanner(pInputStream);
         while(sc.hasNextLine()) {

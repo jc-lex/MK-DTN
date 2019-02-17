@@ -55,20 +55,12 @@ public class MKDTNService extends Service implements DTNUI {
     }
     
     @Override
-    public void onOutboundBundleReceived(String recipient) {
-        String text = String.format(getString(R.string.delivery_report_text), recipient);
-        notifyUser(Html.fromHtml(text));
-    
-        broadcastMessages();
-    }
-    
-    @Override
-    public void onOutboundBundleDeliveryFailed(String recipient, String reason) {
+    public void onBundleStatusReceived(String recipient, String msg) {
         String text = String.format(
-            getString(R.string.bundle_delivery_failed_notification_message), recipient, reason
+            getString(R.string.bundle_status_notification_message), recipient, msg
         );
         notifyUser(Html.fromHtml(text));
-        
+    
         broadcastMessages();
     }
     

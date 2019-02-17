@@ -54,7 +54,7 @@
         <item>TWO_MONTHS</item>
     </array>
 
-    <!--<array name="pref_transmission_mode_entries">
+    <array name="pref_transmission_mode_entries">
         <item>Source Node (Default)</item>
         <item>Sink Node</item>
     </array>
@@ -62,14 +62,14 @@
         <item>SOURCE</item>
         <item>SINK</item>
     </array>
-    <string name="pref_transmission_mode_default">SOURCE</string>
+    <string name="pref_default_transmission_mode">SOURCE</string>
     <string name="pref_transmission_mode_key">transmission_mode</string>
     <string name="pref_transmission_mode_title">Transmission Mode</string>
     <string name="pref_enable_manual_transmission_key">enable_manual_transmission</string>
     <string name="pref_enable_manual_transmission_title">Enable Manual Transmission</string>
     <string name="pref_enable_manual_transmission_summary">
         Takes effect after (re)starting MK-DTN
-    </string>-->
+    </string>
 
     <string name="pref_enable_dtn_notifications_key">enable_dtn_notifications</string>
     <string name="enable_dtn_notifications_title">Enable DTN Notifications</string>

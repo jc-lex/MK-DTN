@@ -1,7 +1,9 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
+import android.util.Log;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.EIDProvider;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
@@ -16,6 +18,8 @@ import androidx.annotation.NonNull;
 
 final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon2Managable {
     
+    private static final String LOG_TAG =
+        DConstants.MAIN_LOG_TAG + "_" + RadPRoPHETRoutingTable.class.getSimpleName();
     private RouterDBHandler routerDBHandler;
     private EIDProvider eidProvider;
     
@@ -25,6 +29,7 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
         
         @Override
         public void run() {
+            Log.i(LOG_TAG, "DP aging started");
             try {
                 while (!Thread.interrupted()) {
                     List<DeliveryPredictability> dps = routerDBHandler.getAllDPs();
@@ -44,8 +49,9 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
                     Thread.sleep(1000); // one second
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Log.e(LOG_TAG, "DP aging interrupted", e);
             }
+            Log.i(LOG_TAG, "DP aging ended");
         }
     }
     

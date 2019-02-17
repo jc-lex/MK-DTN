@@ -18,15 +18,18 @@
         <Button
         android:id="@+id/start_service_button"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/dtn_btn_layout_height"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:gravity="center"
         android:text="@string/activate_dtn_btn_text"
         android:textSize="@dimen/dtn_btn_text_size" />
+        <!--android:layout_height="@dimen/dtn_btn_layout_height"-->
 
         <Button
         android:id="@+id/stop_service_button"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/dtn_btn_layout_height"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:gravity="center"
         android:text="@string/deactivate_dtn_btn_text"
         android:textSize="@dimen/dtn_btn_text_size"/>

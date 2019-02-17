@@ -3,6 +3,7 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui;
 import android.app.ActivityManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -352,12 +353,12 @@ public class MKDTNService extends Service implements DTNUI {
             .setVisibility(NOTIFICATION_VISIBILITY);
     
         // create intent for opening manager activity
-//        Intent intent = new Intent(this, ManagerActivity.class);
-//        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//        PendingIntent pendingIntent = PendingIntent.getActivity(
-//            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
-//        );
-//        notificationBuilder.setContentIntent(pendingIntent);
+        Intent intent = new Intent(this, ManagerActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
+        );
+        notificationBuilder.setContentIntent(pendingIntent);
         
         startForeground(666, notificationBuilder.build());
     }
@@ -367,11 +368,9 @@ public class MKDTNService extends Service implements DTNUI {
         return ourMessenger.getBinder();
     }
     
-    private boolean started;
-    
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (!started) started = dtnManager.start();
+        dtnManager.start();
         return Service.START_STICKY;
     }
     
@@ -383,7 +382,7 @@ public class MKDTNService extends Service implements DTNUI {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (started) started = !dtnManager.stop();
+        dtnManager.stop();
     }
     
     public static boolean isRunning(@NonNull Context context) {

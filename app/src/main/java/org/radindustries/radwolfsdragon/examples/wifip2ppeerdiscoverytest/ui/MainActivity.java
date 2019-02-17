@@ -131,12 +131,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             case R.id.action_settings:
                 startActivity(new Intent(this, SettingsActivity.class));
                 break;
-            case R.id.action_start_dtn:
-                startService(new Intent(this, MKDTNService.class));
-                break;
-//            case R.id.action_manager:
-//                startActivity(new Intent(this, ManagerActivity.class));
+//            case R.id.action_start_dtn:
+//                startService(new Intent(this, MKDTNService.class));
 //                break;
+            case R.id.action_manager:
+                startActivity(new Intent(this, ManagerActivity.class));
+                break;
             default: break;
         }
         return super.onOptionsItemSelected(item);

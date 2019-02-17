@@ -3,10 +3,13 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.BatteryManager;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
@@ -132,59 +135,44 @@ final class RadDaemon
         DummyStorage.OUTBOUND_BUNDLES_QUEUE.addAll(Arrays.asList(fragments));
     }
     
-    private class TransmitOutboundBundlesTask implements Runnable {
-        private Set<DTNBundleNode> nextHops;
-        private TransmitOutboundBundlesTask() {
+    private abstract class TransmitOutboundBundlesTask implements Runnable {
+        Set<DTNBundleNode> nextHops;
+        TransmitOutboundBundlesTask() {
             nextHops = new HashSet<>();
         }
         
-        private static final long ONE_MINUTE_MILLIS = 60_000L;
-        private static final long ON_CYCLE_DURATION_MILLIS = 3 * ONE_MINUTE_MILLIS;
+        static final long ONE_MINUTE_MILLIS = 60_000L;
         
-        @Override
-        public void run() {
-            try {
-                while (!Thread.interrupted()) {
-                    srcPhase();
-                    sinkPhase();
-                }
-            } catch (InterruptedException e) {
-                Log.e(LOG_TAG, "transmission interrupted", e);
-                discoverer.stop();
-            }
-        }
-        
-        private void srcPhase() throws InterruptedException {
+        void srcPhase(long onCycleDurationMillis, long offCycleDurationMillis)
+            throws InterruptedException {
             Log.i(LOG_TAG, "entering ON cycle");
-            doSrcMode();
+            doSrcMode(onCycleDurationMillis);
             Log.i(LOG_TAG, "leaving ON cycle");
     
-            doSleep();
+            doSleep(offCycleDurationMillis);
         }
         
-        private void sinkPhase() throws InterruptedException {
+        void sinkPhase(long onCycleDurationMillis, long offCycleDurationMillis)
+            throws InterruptedException {
             Log.i(LOG_TAG, "entering ON cycle");
-            doSinkMode();
+            doSinkMode(onCycleDurationMillis);
             Log.i(LOG_TAG, "leaving ON cycle");
             
-            doSleep();
+            doSleep(offCycleDurationMillis);
         }
         
-        private void doSleep() throws InterruptedException {
-            long offCycleDurationMillis
-                = (long) ((4 * ON_CYCLE_DURATION_MILLIS) / (float) 3);
-            
+        private void doSleep(long offCycleDurationMillis) throws InterruptedException {
             Log.i(LOG_TAG, "entering OFF cycle");
             Thread.sleep(offCycleDurationMillis);
             Log.i(LOG_TAG, "leaving OFF cycle");
         }
         
-        private void doSrcMode() throws InterruptedException {
+        private void doSrcMode(long onCycleDurationMillis) throws InterruptedException {
             if (insufficientBatteryPower()) return;
             
             Log.i(LOG_TAG, "entering SOURCE mode");
             discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
-            long stopTime = System.currentTimeMillis() + ON_CYCLE_DURATION_MILLIS;
+            long stopTime = System.currentTimeMillis() + onCycleDurationMillis;
             int head = 0;
     
             while (System.currentTimeMillis() < stopTime) {
@@ -223,13 +211,13 @@ final class RadDaemon
             discoverer.stop();
         }
         
-        private void doSinkMode() throws InterruptedException {
+        private void doSinkMode(long onCycleDurationMillis) throws InterruptedException {
             if (insufficientBatteryPower() && insufficientStorageSpace()) return;
             
             Log.i(LOG_TAG, "entering SINK mode");
             discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SINK);
     
-            Thread.sleep(ON_CYCLE_DURATION_MILLIS);
+            Thread.sleep(onCycleDurationMillis);
     
             Log.i(LOG_TAG, "leaving SINK mode");
             discoverer.stop();
@@ -256,6 +244,63 @@ final class RadDaemon
             ageBlock.age = ageBlock.agePrime + (long)
                 ((DTNUtils.getMaxCPUFrequencyInKHz() / (float) ageBlock.sourceCPUSpeedInKHz)
                     * (ageBlock.sendingTimestamp - ageBlock.T));
+        }
+    }
+    
+    private class AutomaticTransmitTask extends TransmitOutboundBundlesTask {
+        private AutomaticTransmitTask() {
+            super();
+        }
+        private static final long ON_CYCLE_DURATION_MILLIS = 3 * ONE_MINUTE_MILLIS;
+        private static final long OFF_CYCLE_DURATION_MILLIS = 4 * ONE_MINUTE_MILLIS;
+        
+        @Override
+        public void run() {
+            Log.i(LOG_TAG, "transmission AUTO");
+            Log.i(LOG_TAG, "transmission started");
+            try {
+                while (!Thread.interrupted()) {
+                    srcPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
+                    sinkPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
+                }
+            } catch (InterruptedException e) {
+                Log.e(LOG_TAG, "transmission interrupted", e);
+                discoverer.stop();
+            }
+            Log.i(LOG_TAG, "transmission stopped");
+        }
+    }
+    
+    private class ManualTransmitTask extends TransmitOutboundBundlesTask {
+        private String mode;
+        private ManualTransmitTask(String mode) {
+            super();
+            this.mode = mode;
+        }
+        private static final long ON_CYCLE_DURATION_MILLIS = 10 * ONE_MINUTE_MILLIS;
+        private static final long OFF_CYCLE_DURATION_MILLIS = 5 * ONE_MINUTE_MILLIS;
+    
+        @Override
+        public void run() {
+            Log.i(LOG_TAG, "transmission MANUAL");
+            Log.i(LOG_TAG, "transmission started");
+            try {
+                while (!Thread.interrupted()) {
+                    switch (mode) {
+                        case "SOURCE":
+                            srcPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
+                            break;
+                        case "SINK":
+                            sinkPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
+                            break;
+                        default: break;
+                    }
+                }
+            } catch (InterruptedException e) {
+                Log.e(LOG_TAG, "transmission interrupted", e);
+                discoverer.stop();
+            }
+            Log.i(LOG_TAG, "transmission stopped");
         }
     }
     
@@ -481,10 +526,32 @@ final class RadDaemon
     
     private boolean startExecutors() {
         if (bundleTransmitter == null && bundleProcessor == null) {
-            bundleTransmitter = new Thread(new TransmitOutboundBundlesTask());
+            SharedPreferences prefs
+                = PreferenceManager.getDefaultSharedPreferences(context);
+            
+            // FIXME settings here are not the ones the user sets in the SettingsActivity
+            // check if manual mode is enabled from settings
+            if (prefs.getBoolean(
+                context.getString(R.string.pref_enable_manual_transmission_key),
+                context.getResources().getBoolean(R.bool.pref_enable_manual_transmission_default)
+            )) {
+                
+                // get the transmission mode if manual mode enabled
+                String transmissionMode = prefs.getString(
+                        context.getString(R.string.pref_transmission_mode_key),
+                        context.getString(R.string.pref_default_transmission_mode)
+                );
+                Log.i(LOG_TAG, "transmission mode = " + transmissionMode);
+                // set accordingly
+                bundleTransmitter = new Thread(new ManualTransmitTask(transmissionMode));
+            } else {
+                bundleTransmitter = new Thread(new AutomaticTransmitTask());
+            }
+//            bundleTransmitter = new Thread(new TransmitOutboundBundlesTask());
             bundleTransmitter.start();
     
-            bundleProcessor = Executors.newCachedThreadPool();
+//            bundleProcessor = Executors.newCachedThreadPool();
+            bundleProcessor = Executors.newSingleThreadExecutor();
     
             return bundleTransmitter.isAlive();
         } else return true;

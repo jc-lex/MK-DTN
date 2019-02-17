@@ -2,6 +2,6 @@
     <dimen name="fab_margin">16dp</dimen>
     <dimen name="dtn_btn_layout_height">100dp</dimen>
     <dimen name="dtn_btnz_layout_padding">30dp</dimen>
-    <dimen name="dtn_btn_text_size">20pt</dimen>
+    <dimen name="dtn_btn_text_size">30pt</dimen>
     <dimen name="main_list_item_padding">20dp</dimen>
 </resources>

@@ -3,13 +3,10 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.BatteryManager;
-import android.preference.PreferenceManager;
 import android.util.Log;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
@@ -41,6 +38,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.pe
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MKDTNService;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -272,8 +270,8 @@ final class RadDaemon
     }
     
     private class ManualTransmitTask extends TransmitOutboundBundlesTask {
-        private String mode;
-        private ManualTransmitTask(String mode) {
+        private Daemon2PeerDiscoverer.ServiceMode mode;
+        private ManualTransmitTask(Daemon2PeerDiscoverer.ServiceMode mode) {
             super();
             this.mode = mode;
         }
@@ -287,10 +285,10 @@ final class RadDaemon
             try {
                 while (!Thread.interrupted()) {
                     switch (mode) {
-                        case "SOURCE":
+                        case SOURCE:
                             srcPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
                             break;
-                        case "SINK":
+                        case SINK:
                             sinkPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
                             break;
                         default: break;
@@ -526,28 +524,19 @@ final class RadDaemon
     
     private boolean startExecutors() {
         if (bundleTransmitter == null && bundleProcessor == null) {
-            SharedPreferences prefs
-                = PreferenceManager.getDefaultSharedPreferences(context);
+            if (MKDTNService.configFileDoesNotExist(context)) {
+                MKDTNService.writeDefaultConfig(context);
+            }
+            MKDTNService.DTNConfig config = MKDTNService.getConfig(context);
             
-            // FIXME settings here are not the ones the user sets in the SettingsActivity
-            // check if manual mode is enabled from settings
-            if (prefs.getBoolean(
-                context.getString(R.string.pref_enable_manual_transmission_key),
-                context.getResources().getBoolean(R.bool.pref_enable_manual_transmission_default)
-            )) {
+            if (config.enableManualMode) {
+                Daemon2PeerDiscoverer.ServiceMode transmissionMode
+                    = Daemon2PeerDiscoverer.ServiceMode.valueOf(config.transmissionMode);
                 
-                // get the transmission mode if manual mode enabled
-                String transmissionMode = prefs.getString(
-                        context.getString(R.string.pref_transmission_mode_key),
-                        context.getString(R.string.pref_default_transmission_mode)
-                );
-                Log.i(LOG_TAG, "transmission mode = " + transmissionMode);
-                // set accordingly
                 bundleTransmitter = new Thread(new ManualTransmitTask(transmissionMode));
             } else {
                 bundleTransmitter = new Thread(new AutomaticTransmitTask());
             }
-//            bundleTransmitter = new Thread(new TransmitOutboundBundlesTask());
             bundleTransmitter.start();
     
 //            bundleProcessor = Executors.newCachedThreadPool();

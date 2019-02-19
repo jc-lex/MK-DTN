@@ -7,7 +7,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,11 +14,12 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-import android.preference.PreferenceManager;
 import android.text.Html;
 import android.text.Spanned;
+import android.util.Log;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.BuildConfig;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.BWDTN;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
@@ -27,10 +27,13 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -43,8 +46,8 @@ public class MKDTNService extends Service implements DTNUI {
     private static DTNTextMessenger dtnTextMessenger;
     private static String[] peers;
     
-//    private static final String LOG_TAG
-//        = DConstants.MAIN_LOG_TAG + "_" + MKDTNService.class.getSimpleName();
+    private static final String LOG_TAG
+        = DConstants.MAIN_LOG_TAG + "_" + MKDTNService.class.getSimpleName();
     
     @Override
     public void onReceiveDTNMessage(byte[] message, String sender) {
@@ -131,10 +134,7 @@ public class MKDTNService extends Service implements DTNUI {
             = NotificationManagerCompat.from(this);
         
         // check if notifications are enabled
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if (!(notificationManagerCompat.areNotificationsEnabled() &&
-            prefs.getBoolean(getString(R.string.pref_enable_dtn_notifications_key),
-            getResources().getBoolean(R.bool.pref_enable_dtn_notification_default)))) return;
+        if (!notificationManagerCompat.areNotificationsEnabled()) return;
         
         // create and register channel with the system
         createNotificationChannel();
@@ -401,5 +401,105 @@ public class MKDTNService extends Service implements DTNUI {
         }
 
         return false;
+    }
+    
+    private static final String MK_DTN_CONFIGURATION_FILE = "mkdtn.conf";
+    
+    public static boolean configFileDoesNotExist(@NonNull Context context) {
+        if (context.fileList().length == 0) {
+//            Log.e(LOG_TAG, "no config file");
+            return true;
+        } else {
+            for (String fileName : context.fileList()) {
+                if (fileName.equals(MK_DTN_CONFIGURATION_FILE)) {
+//                    Log.i(LOG_TAG, "config file exists");
+                    return false;
+                }
+            }
+        }
+//        Log.e(LOG_TAG, "no config file");
+        return true;
+    }
+    
+    public static void writeDefaultConfig(@NonNull Context context) {
+        try (PrintWriter writer = new PrintWriter(
+            context.openFileOutput(MK_DTN_CONFIGURATION_FILE, Context.MODE_PRIVATE))) {
+            
+            DTNConfig defaultConfig = new DTNConfig();
+            
+            writer.println(defaultConfig.routingProtocol);
+            writer.println(defaultConfig.priorityClass);
+            writer.println(defaultConfig.lifetime);
+            writer.println(defaultConfig.enableManualMode);
+            writer.println(defaultConfig.transmissionMode);
+//            Log.i(LOG_TAG, "default config = " + defaultConfig);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Could not write default config", e);
+        }
+    }
+    
+    public static void updateConfig(@NonNull Context context, @NonNull DTNConfig updatedConfig) {
+        for (String fileName : context.fileList()) {
+            if (fileName.equals(MK_DTN_CONFIGURATION_FILE)) {
+                context.deleteFile(MK_DTN_CONFIGURATION_FILE);
+                break;
+            }
+        }
+        
+        try (PrintWriter writer = new PrintWriter(
+            context.openFileOutput(MK_DTN_CONFIGURATION_FILE, Context.MODE_PRIVATE))) {
+            writer.println(updatedConfig.routingProtocol);
+            writer.println(updatedConfig.priorityClass);
+            writer.println(updatedConfig.lifetime);
+            writer.println(updatedConfig.enableManualMode);
+            writer.println(updatedConfig.transmissionMode);
+//            Log.i(LOG_TAG, "updated config = " + updatedConfig);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Could not update config", e);
+        }
+    }
+    
+    public static DTNConfig getConfig(@NonNull Context context) {
+        try (Scanner scanner = new Scanner(context.openFileInput(MK_DTN_CONFIGURATION_FILE))) {
+            DTNConfig config = new DTNConfig();
+            config.routingProtocol = scanner.nextLine();
+            config.priorityClass = scanner.nextLine();
+            config.lifetime = scanner.nextLine();
+            config.enableManualMode = Boolean.parseBoolean(scanner.nextLine());
+            config.transmissionMode = scanner.nextLine();
+//            Log.i(LOG_TAG, "read config = " + config);
+            return config;
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Could not read config", e);
+            return new DTNConfig();
+        }
+    }
+    
+    public static class DTNConfig {
+        public String routingProtocol;
+        public String priorityClass;
+        public String lifetime;
+        public boolean enableManualMode;
+        public String transmissionMode;
+        
+        DTNConfig() {
+            routingProtocol = Daemon2Router.RoutingProtocol.PER_HOP.toString();
+            priorityClass = PrimaryBlock.PriorityClass.NORMAL.toString();
+            lifetime = PrimaryBlock.LifeTime.THREE_DAYS.toString();
+            enableManualMode = false; // auto mode
+            transmissionMode = Daemon2PeerDiscoverer.ServiceMode.SOURCE.toString();
+        }
+    
+        @NonNull
+        @Override
+        public String toString() {
+            return "Config{" +
+                "routingProtocol=" + routingProtocol +
+                ",priorityClass=" + priorityClass +
+                ",lifetime=" + lifetime +
+                ",enableManualMode=" + enableManualMode +
+                ",transmissionMode=" + transmissionMode +
+                '}';
+        }
     }
 }

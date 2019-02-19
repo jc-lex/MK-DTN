@@ -4,7 +4,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Message;
@@ -25,7 +24,6 @@ import java.util.Objects;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.preference.PreferenceManager;
 
 public class NewMessageActivity extends AppCompatActivity implements View.OnClickListener {
     private static final String LOG_TAG
@@ -120,22 +118,14 @@ public class NewMessageActivity extends AppCompatActivity implements View.OnClic
     }
     
     private void getDTNSettings() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if (MKDTNService.configFileDoesNotExist(this)) {
+            MKDTNService.writeDefaultConfig(this);
+        }
+        MKDTNService.DTNConfig config = MKDTNService.getConfig(this);
         
-        lifeTimeFromSettings = prefs.getString(
-            getString(R.string.pref_lifetime_key),
-            getString(R.string.pref_default_lifetime)
-        );
-        
-        routingProtocolFromSettings = prefs.getString(
-            getString(R.string.pref_routing_protocol_key),
-            getString(R.string.pref_default_routing_protocol)
-        );
-        
-        priorityClassFromSettings = prefs.getString(
-            getString(R.string.pref_priority_class_key),
-            getString(R.string.pref_default_priority_class)
-        );
+        lifeTimeFromSettings = config.lifetime;
+        routingProtocolFromSettings = config.routingProtocol;
+        priorityClassFromSettings = config.priorityClass;
     }
     
     private void sendDTNMessage(String destination, String message) {

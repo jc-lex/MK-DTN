@@ -3,6 +3,7 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui;
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.Menu;
@@ -42,6 +43,51 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         initUI();
         
         getPermissions();
+    }
+    
+    @Override
+    protected void onStart() {
+        super.onStart();
+        initSettings();
+    }
+    
+    private void initSettings() {
+        if (MKDTNService.configFileDoesNotExist(this)) {
+            MKDTNService.writeDefaultConfig(this);
+        }
+        updateConfig();
+    }
+    
+    private void updateConfig() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        MKDTNService.DTNConfig config = MKDTNService.getConfig(this);
+    
+        config.lifetime = prefs.getString(
+            getString(R.string.pref_lifetime_key),
+            getString(R.string.pref_default_lifetime)
+        );
+    
+        config.routingProtocol = prefs.getString(
+            getString(R.string.pref_routing_protocol_key),
+            getString(R.string.pref_default_routing_protocol)
+        );
+    
+        config.priorityClass = prefs.getString(
+            getString(R.string.pref_priority_class_key),
+            getString(R.string.pref_default_priority_class)
+        );
+        
+        config.enableManualMode = prefs.getBoolean(
+            getString(R.string.pref_enable_manual_transmission_key),
+            getResources().getBoolean(R.bool.pref_enable_manual_transmission_default)
+        );
+        
+        config.transmissionMode = prefs.getString(
+            getString(R.string.pref_transmission_mode_key),
+            getString(R.string.pref_default_transmission_mode)
+        );
+        
+        MKDTNService.updateConfig(this, config);
     }
     
     private void initUI() {

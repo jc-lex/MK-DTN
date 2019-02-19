@@ -18,10 +18,10 @@
         android:entries="@array/pref_lifetime_entries"
         android:entryValues="@array/pref_lifetime_entry_values"
         android:defaultValue="@string/pref_default_lifetime"/>
-    <SwitchPreferenceCompat
-        android:key="@string/pref_enable_dtn_notifications_key"
-        android:title="@string/enable_dtn_notifications_title"
-        android:defaultValue="@bool/pref_enable_dtn_notification_default" />
+    <!--<SwitchPreferenceCompat-->
+        <!--android:key="@string/pref_enable_dtn_notifications_key"-->
+        <!--android:title="@string/enable_dtn_notifications_title"-->
+        <!--android:defaultValue="@bool/pref_enable_dtn_notification_default" />-->
 
     <SwitchPreferenceCompat
         android:key="@string/pref_enable_manual_transmission_key"

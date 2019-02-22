@@ -14,14 +14,10 @@ public final class PrimaryBlock implements Serializable {
         int BUNDLE_IS_A_FRAGMENT = 0;
         int ADU_IS_AN_ADMIN_RECORD = 1;
         int BUNDLE_MUST_NOT_BE_FRAGMENTED = 2;
-        
-        // we need this
         int BUNDLE_CUSTODY_TRANSFER_REQUESTED = 3;
-        
         int DESTINATION_ENDPOINT_IS_A_SINGLETON = 4;
-        
-        // the only report we are currently interested in
         int BUNDLE_DELIVERY_REPORT_REQUESTED = 17;
+        int BUNDLE_DELETION_REPORT_REQUESTED = 18;
     }
     
     public enum PriorityClass {EXPEDITED, NORMAL, BULK}

@@ -1,15 +1,27 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
+import android.annotation.SuppressLint;
+
+import java.math.BigInteger;
+import java.util.HashMap;
+
 public final class StatusReport extends AdminRecord {
     
     public enum Reason {
-        NO_OTHER_INFO, DEPLETED_STORAGE, LIFETIME_EXPIRED, TRANSMISSION_CANCELLED,
-        AGE_BLOCK_UNINTELLIGIBLE
+        NO_OTHER_INFO, LIFETIME_EXPIRED, DESTINATION_EID_UNINTELLIGIBLE
     }
     
-    public boolean bundleDelivered;
+    public interface StatusFlags {
+        int BUNDLE_DELETED = 4;
+        int BUNDLE_DELIVERED = 3;
+        int INVALID_FLAG_SET = 6969;
+    }
+    
+    public BigInteger statusFlags = BigInteger.ZERO;
     public Reason reasonCode;
-    public long timeOfDelivery;
+    
+    @SuppressLint("UseSparseArrays")
+    public HashMap<Integer, Long> statusTimes = new HashMap<>();
     
     @Override
     public String toString() {
@@ -18,9 +30,9 @@ public final class StatusReport extends AdminRecord {
             ",subjectBundleID=" + subjectBundleID +
             ",isForAFragment=" + isForAFragment +
             ",detailsIfForAFragment=" + detailsIfForAFragment +
-            ",bundleDelivered=" + bundleDelivered +
+            ",statusFlags=" + statusFlags.toString(2) +
             ",reasonCode=" + reasonCode +
-            ",timeOfDelivery=" + timeOfDelivery +
+            ",statusTimes=" + statusTimes +
             '}';
     }
     
@@ -30,19 +42,19 @@ public final class StatusReport extends AdminRecord {
         if (!(o instanceof StatusReport)) return false;
         if (!super.equals(o)) return false;
         
-        StatusReport report = (StatusReport) o;
+        StatusReport that = (StatusReport) o;
         
-        if (bundleDelivered != report.bundleDelivered) return false;
-        if (timeOfDelivery != report.timeOfDelivery) return false;
-        return reasonCode == report.reasonCode;
+        if (!statusFlags.equals(that.statusFlags)) return false;
+        if (reasonCode != that.reasonCode) return false;
+        return statusTimes.equals(that.statusTimes);
     }
     
     @Override
     public int hashCode() {
         int result = super.hashCode();
-        result = 31 * result + (bundleDelivered ? 1 : 0);
+        result = 31 * result + statusFlags.hashCode();
         result = 31 * result + reasonCode.hashCode();
-        result = 31 * result + (int) (timeOfDelivery ^ (timeOfDelivery >>> 32));
+        result = 31 * result + statusTimes.hashCode();
         return result;
     }
 }

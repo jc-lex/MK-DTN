@@ -79,7 +79,7 @@
     <!--<string name="new_message_title">New Message from %1$s</string>-->
     <!--<string name="delivery_report_title">Delivery Report</string>-->
     <string name="delivery_report_text">&lt;b>%1$s&lt;/b> received your message</string>
-    <string name="new_message_text">&lt;b>%1$s&lt;/b>   %2$s</string>
+    <string name="new_message_text">&lt;b>%1$s&lt;/b> %2$s</string>
     <string name="notification_group_key">mkdtn_group_key</string>
     <string name="mkdtn_hello_message">143f1b1</string>
     <string name="action_start_dtn">Start</string>
@@ -363,9 +363,7 @@
     <string name="created_at_tv_label">Created at</string>
     <string name="sending_err_msg">Sending failed</string>
     <string name="sending_msg_ok">Message sent</string>
-    <string name="bundle_delivery_failed_notification_message">
-        &lt;b>%1$s&lt;/b> Message delivery failed: %2$s
-    </string>
+    <string name="bundle_status_notification_message">&lt;b>%1$s&lt;/b> %2$s</string>
     <string name="mkdtn_null_endpoint_id">dtn:null</string>
     <string name="long_text_indicator">LT</string>
 </resources>

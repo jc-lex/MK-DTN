@@ -332,10 +332,31 @@ final class RadDaemon
         @Override
         public void run() {
             if (!DTNUtils.forSingletonDestination(bundle)) return;
+            else if (unintelligibleDestinationEID(bundle)) {
+                if (DTNUtils.isBundleDeletionReportRequested(bundle)) {
+                    DTNBundle statusReport = adminAA.makeStatusReport(
+                        bundle, StatusReport.StatusFlags.BUNDLE_DELETED,
+                        StatusReport.Reason.DESTINATION_EID_UNINTELLIGIBLE
+                    );
+                    transmit(statusReport);
+                }
+                return;
+            }
             
             if (!(keepNECTARBundle(bundle) | keepPRoPHETBundle(bundle))) return;
             
             processAgeAtReceipt(bundle);
+    
+            if (DTNUtils.expired(bundle)) {
+                if (DTNUtils.isBundleDeletionReportRequested(bundle)) {
+                    DTNBundle statusReport = adminAA.makeStatusReport(
+                        bundle, StatusReport.StatusFlags.BUNDLE_DELETED,
+                        StatusReport.Reason.LIFETIME_EXPIRED
+                    );
+                    transmit(statusReport);
+                }
+                return;
+            }
             
             if (DTNUtils.isAdminRecord(bundle)) adminAA.processAdminRecord(bundle);
             
@@ -390,17 +411,16 @@ final class RadDaemon
             if (weCan) {
                 DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
                 appAA.deliver(bundle);
-                
-                // TODO make status report reasons useful
-                makeStatusReport(bundle);
+                makeDeliveryReport(bundle);
             }
             makeCustodySignal(bundle, weCan);
         }
         
-        private void makeStatusReport(DTNBundle bundle) {
+        private void makeDeliveryReport(DTNBundle bundle) {
             if (DTNUtils.isBundleDeliveryReportRequested(bundle)) {
                 DTNBundle statusReport = adminAA.makeStatusReport(
-                    bundle, true, StatusReport.Reason.NO_OTHER_INFO
+                    bundle, StatusReport.StatusFlags.BUNDLE_DELIVERED,
+                    StatusReport.Reason.NO_OTHER_INFO
                 );
                 
                 transmit(statusReport);
@@ -448,6 +468,18 @@ final class RadDaemon
     private static final float MKDTN_MIN_FREE_SPACE_PERCENTAGE = 5.0F;
     private static final String LOG_TAG
         = DConstants.MAIN_LOG_TAG + "_" + RadDaemon.class.getSimpleName();
+    
+    private synchronized boolean unintelligibleDestinationEID(DTNBundle bundle) {
+        if (DTNUtils.isValid(bundle)) {
+            DTNEndpointID destEID = bundle.primaryBlock.destinationEID;
+            return destEID == null ||
+                destEID.scheme == null ||
+                !destEID.scheme.equals(DTNEndpointID.DTN_SCHEME) ||
+                destEID.ssp == null ||
+                destEID.ssp.length() != getThisNodezEID().ssp.length();
+        }
+        else return false;
+    }
     
     private synchronized boolean canAcceptCustody(DTNBundle bundle) {
         
@@ -673,13 +705,8 @@ final class RadDaemon
     }
     
     @Override
-    public void notifyOutboundBundleDelivered(String recipient) {
-        appAA.notifyOutboundBundleReceived(recipient);
-    }
-    
-    @Override
-    public void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
-        appAA.notifyOutboundBundleDeliveryFailed(recipient, reason);
+    public void notifyBundleStatus(String recipient, String msg) {
+        appAA.notifyBundleStatus(recipient, msg);
     }
     
     @Override

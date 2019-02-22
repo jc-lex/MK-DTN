@@ -93,12 +93,7 @@ public class RadAppAATest {
         }
     
         @Override
-        public void onOutboundBundleReceived(String recipient) {
-        
-        }
-    
-        @Override
-        public void onOutboundBundleDeliveryFailed(String recipient, String reason) {
+        public void onBundleStatusReceived(String recipient, String msg) {
         
         }
     

@@ -32,13 +32,14 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     @Override
     public synchronized void processAdminRecord(DTNBundle adminRecord) {
-        bundle = adminRecord;
         if (!DTNUtils.isAdminRecord(adminRecord)) return;
     
         if (!daemon.isForUs(adminRecord)) {
             DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(adminRecord);
             return;
         }
+    
+        bundle = adminRecord;
         
         CanonicalBlock adminCBlock
             = adminRecord.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD);
@@ -90,15 +91,18 @@ final class RadAdminAA implements Daemon2AdminAA {
     private synchronized void processStatusReport(StatusReport report, DTNEndpointID recipient) {
         if (!report.isForAFragment) {
             if (daemon.isUs(report.subjectBundleID.sourceEID)) {
+                if (report.statusFlags.testBit(StatusReport.StatusFlags.INVALID_FLAG_SET))
+                    return;
                 DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
                 
-                if (report.bundleDelivered) {
-                    daemon.notifyOutboundBundleDelivered(recipient.toString());
-                } else {
-                    daemon.notifyOutboundBundleDeliveryFailed(
-                        recipient.toString(), report.reasonCode.toString()
-                    );
+                String msg = "";
+                if (report.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELIVERED)) {
+                    msg = "BUNDLE_DELIVERED";
+                } else if (report.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELETED)) {
+                    msg = "BUNDLE_DELETED";
                 }
+                
+                daemon.notifyBundleStatus(recipient.toString(), msg);
             }
         }
     }
@@ -129,24 +133,30 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     @Override
     public synchronized DTNBundle makeStatusReport(
-        DTNBundle userBundle, boolean bundleDelivered, StatusReport.Reason reasonCode
+        DTNBundle userBundle, int statusCode, StatusReport.Reason reasonCode
     ) {
         AdminRecord statusReportAR = makeStatusReportForUserBundle(
-            userBundle, bundleDelivered, reasonCode
+            userBundle, statusCode, reasonCode
         );
         
         return makeAdminRecordBundle(statusReportAR, userBundle.primaryBlock);
     }
     
     private synchronized AdminRecord makeStatusReportForUserBundle(
-        DTNBundle userBundle, boolean bundleDelivered, StatusReport.Reason reasonCode
+        DTNBundle userBundle, int statusCode, StatusReport.Reason reasonCode
     ) {
+        if (statusCode != StatusReport.StatusFlags.BUNDLE_DELIVERED &&
+        statusCode != StatusReport.StatusFlags.BUNDLE_DELETED) {
+            statusCode = StatusReport.StatusFlags.INVALID_FLAG_SET;
+            reasonCode = StatusReport.Reason.NO_OTHER_INFO;
+        }
+        
         StatusReport report = new StatusReport();
         
         report.recordType = AdminRecord.RecordType.STATUS_REPORT;
         report.reasonCode = reasonCode;
-        report.bundleDelivered = bundleDelivered;
-        report.timeOfDelivery = System.currentTimeMillis();
+        report.statusFlags = report.statusFlags.setBit(statusCode);
+        report.statusTimes.put(statusCode, System.currentTimeMillis());
         
         return processOtherAdminRecordDetails(userBundle, report);
     }

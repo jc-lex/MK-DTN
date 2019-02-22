@@ -88,7 +88,8 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             /*request for a SINGLE bundle delivery report a.k.a return-receipt
             (from destination only)
             here, report-to dtnEndpointID == source dtnEndpointID*/
-            .setBit(PrimaryBlock.BundlePCF.BUNDLE_DELIVERY_REPORT_REQUESTED);
+            .setBit(PrimaryBlock.BundlePCF.BUNDLE_DELIVERY_REPORT_REQUESTED)
+            .setBit(PrimaryBlock.BundlePCF.BUNDLE_DELETION_REPORT_REQUESTED);
     }
     
     private synchronized CanonicalBlock makePayloadCBlock(byte[] message) {
@@ -124,13 +125,8 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     }
     
     @Override
-    public synchronized void notifyOutboundBundleReceived(String recipient) {
-        ui.onOutboundBundleReceived(recipient);
-    }
-    
-    @Override
-    public synchronized void notifyOutboundBundleDeliveryFailed(String recipient, String reason) {
-        ui.onOutboundBundleDeliveryFailed(recipient, reason);
+    public void notifyBundleStatus(String recipient, String msg) {
+        ui.onBundleStatusReceived(recipient, msg);
     }
     
     @Override
@@ -184,13 +180,20 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             
             DTNTextMessage deliveryReportText = new DTNTextMessage();
             deliveryReportText.sender = bundle.primaryBlock.bundleID.sourceEID.toString();
-            if (statusReport.bundleDelivered) {
+            
+            if (statusReport.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELIVERED)) {
                 deliveryReportText.textMessage
-                    = "Message received @ " + statusReport.timeOfDelivery;
-            } else {
+                    = "Message received @ "
+                    + statusReport.statusTimes.get(StatusReport.StatusFlags.BUNDLE_DELIVERED);
+            } else if (statusReport.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELETED)) {
                 deliveryReportText.textMessage
-                    = "Message delivery failed: " + statusReport.reasonCode.toString();
-            }
+                    = "Message deleted @ "
+                    + statusReport.statusTimes.get(StatusReport.StatusFlags.BUNDLE_DELETED)
+                    + " because "
+                    + statusReport.reasonCode.toString();
+            } else deliveryReportText.textMessage = bundle
+                .toString();
+            
             deliveryReportText.creationTimestamp
                 = bundle.primaryBlock.bundleID.creationTimestamp;
             deliveryReportText.receivedTimestamp = DTNUtils.getTimeReceived(bundle);

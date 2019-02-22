@@ -10,6 +10,6 @@ public interface Daemon2AdminAA {
         DTNBundle userBundle, boolean custodyAccepted, CustodySignal.Reason reasonCode
     );
     DTNBundle makeStatusReport(
-        DTNBundle userBundle, boolean bundleDelivered, StatusReport.Reason reasonCode
+        DTNBundle userBundle, int statusCode, StatusReport.Reason reasonCode
     );
 }

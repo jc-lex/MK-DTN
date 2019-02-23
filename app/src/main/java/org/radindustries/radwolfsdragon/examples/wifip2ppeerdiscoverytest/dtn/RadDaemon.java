@@ -21,7 +21,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETRouter2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.Router2Daemon;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
@@ -39,11 +38,11 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.pe
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.io.File;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -85,12 +84,12 @@ final class RadDaemon
     
     RadDaemon(@NonNull Context context) {
         this.context = context;
-        wallClock = RadWallClock.getWallClock(context);
+        wallClock = new RadWallClock(context);
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
     }
     
     @Override
-    public BigInteger getCurrentTime() {
+    public synchronized DTNTimeInstant getCurrentTime() {
         return wallClock.getCurrentTime();
     }
     
@@ -244,7 +243,7 @@ final class RadDaemon
         }
         
         private void setSendingTime(DTNBundle bundle) {
-            BigInteger bundleCreationTimestamp
+            DTNTimeInstant bundleCreationTimestamp
                 = bundle.primaryBlock.bundleID.creationTimestamp;
     
             CanonicalBlock ageCBlock
@@ -253,28 +252,17 @@ final class RadDaemon
     
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
     
-            ageBlock.sendingTimestamp = getCurrentTime();
-    
             if (isFromUs(bundle)) { // initial conditions from bundle's src
-                ageBlock.agePrime = BigInteger.ZERO;
-                ageBlock.T = new BigInteger(bundleCreationTimestamp.toString());
+                ageBlock.agePrime = DTNTimeDuration.ZERO;
+                ageBlock.T = DTNTimeInstant.copyOf(bundleCreationTimestamp);
             }
     
             // NOTE general equation for bundle aging, where now == sendingTimestamp
-            ageBlock.age
-                = ageBlock.agePrime.add(
-                    
-                    BigDecimal.valueOf(
-                        DTNUtils.getMaxCPUFrequencyInKHz() / (float) ageBlock.sourceCPUSpeedInKHz
-                    )
-                    
-                    .multiply(new BigDecimal(
-                        ageBlock.sendingTimestamp.subtract(ageBlock.T)
-                    ))
-                    
-                    .toBigInteger()
-                    
-                );
+            ageBlock.age = ageBlock.agePrime.plus(
+                DTNTimeDuration.between(ageBlock.T, getCurrentTime()).scale(
+                    DTNUtils.getMaxCPUFrequencyInKHz() / (double) ageBlock.sourceCPUSpeedInKHz
+                )
+            );
         }
     }
     
@@ -345,34 +333,16 @@ final class RadDaemon
         
         private void processAgeAtReceipt(DTNBundle bundle) {
             if (DTNUtils.isValid(bundle)) {
-                
-                BigInteger cts = bundle.primaryBlock.bundleID.creationTimestamp;
-                
                 CanonicalBlock ageCBlock
                     = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
                 assert ageCBlock != null;
     
                 AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-                BigDecimal srcSpeed = new BigDecimal(ageBlock.sourceCPUSpeedInKHz);
-                
-                BigDecimal A1 = new BigDecimal(
-                    ageBlock.sendingTimestamp.multiply(
-                        BigInteger.valueOf(ageBlock.sourceCPUSpeedInKHz)
-                    )
-                );
-                
-                BigDecimal A2
-                    = new BigDecimal(
-                        ageBlock.receivingTimestamp.multiply(
-                            BigInteger.valueOf(DTNUtils.getMaxCPUFrequencyInKHz())
-                        ))
-                    .divide(srcSpeed, RoundingMode.UP);
-                
-                BigInteger transmissionAge = A2.subtract(A1).abs()
-                    .divide(srcSpeed, RoundingMode.UP).toBigInteger();
     
-                ageBlock.agePrime = ageBlock.age.add(transmissionAge);
-                ageBlock.T = cts.add(ageBlock.agePrime);
+                ageBlock.agePrime = ageBlock.age.plus(
+                    DTNTimeDuration.between(ageBlock.sendingTimestamp, ageBlock.receivingTimestamp)
+                );
+                ageBlock.T = DTNTimeInstant.copyOf(ageBlock.receivingTimestamp);
             }
         }
         
@@ -507,8 +477,7 @@ final class RadDaemon
     
     @Override
     public boolean start() {
-        wallClock.start();
-        boolean state = startExecutors();
+        boolean state = wallClock.start() & startExecutors();
         for (Daemon2Managable managable : managables) state &= managable.start();
         return state;
     }
@@ -524,8 +493,7 @@ final class RadDaemon
     
     @Override
     public boolean stop() {
-        wallClock.stop();
-        boolean state = stopExecutors();
+        boolean state = wallClock.stop() & stopExecutors();
         for (Daemon2Managable managable : managables) state &= managable.stop();
         return state;
     }

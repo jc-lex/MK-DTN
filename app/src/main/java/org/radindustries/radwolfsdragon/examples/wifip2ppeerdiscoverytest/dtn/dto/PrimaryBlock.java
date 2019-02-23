@@ -1,6 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.DTNUtils;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -29,18 +29,18 @@ public final class PrimaryBlock implements Serializable {
     public enum PriorityClass {EXPEDITED, NORMAL, BULK}
     
     public enum LifeTime {
-        THREE_DAYS(DTNUtils.DAY.multiply(BigInteger.valueOf(3))),
-        ONE_WEEK(DTNUtils.DAY.multiply(BigInteger.valueOf(7))),
-        THREE_WEEKS(DTNUtils.DAY.multiply(BigInteger.valueOf(7 * 3))),
-        TWO_MONTHS(DTNUtils.DAY.multiply(BigInteger.valueOf(7 * 4 * 2)));
+        THREE_DAYS(DTNTimeDuration.ofDays(3)),
+        ONE_WEEK(DTNTimeDuration.ofWeeks(1)),
+        THREE_WEEKS(DTNTimeDuration.ofWeeks(3)),
+        TWO_MONTHS(DTNTimeDuration.ofMonths(2));
         
-        private BigInteger period;
+        private DTNTimeDuration period;
         
-        LifeTime(BigInteger period) {
+        LifeTime(DTNTimeDuration period) {
             this.period = period;
         }
         
-        public BigInteger getPeriod() {
+        public DTNTimeDuration getPeriod() {
             return this.period;
         }
     }
@@ -51,7 +51,7 @@ public final class PrimaryBlock implements Serializable {
     public DTNEndpointID destinationEID;
     public DTNEndpointID reportToEID;
     public DTNEndpointID custodianEID;
-    public BigInteger lifeTime;
+    public DTNTimeDuration lifeTime;
     public HashMap<String, String> detailsIfFragment = new HashMap<>(2);
     
     @Override

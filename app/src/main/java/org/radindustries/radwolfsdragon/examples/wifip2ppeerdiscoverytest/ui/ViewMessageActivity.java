@@ -33,8 +33,10 @@ public class ViewMessageActivity extends AppCompatActivity implements View.OnCli
     private void initUI() {
         TextView senderTV = findViewById(R.id.sender_eid_textview);
         TextView messageTV = findViewById(R.id.message_textview);
-        TextView recvdTSTV = findViewById(R.id.recvd_timestamp_tv);
         TextView createdTSTV = findViewById(R.id.created_timestamp_tv);
+        TextView deliveredTSTV = findViewById(R.id.delivered_timestamp_tv);
+        TextView sentTSTV = findViewById(R.id.sent_timestamp_tv);
+        TextView recvdTSTV = findViewById(R.id.recvd_timestamp_tv);
         
         if (getIntent() != null) {
             Intent intent = getIntent();
@@ -44,8 +46,10 @@ public class ViewMessageActivity extends AppCompatActivity implements View.OnCli
                 
                 senderEID = msg.sender;
                 senderTV.setText(senderEID);
-                recvdTSTV.setText(msg.receivedTimestamp);
                 createdTSTV.setText(msg.creationTimestamp);
+                deliveredTSTV.setText(msg.deliveryTimestamp);
+                sentTSTV.setText(msg.sendingTimestamp);
+                recvdTSTV.setText(msg.receivedTimestamp);
                 messageTV.setText(msg.textMessage);
             }
         }

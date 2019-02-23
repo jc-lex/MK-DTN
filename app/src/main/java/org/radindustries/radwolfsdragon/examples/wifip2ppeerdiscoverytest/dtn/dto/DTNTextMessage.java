@@ -6,17 +6,9 @@ public final class DTNTextMessage implements Serializable {
     public String sender;
     public String textMessage;
     public String receivedTimestamp;
+    public String sendingTimestamp;
     public String creationTimestamp;
-    
-    @Override
-    public String toString() {
-        return "DTNTextMessage{" +
-            "sender='" + sender + '\'' +
-            ",textMessage='" + textMessage + '\'' +
-            ",receivedTimestamp=" + receivedTimestamp +
-            ",creationTimestamp=" + creationTimestamp +
-            '}';
-    }
+    public String deliveryTimestamp;
     
     @Override
     public boolean equals(Object o) {
@@ -28,7 +20,9 @@ public final class DTNTextMessage implements Serializable {
         if (!sender.equals(that.sender)) return false;
         if (!textMessage.equals(that.textMessage)) return false;
         if (!receivedTimestamp.equals(that.receivedTimestamp)) return false;
-        return creationTimestamp.equals(that.creationTimestamp);
+        if (!sendingTimestamp.equals(that.sendingTimestamp)) return false;
+        if (!creationTimestamp.equals(that.creationTimestamp)) return false;
+        return deliveryTimestamp.equals(that.deliveryTimestamp);
     }
     
     @Override
@@ -36,7 +30,21 @@ public final class DTNTextMessage implements Serializable {
         int result = sender.hashCode();
         result = 31 * result + textMessage.hashCode();
         result = 31 * result + receivedTimestamp.hashCode();
+        result = 31 * result + sendingTimestamp.hashCode();
         result = 31 * result + creationTimestamp.hashCode();
+        result = 31 * result + deliveryTimestamp.hashCode();
         return result;
+    }
+    
+    @Override
+    public String toString() {
+        return "DTNTextMessage{" +
+            "sender='" + sender + '\'' +
+            ", textMessage='" + textMessage + '\'' +
+            ", receivedTimestamp='" + receivedTimestamp + '\'' +
+            ", sendingTimestamp='" + sendingTimestamp + '\'' +
+            ", creationTimestamp='" + creationTimestamp + '\'' +
+            ", deliveryTimestamp='" + deliveryTimestamp + '\'' +
+            '}';
     }
 }

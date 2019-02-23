@@ -1,6 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
-import java.math.BigInteger;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 
 public final class CustodySignal extends AdminRecord {
     
@@ -10,7 +10,7 @@ public final class CustodySignal extends AdminRecord {
     
     public boolean custodyTransferSucceeded;
     public Reason reasonCode;
-    public BigInteger timeOfSignal;
+    public DTNTimeInstant timeOfSignal;
     
     @Override
     public String toString() {

@@ -343,6 +343,8 @@
     <string name="message_tv_label">Message</string>
     <string name="received_at_tv_label">Received at</string>
     <string name="created_at_tv_label">Created at</string>
+    <string name="delivered_at_tv_label">Delivered at</string>
+    <string name="sent_at_tv_label">Sent at</string>
     <string name="sending_err_msg">Sending failed</string>
     <string name="sending_msg_ok">Message sent</string>
     <string name="bundle_delivery_failed_notification_message">

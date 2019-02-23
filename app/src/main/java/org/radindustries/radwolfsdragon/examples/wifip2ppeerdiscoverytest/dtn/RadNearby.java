@@ -28,12 +28,13 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETCLA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PRoPHETPeerDiscoverer2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.PeerDiscoverer2Daemon;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -63,6 +64,7 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
     private PRoPHETCLA2Daemon prophetCLA2Daemon;
     private ConnectionsClient connectionsClient;
     private WallClock clock;
+    private DTNTimeInstant rxSendTime;
     
     private boolean isInbound;
     private final EndpointDiscoveryCallback endpointDiscoveryCallback
@@ -137,6 +139,8 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
                 if (!isInbound) {
                     connectedNodes.add(nearbyEndpointID);
                     forward(bundle, nearbyEndpointID);
+                } else {
+                    rxSendTime = clock.getCurrentTime();
                 }
             } else {
                 Log.e(LOG_TAG, "Connection was not OK");
@@ -184,7 +188,9 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Manag
                             )
                         ) {
                             DTNBundle receivedBundle = (DTNBundle) in.readObject();
-                            DTNUtils.setTimeReceivedByWRTRx(receivedBundle, clock.getCurrentTime());
+                            DTNUtils.setTransmissionAgeWRTRx(
+                                receivedBundle, rxSendTime, clock.getCurrentTime()
+                            );
                     
                             prophetCLA2Daemon.calculateDPTransitivity(receivedBundle);
                             cla2Daemon.onBundleReceived(receivedBundle);

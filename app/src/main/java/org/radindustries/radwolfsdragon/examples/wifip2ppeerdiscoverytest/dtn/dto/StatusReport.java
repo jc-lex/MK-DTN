@@ -1,6 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
-import java.math.BigInteger;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 
 public final class StatusReport extends AdminRecord {
     
@@ -11,7 +11,7 @@ public final class StatusReport extends AdminRecord {
     
     public boolean bundleDelivered;
     public Reason reasonCode;
-    public BigInteger timeOfDelivery;
+    public DTNTimeInstant timeOfDelivery;
     
     @Override
     public String toString() {

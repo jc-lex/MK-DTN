@@ -1,24 +1,25 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
-import java.math.BigInteger;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 
 public final class AgeBlock extends BlockTypeSpecificDataFields {
     
     public long sourceCPUSpeedInKHz;
-    public BigInteger sendingTimestamp = BigInteger.ZERO;
-    public BigInteger receivingTimestamp = BigInteger.ZERO;
-    public BigInteger age = BigInteger.ZERO;
-    public BigInteger agePrime = BigInteger.ZERO;
-    public BigInteger T = BigInteger.ZERO;
+    public DTNTimeInstant sendingTimestamp;
+    public DTNTimeInstant receivingTimestamp;
+    public DTNTimeDuration age;
+    public DTNTimeDuration agePrime;
+    public DTNTimeInstant T;
     
     public static AgeBlock from(AgeBlock other) {
         AgeBlock newOne = new AgeBlock();
         newOne.sourceCPUSpeedInKHz = other.sourceCPUSpeedInKHz;
-        newOne.sendingTimestamp = new BigInteger(other.sendingTimestamp.toString());
-        newOne.receivingTimestamp = new BigInteger(other.receivingTimestamp.toString());
-        newOne.T = new BigInteger(other.T.toString());
-        newOne.age = new BigInteger(other.age.toString());
-        newOne.agePrime = new BigInteger(other.agePrime.toString());
+        newOne.sendingTimestamp = DTNTimeInstant.copyOf(other.sendingTimestamp);
+        newOne.receivingTimestamp = DTNTimeInstant.copyOf(other.receivingTimestamp);
+        newOne.T = DTNTimeInstant.copyOf(other.T);
+        newOne.age = DTNTimeDuration.copyOf(other.age);
+        newOne.agePrime = DTNTimeDuration.copyOf(other.agePrime);
         return newOne;
     }
     

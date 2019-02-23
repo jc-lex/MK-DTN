@@ -3,13 +3,11 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 import android.content.Context;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.EIDProvider;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.WallClock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
-
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import androidx.annotation.NonNull;
 
@@ -36,16 +34,12 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
         NeighbourhoodIndex ni = routerDBHandler.getIndex(nodeEID.toString());
         
         return ni != null ?
-            new BigDecimal(DTNUtils.DAY.multiply(BigInteger.valueOf(ni.getMeetingCount())))
-                
-                .divide(new BigDecimal(
-                    
-                    clock.getCurrentTime().subtract(new BigInteger(ni.getFirstEncounterTimestamp()))
-                
-                ), RoundingMode.UP)
-                
-                .floatValue() :
-            0.0F;
+            ni.getMeetingCount() *
+                DTNTimeDuration.between(
+                    DTNTimeInstant.parse(ni.getFirstEncounterTimestamp()),
+                        clock.getCurrentTime()
+                    ).inDays()
+            : 0.0F;
     }
     
     @Override

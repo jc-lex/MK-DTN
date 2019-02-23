@@ -34,19 +34,6 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/received_at_tv_label"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:id="@+id/recvd_timestamp_tv"
-                android:textStyle="italic"
-                android:paddingBottom="@dimen/main_list_item_padding"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:text="@string/created_at_tv_label"
                 android:textStyle="bold"/>
 
@@ -54,6 +41,45 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:id="@+id/created_timestamp_tv"
+                android:textStyle="italic"
+                android:paddingBottom="@dimen/main_list_item_padding"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/delivered_at_tv_label"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/delivered_timestamp_tv"
+                android:textStyle="italic"
+                android:paddingBottom="@dimen/main_list_item_padding"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/sent_at_tv_label"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/sent_timestamp_tv"
+                android:textStyle="italic"
+                android:paddingBottom="@dimen/main_list_item_padding"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/received_at_tv_label"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/recvd_timestamp_tv"
                 android:textStyle="italic"
                 android:paddingBottom="@dimen/main_list_item_padding"/>
 

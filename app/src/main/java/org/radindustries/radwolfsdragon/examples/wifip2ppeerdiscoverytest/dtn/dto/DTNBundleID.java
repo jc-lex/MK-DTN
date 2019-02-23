@@ -1,15 +1,16 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
+
 import java.io.Serializable;
-import java.math.BigInteger;
 
 public final class DTNBundleID implements Serializable {
     public DTNEndpointID sourceEID;
-    public BigInteger creationTimestamp;
+    public DTNTimeInstant creationTimestamp;
     
-    public static DTNBundleID from(DTNEndpointID src, BigInteger cts) {
+    public static DTNBundleID from(DTNEndpointID src, DTNTimeInstant cts) {
         DTNBundleID id = new DTNBundleID();
-        id.creationTimestamp = new BigInteger(cts.toString());
+        id.creationTimestamp = DTNTimeInstant.copyOf(cts);
         id.sourceEID = DTNEndpointID.from(src);
         return id;
     }

@@ -10,7 +10,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNTextMessage;
 
-import java.util.Locale;
 import java.util.Objects;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,8 +33,10 @@ public class ViewMessageActivity extends AppCompatActivity implements View.OnCli
     private void initUI() {
         TextView senderTV = findViewById(R.id.sender_eid_textview);
         TextView messageTV = findViewById(R.id.message_textview);
-        TextView recvdTSTV = findViewById(R.id.recvd_timestamp_tv);
         TextView createdTSTV = findViewById(R.id.created_timestamp_tv);
+        TextView deliveredTSTV = findViewById(R.id.delivered_timestamp_tv);
+        TextView sentTSTV = findViewById(R.id.sent_timestamp_tv);
+        TextView recvdTSTV = findViewById(R.id.recvd_timestamp_tv);
         
         if (getIntent() != null) {
             Intent intent = getIntent();
@@ -45,8 +46,10 @@ public class ViewMessageActivity extends AppCompatActivity implements View.OnCli
                 
                 senderEID = msg.sender;
                 senderTV.setText(senderEID);
-                recvdTSTV.setText(String.format(Locale.ENGLISH, "%d", msg.receivedTimestamp));
-                createdTSTV.setText(String.format(Locale.ENGLISH, "%d", msg.creationTimestamp));
+                createdTSTV.setText(msg.creationTimestamp);
+                deliveredTSTV.setText(msg.deliveryTimestamp);
+                sentTSTV.setText(msg.sendingTimestamp);
+                recvdTSTV.setText(msg.receivedTimestamp);
                 messageTV.setText(msg.textMessage);
             }
         }

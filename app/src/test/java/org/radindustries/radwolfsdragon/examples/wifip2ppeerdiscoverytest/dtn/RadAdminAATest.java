@@ -11,6 +11,10 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
+
+import java.math.BigInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -22,6 +26,12 @@ public class RadAdminAATest {
     
     @BeforeClass
     public static void setUpClass() {
+        WallClock clock = new WallClock() {
+            @Override
+            public DTNTimeInstant getCurrentTime() {
+                return DTNTimeInstant.at(System.currentTimeMillis());
+            }
+        };
         radAdminAA = new RadAdminAA(new AdminAA2Daemon() {
     
             @Override
@@ -63,7 +73,7 @@ public class RadAdminAATest {
             public DTNEndpointID getThisNodezEID() {
                 return TestUtilities.makeDTNEID();
             }
-        });
+        }, clock);
     }
     
     @Test

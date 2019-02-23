@@ -10,15 +10,20 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.Scanner;
 
-final class DTNUtils {
+public final class DTNUtils {
     private DTNUtils() {}
     
     private static final long DEFAULT_CPU_SPEED_IN_KHZ = 1_100_000L;
+    
+    public static final BigInteger DAY = BigInteger.valueOf(getMaxCPUFrequencyInKHz())
+        .multiply(BigInteger.valueOf(60 * 60 * 24));
     
     static synchronized CanonicalBlock makeAgeCBlock() {
         CanonicalBlock ageCBlock = new CanonicalBlock();
@@ -33,24 +38,37 @@ final class DTNUtils {
         return ageCBlock;
     }
     
-    static synchronized void setTimeReceived(DTNBundle receivedBundle) {
+    static synchronized void setTransmissionAgeWRTRx(
+        DTNBundle receivedBundle, DTNTimeInstant sendTime, DTNTimeInstant receiveTime
+    ) {
         if (!isValid(receivedBundle)) return;
         
         CanonicalBlock ageCBlock = receivedBundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields != null) {
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-            ageBlock.receivingTimestamp = System.currentTimeMillis();
+            ageBlock.sendingTimestamp = DTNTimeInstant.copyOf(sendTime);
+            ageBlock.receivingTimestamp = DTNTimeInstant.copyOf(receiveTime);
         }
     }
     
-    static synchronized long getTimeReceived(DTNBundle bundle) {
-        if (!isValid(bundle)) return -1L;
+    static synchronized DTNTimeInstant getTimeReceivedWRTRx(DTNBundle bundle) {
+        if (!isValid(bundle)) return DTNTimeInstant.ZERO;
         
         CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-            return ageBlock.receivingTimestamp; // find out how to use T instead
-        } else return -1L;
+            return ageBlock.receivingTimestamp;
+        } else return DTNTimeInstant.ZERO;
+    }
+    
+    static synchronized DTNTimeInstant getTimeSentWRTRx(DTNBundle bundle) {
+        if (!isValid(bundle)) return DTNTimeInstant.ZERO;
+        
+        CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+        if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
+            AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+            return ageBlock.sendingTimestamp;
+        } else return DTNTimeInstant.ZERO;
     }
     
     static synchronized boolean isFragment(DTNBundle bundle) {
@@ -110,7 +128,7 @@ final class DTNUtils {
                     = (CustodySignal) custodySignalCBlock.blockTypeSpecificDataFields;
     
                 return custodySignal.recordType == AdminRecord.RecordType.CUSTODY_SIGNAL &&
-                    custodySignal.timeOfSignal > 0L;
+                    custodySignal.timeOfSignal.compareTo(DTNTimeInstant.ZERO) > 0; // t > 0
             }
         }
         return false;
@@ -151,14 +169,14 @@ final class DTNUtils {
     
     private static synchronized boolean isValidPrimaryBlock(PrimaryBlock primaryBlock) {
         return primaryBlock.bundleID != null &&
-            primaryBlock.bundleID.creationTimestamp > 0L &&
+            primaryBlock.bundleID.creationTimestamp.compareTo(DTNTimeInstant.ZERO) > 0 && // t > 0
             primaryBlock.bundleID.sourceEID != null &&
             primaryBlock.destinationEID != null &&
             primaryBlock.custodianEID != null &&
             primaryBlock.reportToEID != null &&
             primaryBlock.bundleProcessingControlFlags != null &&
             primaryBlock.priorityClass != null &&
-            primaryBlock.lifeTime > 0L;
+            primaryBlock.lifeTime.compareTo(DTNTimeDuration.ZERO) > 0; // t > 0
     }
     
     private static synchronized boolean isValidAgeCBlock(CanonicalBlock cBlock) {
@@ -252,10 +270,10 @@ final class DTNUtils {
             assert ageCBlock != null;
             
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-            long lifetime = bundle.primaryBlock.lifeTime;
-            long age = ageBlock.age;
+            DTNTimeDuration lifetime = bundle.primaryBlock.lifeTime;
+            DTNTimeDuration age = ageBlock.age;
             
-            return age > lifetime;
+            return age.compareTo(lifetime) > 0;
         }
         return true;
     }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 
 import java.math.BigInteger;
 import java.util.HashMap;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 
 public final class StatusReport extends AdminRecord {
     
@@ -21,7 +22,7 @@ public final class StatusReport extends AdminRecord {
     public Reason reasonCode;
     
     @SuppressLint("UseSparseArrays")
-    public HashMap<Integer, Long> statusTimes = new HashMap<>();
+    public HashMap<Integer, DTNTimeInstant> statusTimes = new HashMap<>();
     
     @Override
     public String toString() {

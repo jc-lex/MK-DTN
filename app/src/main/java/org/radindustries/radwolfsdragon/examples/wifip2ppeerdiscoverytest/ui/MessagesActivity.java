@@ -61,7 +61,7 @@ public class MessagesActivity extends AppCompatActivity implements View.OnClickL
             senderAdapter.clear();
             if (messages != null)
                 for (DTNTextMessage msg : messages)
-                    senderDisplayInfo.add("From " + msg.sender + " @ " + msg.receivedTimestamp);
+                    senderDisplayInfo.add("From " + msg.sender + " @ " + msg.deliveryTimestamp);
             senderAdapter.addAll(senderDisplayInfo);
         }
     }

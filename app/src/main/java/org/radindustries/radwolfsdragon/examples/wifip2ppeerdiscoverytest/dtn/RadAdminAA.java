@@ -14,6 +14,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.math.BigInteger;
 
@@ -25,9 +26,11 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     private AdminAA2Daemon daemon;
     private DTNBundle bundle;
+    private WallClock clock;
     
-    RadAdminAA(@NonNull AdminAA2Daemon daemon) {
+    RadAdminAA(@NonNull AdminAA2Daemon daemon, @NonNull WallClock clock) {
         this.daemon = daemon;
+        this.clock = clock;
     }
     
     @Override
@@ -126,7 +129,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         signal.recordType = AdminRecord.RecordType.CUSTODY_SIGNAL;
         signal.reasonCode = reasonCode;
         signal.custodyTransferSucceeded = custodyAccepted;
-        signal.timeOfSignal = System.currentTimeMillis();
+        signal.timeOfSignal = clock.getCurrentTime();
         
         return processOtherAdminRecordDetails(userBundle, signal);
     }
@@ -156,7 +159,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         report.recordType = AdminRecord.RecordType.STATUS_REPORT;
         report.reasonCode = reasonCode;
         report.statusFlags = report.statusFlags.setBit(statusCode);
-        report.statusTimes.put(statusCode, System.currentTimeMillis());
+        report.statusTimes.put(statusCode, clock.getCurrentTime());
         
         return processOtherAdminRecordDetails(userBundle, report);
     }
@@ -221,7 +224,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         primaryBlock.bundleProcessingControlFlags = makeBundlePCFsForAdminRecord();
         primaryBlock.priorityClass = userBundlePrimaryBlock.priorityClass;
         primaryBlock.bundleID
-            = DTNBundleID.from(daemon.getThisNodezEID(), System.currentTimeMillis());
+            = DTNBundleID.from(daemon.getThisNodezEID(), clock.getCurrentTime());
         primaryBlock.destinationEID = DTNEndpointID.from(userBundlePrimaryBlock.bundleID.sourceEID);
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);

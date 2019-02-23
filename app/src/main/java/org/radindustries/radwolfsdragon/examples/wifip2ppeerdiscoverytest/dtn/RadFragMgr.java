@@ -322,7 +322,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
                         .equals(first.primaryBlock.bundleID.sourceEID) //come from the same place
                     &&
                     fragment.primaryBlock.bundleID.creationTimestamp //made at the same time
-                        == first.primaryBlock.bundleID.creationTimestamp
+                        .equals(first.primaryBlock.bundleID.creationTimestamp)
             )) {
                 result = false;
                 break;

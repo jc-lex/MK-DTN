@@ -5,18 +5,10 @@ import java.io.Serializable;
 public final class DTNTextMessage implements Serializable {
     public String sender;
     public String textMessage;
-    public long receivedTimestamp;
-    public long creationTimestamp;
-    
-    @Override
-    public String toString() {
-        return "DTNTextMessage{" +
-            "sender='" + sender + '\'' +
-            ",textMessage='" + textMessage + '\'' +
-            ",receivedTimestamp=" + receivedTimestamp +
-            ",creationTimestamp=" + creationTimestamp +
-            '}';
-    }
+    public String receivedTimestamp;
+    public String sendingTimestamp;
+    public String creationTimestamp;
+    public String deliveryTimestamp;
     
     @Override
     public boolean equals(Object o) {
@@ -25,18 +17,34 @@ public final class DTNTextMessage implements Serializable {
         
         DTNTextMessage that = (DTNTextMessage) o;
         
-        if (receivedTimestamp != that.receivedTimestamp) return false;
-        if (creationTimestamp != that.creationTimestamp) return false;
         if (!sender.equals(that.sender)) return false;
-        return textMessage.equals(that.textMessage);
+        if (!textMessage.equals(that.textMessage)) return false;
+        if (!receivedTimestamp.equals(that.receivedTimestamp)) return false;
+        if (!sendingTimestamp.equals(that.sendingTimestamp)) return false;
+        if (!creationTimestamp.equals(that.creationTimestamp)) return false;
+        return deliveryTimestamp.equals(that.deliveryTimestamp);
     }
     
     @Override
     public int hashCode() {
         int result = sender.hashCode();
         result = 31 * result + textMessage.hashCode();
-        result = 31 * result + (int) (receivedTimestamp ^ (receivedTimestamp >>> 32));
-        result = 31 * result + (int) (creationTimestamp ^ (creationTimestamp >>> 32));
+        result = 31 * result + receivedTimestamp.hashCode();
+        result = 31 * result + sendingTimestamp.hashCode();
+        result = 31 * result + creationTimestamp.hashCode();
+        result = 31 * result + deliveryTimestamp.hashCode();
         return result;
+    }
+    
+    @Override
+    public String toString() {
+        return "DTNTextMessage{" +
+            "sender='" + sender + '\'' +
+            ", textMessage='" + textMessage + '\'' +
+            ", receivedTimestamp='" + receivedTimestamp + '\'' +
+            ", sendingTimestamp='" + sendingTimestamp + '\'' +
+            ", creationTimestamp='" + creationTimestamp + '\'' +
+            ", deliveryTimestamp='" + deliveryTimestamp + '\'' +
+            '}';
     }
 }

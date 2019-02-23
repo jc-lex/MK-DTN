@@ -1,5 +1,7 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
+
 public final class CustodySignal extends AdminRecord {
     
     public enum Reason {
@@ -8,7 +10,7 @@ public final class CustodySignal extends AdminRecord {
     
     public boolean custodyTransferSucceeded;
     public Reason reasonCode;
-    public long timeOfSignal;
+    public DTNTimeInstant timeOfSignal;
     
     @Override
     public String toString() {
@@ -32,8 +34,8 @@ public final class CustodySignal extends AdminRecord {
         CustodySignal signal = (CustodySignal) o;
         
         if (custodyTransferSucceeded != signal.custodyTransferSucceeded) return false;
-        if (timeOfSignal != signal.timeOfSignal) return false;
-        return reasonCode == signal.reasonCode;
+        if (reasonCode != signal.reasonCode) return false;
+        return timeOfSignal.equals(signal.timeOfSignal);
     }
     
     @Override
@@ -41,7 +43,7 @@ public final class CustodySignal extends AdminRecord {
         int result = super.hashCode();
         result = 31 * result + (custodyTransferSucceeded ? 1 : 0);
         result = 31 * result + reasonCode.hashCode();
-        result = 31 * result + (int) (timeOfSignal ^ (timeOfSignal >>> 32));
+        result = 31 * result + timeOfSignal.hashCode();
         return result;
     }
 }

@@ -14,6 +14,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -26,10 +27,12 @@ import androidx.annotation.NonNull;
 final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     private DTNUI ui;
     private AppAA2Daemon daemon;
+    private WallClock clock;
     
-    RadAppAA(@NonNull DTNUI ui, @NonNull AppAA2Daemon daemon) {
+    RadAppAA(@NonNull DTNUI ui, @NonNull AppAA2Daemon daemon, @NonNull WallClock clock) {
         this.ui = ui;
         this.daemon = daemon;
+        this.clock = clock;
     }
     
     @Override
@@ -71,7 +74,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         primaryBlock.bundleProcessingControlFlags = makeBundlePCFs();
         primaryBlock.priorityClass = priorityClass;
         primaryBlock.bundleID
-            = DTNBundleID.from(daemon.getThisNodezEID(), System.currentTimeMillis());
+            = DTNBundleID.from(daemon.getThisNodezEID(), clock.getCurrentTime());
         primaryBlock.lifeTime = lifeTime.getPeriod();
         primaryBlock.destinationEID = recipient;
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
@@ -195,8 +198,11 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
                 .toString();
             
             deliveryReportText.creationTimestamp
-                = bundle.primaryBlock.bundleID.creationTimestamp;
-            deliveryReportText.receivedTimestamp = DTNUtils.getTimeReceived(bundle);
+                = bundle.primaryBlock.bundleID.creationTimestamp.toString();
+            deliveryReportText.receivedTimestamp
+                = DTNUtils.getTimeReceivedWRTRx(bundle).toString();
+            deliveryReportText.deliveryTimestamp = clock.getCurrentTime().toString();
+            deliveryReportText.sendingTimestamp = DTNUtils.getTimeSentWRTRx(bundle).toString();
             
             return deliveryReportText;
         }
@@ -214,9 +220,12 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             DTNTextMessage msgFromSender = new DTNTextMessage();
             msgFromSender.sender = bundle.primaryBlock.bundleID.sourceEID.toString();
             msgFromSender.textMessage = new String(payloadADU.ADU);
+            
             msgFromSender.creationTimestamp
-                = bundle.primaryBlock.bundleID.creationTimestamp;
-            msgFromSender.receivedTimestamp = DTNUtils.getTimeReceived(bundle);
+                = bundle.primaryBlock.bundleID.creationTimestamp.toString();
+            msgFromSender.receivedTimestamp = DTNUtils.getTimeReceivedWRTRx(bundle).toString();
+            msgFromSender.deliveryTimestamp = clock.getCurrentTime().toString();
+            msgFromSender.sendingTimestamp = DTNUtils.getTimeSentWRTRx(bundle).toString();
             
             return msgFromSender;
         } else return new DTNTextMessage();

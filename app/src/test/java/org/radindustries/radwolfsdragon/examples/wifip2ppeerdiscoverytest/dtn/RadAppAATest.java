@@ -11,6 +11,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.util.List;
 import java.util.Set;
@@ -103,11 +105,18 @@ public class RadAppAATest {
         }
     };
     
+    private static final WallClock clock = new WallClock() {
+        @Override
+        public DTNTimeInstant getCurrentTime() {
+            return DTNTimeInstant.at(System.currentTimeMillis());
+        }
+    };
+    
     private static RadAppAA appAA;
     
     @BeforeClass
     public static void setUp() {
-        appAA = new RadAppAA(ui, daemon);
+        appAA = new RadAppAA(ui, daemon, clock);
     }
     
     @Test

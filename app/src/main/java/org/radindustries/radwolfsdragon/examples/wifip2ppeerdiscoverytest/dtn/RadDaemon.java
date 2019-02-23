@@ -39,6 +39,9 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ro
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MKDTNService;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -57,7 +60,7 @@ import androidx.annotation.NonNull;
 final class RadDaemon
     implements AppAA2Daemon, AdminAA2Daemon, CLA2Daemon, PeerDiscoverer2Daemon, DTNManager2Daemon,
         Router2Daemon, NECTARRouter2Daemon, NECTARPeerDiscoverer2Daemon,
-        PRoPHETRouter2Daemon, PRoPHETPeerDiscoverer2Daemon, PRoPHETCLA2Daemon {
+        PRoPHETRouter2Daemon, PRoPHETPeerDiscoverer2Daemon, PRoPHETCLA2Daemon, WallClock {
     
     private Daemon2CLA cla;
     private Daemon2PeerDiscoverer discoverer;
@@ -78,10 +81,17 @@ final class RadDaemon
     private Daemon2Router.RoutingProtocol currentProtocol;
     private Thread bundleTransmitter;
     private ExecutorService bundleProcessor;
+    private RadWallClock wallClock;
     
     RadDaemon(@NonNull Context context) {
         this.context = context;
+        wallClock = new RadWallClock(context);
         this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
+    }
+    
+    @Override
+    public synchronized DTNTimeInstant getCurrentTime() {
+        return wallClock.getCurrentTime();
     }
     
     void setCLA(@NonNull Daemon2CLA cla) {
@@ -222,7 +232,7 @@ final class RadDaemon
         }
         
         private void setSendingTime(DTNBundle bundle) {
-            long bundleCreationTimestamp
+            DTNTimeInstant bundleCreationTimestamp
                 = bundle.primaryBlock.bundleID.creationTimestamp;
     
             CanonicalBlock ageCBlock
@@ -231,17 +241,17 @@ final class RadDaemon
     
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
     
-            ageBlock.sendingTimestamp = System.currentTimeMillis();
-    
             if (isFromUs(bundle)) { // initial conditions from bundle's src
-                ageBlock.agePrime = 0;
-                ageBlock.T = bundleCreationTimestamp;
+                ageBlock.agePrime = DTNTimeDuration.ZERO;
+                ageBlock.T = DTNTimeInstant.copyOf(bundleCreationTimestamp);
             }
     
             // NOTE general equation for bundle aging, where now == sendingTimestamp
-            ageBlock.age = ageBlock.agePrime + (long)
-                ((DTNUtils.getMaxCPUFrequencyInKHz() / (float) ageBlock.sourceCPUSpeedInKHz)
-                    * (ageBlock.sendingTimestamp - ageBlock.T));
+            ageBlock.age = ageBlock.agePrime.plus(
+                DTNTimeDuration.between(ageBlock.T, getCurrentTime()).scale(
+                    DTNUtils.getMaxCPUFrequencyInKHz() / (double) ageBlock.sourceCPUSpeedInKHz
+                )
+            );
         }
     }
     
@@ -389,20 +399,16 @@ final class RadDaemon
         
         private void processAgeAtReceipt(DTNBundle bundle) {
             if (DTNUtils.isValid(bundle)) {
-                long cts = bundle.primaryBlock.bundleID.creationTimestamp;
                 CanonicalBlock ageCBlock
                     = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
                 assert ageCBlock != null;
     
                 AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
     
-                float A1 = (float) ageBlock.sourceCPUSpeedInKHz * ageBlock.sendingTimestamp;
-                float A2 = (DTNUtils.getMaxCPUFrequencyInKHz() * ageBlock.receivingTimestamp) /
-                    (float) ageBlock.sourceCPUSpeedInKHz;
-                long transmissionAge = (long) (Math.abs(A2 - A1) / ageBlock.sourceCPUSpeedInKHz);
-    
-                ageBlock.agePrime = ageBlock.age + transmissionAge;
-                ageBlock.T = cts + ageBlock.agePrime;
+                ageBlock.agePrime = ageBlock.age.plus(
+                    DTNTimeDuration.between(ageBlock.sendingTimestamp, ageBlock.receivingTimestamp)
+                );
+                ageBlock.T = DTNTimeInstant.copyOf(ageBlock.receivingTimestamp);
             }
         }
         
@@ -549,7 +555,7 @@ final class RadDaemon
     
     @Override
     public boolean start() {
-        boolean state = startExecutors();
+        boolean state = wallClock.start() & startExecutors();
         for (Daemon2Managable managable : managables) state &= managable.start();
         return state;
     }
@@ -580,7 +586,7 @@ final class RadDaemon
     
     @Override
     public boolean stop() {
-        boolean state = stopExecutors();
+        boolean state = wallClock.stop() & stopExecutors();
         for (Daemon2Managable managable : managables) state &= managable.stop();
         return state;
     }

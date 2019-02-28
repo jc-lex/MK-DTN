@@ -182,27 +182,36 @@ final class RadFragMgr implements Daemon2FragmentManager {
     
     @Override
     public synchronized DTNBundle defragment(DTNBundle[] fragmentsToCombine) {
-        //template
-        DTNBundle first = fragmentsToCombine[0];
-    
-        //primary block
+        DTNBundle template = lastFragment(fragmentsToCombine);
+        
         PrimaryBlock primaryBlock
-            = generateDefragmentedBundlePrimaryBlock(first);
-    
-        //age block
-        CanonicalBlock ageCBlock = generateDefragmentedBundleAgeCBlock(first);
-    
-        //payload block
+            = generateDefragmentedBundlePrimaryBlock(template);
+        
+        CanonicalBlock ageCBlock = generateDefragmentedBundleAgeCBlock(template);
+        
         CanonicalBlock payloadCBlock
             = generateDefragmentedBundlePayloadCBlock(fragmentsToCombine);
-    
-        //original
+        
         DTNBundle originalBundle = new DTNBundle();
         originalBundle.primaryBlock = primaryBlock;
         originalBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PAYLOAD, payloadCBlock);
         originalBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
     
         return originalBundle;
+    }
+    
+    private synchronized DTNBundle lastFragment(DTNBundle[] fragments) {
+        int last = 0;
+        for (DTNBundle fragment : fragments) {
+            String fragmentOffset
+                = fragment.primaryBlock.detailsIfFragment
+                .get(PrimaryBlock.FragmentField.FRAGMENT_OFFSET);
+            assert fragmentOffset != null;
+            
+            int offset = Integer.parseInt(fragmentOffset);
+            if (offset > last) last = offset;
+        }
+        return fragments[last];
     }
     
     private synchronized PrimaryBlock generateDefragmentedBundlePrimaryBlock(DTNBundle fragment) {

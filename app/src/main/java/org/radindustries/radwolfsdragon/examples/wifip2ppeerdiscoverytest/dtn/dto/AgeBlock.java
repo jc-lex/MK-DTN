@@ -6,11 +6,11 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ti
 public final class AgeBlock extends BlockTypeSpecificDataFields {
     
     public long sourceCPUSpeedInKHz;
-    public DTNTimeInstant sendingTimestamp;
-    public DTNTimeInstant receivingTimestamp;
-    public DTNTimeDuration age;
-    public DTNTimeDuration agePrime;
-    public DTNTimeInstant T;
+    public DTNTimeInstant sendingTimestamp = DTNTimeInstant.ZERO;
+    public DTNTimeInstant receivingTimestamp = DTNTimeInstant.ZERO;
+    public DTNTimeDuration age = DTNTimeDuration.ZERO;
+    public DTNTimeDuration agePrime = DTNTimeDuration.ZERO;
+    public DTNTimeInstant T = DTNTimeInstant.ZERO;
     
     public static AgeBlock from(AgeBlock other) {
         AgeBlock newOne = new AgeBlock();

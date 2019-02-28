@@ -246,7 +246,7 @@ final class RadDaemon
                 ageBlock.T = DTNTimeInstant.copyOf(bundleCreationTimestamp);
             }
             // now == sendingTimestamp
-            DTNUtils.doAging(ageBlock, getCurrentTime());
+            DTNUtils.doBundleAging(ageBlock, getCurrentTime());
         }
     }
     

@@ -14,6 +14,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.math.BigInteger;
@@ -196,14 +197,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
                     + statusReport.reasonCode.toString();
             } else deliveryReportText.textMessage = bundle
                 .toString();
-            
-            deliveryReportText.creationTimestamp
-                = bundle.primaryBlock.bundleID.creationTimestamp.toString();
-            deliveryReportText.receivedTimestamp
-                = DTNUtils.getTimeReceivedWRTRx(bundle).toString();
-            deliveryReportText.deliveryTimestamp
-                = DTNUtils.getTimeDeliveredWRTSrc(bundle, clock.getCurrentTime()).toString();
-            deliveryReportText.sendingTimestamp = DTNUtils.getTimeSentWRTRx(bundle).toString();
+            setTimestamps(deliveryReportText, bundle);
             
             return deliveryReportText;
         }
@@ -221,15 +215,33 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             DTNTextMessage msgFromSender = new DTNTextMessage();
             msgFromSender.sender = bundle.primaryBlock.bundleID.sourceEID.toString();
             msgFromSender.textMessage = new String(payloadADU.ADU);
-            
-            msgFromSender.creationTimestamp
-                = bundle.primaryBlock.bundleID.creationTimestamp.toString();
-            msgFromSender.receivedTimestamp = DTNUtils.getTimeReceivedWRTRx(bundle).toString();
-            msgFromSender.deliveryTimestamp
-                = DTNUtils.getTimeDeliveredWRTSrc(bundle, clock.getCurrentTime()).toString();
-            msgFromSender.sendingTimestamp = DTNUtils.getTimeSentWRTRx(bundle).toString();
+            setTimestamps(msgFromSender, bundle);
             
             return msgFromSender;
         } else return new DTNTextMessage();
+    }
+    
+    private synchronized void setTimestamps(DTNTextMessage msg, DTNBundle bundle) {
+        long srcSpeed = DTNUtils.getSpeed(bundle);
+        
+        // from src to dest (overall net delay)
+        DTNTimeInstant cts = bundle.primaryBlock.bundleID.creationTimestamp;
+        msg.creationTimestamp
+            = cts.toString() + " osc / " + DTNUtils.toMillis(cts, srcSpeed) + " ms";
+    
+        DTNTimeInstant dt = DTNUtils.getTimeDeliveredWRTSrc(bundle, clock.getCurrentTime());
+        msg.deliveryTimestamp
+            = dt.toString() + " osc / " + DTNUtils.toMillis(dt, srcSpeed) + " ms";
+    
+        // from Tx to Rx (link delay)
+        DTNTimeInstant rt = DTNUtils.getTimeReceivedWRTRx(bundle);
+        msg.receivedTimestamp
+            = rt.toString() + " osc / " +
+            DTNUtils.toMillis(rt, DTNUtils.getMaxCPUFrequencyInKHz()) + " ms";
+    
+        DTNTimeInstant st = DTNUtils.getTimeSentWRTRx(bundle);
+        msg.sendingTimestamp
+            = st.toString() + " osc / " +
+            DTNUtils.toMillis(st, DTNUtils.getMaxCPUFrequencyInKHz()) + " ms";
     }
 }

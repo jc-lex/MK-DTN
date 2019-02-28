@@ -23,7 +23,22 @@ public final class DTNUtils {
     private static final long DEFAULT_CPU_SPEED_IN_KHZ = 1_100_000L;
     
     public static final BigInteger DAY = BigInteger.valueOf(getMaxCPUFrequencyInKHz())
-        .multiply(BigInteger.valueOf(60 * 60 * 24));
+        .multiply(BigInteger.valueOf(1_000 * 60 * 60 * 24));
+    
+    static synchronized String toMillis(DTNTimeInstant t, long cpuSpeedInKHz) {
+        return DTNTimeDuration.between(DTNTimeInstant.ZERO, t)
+            .scale(1.0 / cpuSpeedInKHz).toString();
+    }
+    
+    static synchronized long getSpeed(DTNBundle bundle) {
+        if (!isValid(bundle)) return DEFAULT_CPU_SPEED_IN_KHZ;
+        
+        CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+        if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
+            AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+            return ageBlock.sourceCPUSpeedInKHz;
+        } else return DEFAULT_CPU_SPEED_IN_KHZ;
+    }
     
     static synchronized CanonicalBlock makeAgeCBlock() {
         CanonicalBlock ageCBlock = new CanonicalBlock();
@@ -39,7 +54,7 @@ public final class DTNUtils {
     }
     
     // NOTE general equation for bundle aging
-    static synchronized void doAging(AgeBlock ageBlock, DTNTimeInstant now) {
+    static synchronized void doBundleAging(AgeBlock ageBlock, DTNTimeInstant now) {
         ageBlock.age = ageBlock.agePrime.plus(
             DTNTimeDuration.between(ageBlock.T, now).scale(
                 getMaxCPUFrequencyInKHz() / (double) ageBlock.sourceCPUSpeedInKHz
@@ -89,7 +104,7 @@ public final class DTNUtils {
         CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-            doAging(ageBlock, nowWRTDest);
+            doBundleAging(ageBlock, nowWRTDest);
             return cts.plus(ageBlock.age);
         } else return DTNTimeInstant.ZERO;
     }

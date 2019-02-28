@@ -1,8 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
-import androidx.test.InstrumentationRegistry;
-import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.After;
 import org.junit.Before;
@@ -11,6 +9,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.List;
+
+import androidx.test.InstrumentationRegistry;
+import androidx.test.runner.AndroidJUnit4;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -39,7 +40,7 @@ public class RouterDBHandlerTest {
     public void setUp() {
         testNI = new NeighbourhoodIndex();
         testNI.setNodeEID(TEST_EXISTING_EID);
-        testNI.setFirstEncounterTimestamp(System.currentTimeMillis());
+        testNI.setFirstEncounterTimestamp(Long.toString(System.currentTimeMillis()));
         testNI.setMeetingCount(1);
 
         repo.insert(testNI);

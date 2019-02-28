@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
     
     private void updateConfig() {
+        // SharedPreferences does not support use across multiple processes. :(
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         MKDTNService.DTNConfig config = MKDTNService.getConfig(this);
     

@@ -38,6 +38,15 @@ public final class DTNUtils {
         return ageCBlock;
     }
     
+    // NOTE general equation for bundle aging
+    static synchronized void doAging(AgeBlock ageBlock, DTNTimeInstant now) {
+        ageBlock.age = ageBlock.agePrime.plus(
+            DTNTimeDuration.between(ageBlock.T, now).scale(
+                getMaxCPUFrequencyInKHz() / (double) ageBlock.sourceCPUSpeedInKHz
+            )
+        );
+    }
+    
     static synchronized void setTransmissionAgeWRTRx(
         DTNBundle receivedBundle, DTNTimeInstant sendTime, DTNTimeInstant receiveTime
     ) {
@@ -68,6 +77,20 @@ public final class DTNUtils {
         if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
             return ageBlock.sendingTimestamp;
+        } else return DTNTimeInstant.ZERO;
+    }
+    
+    static synchronized DTNTimeInstant getTimeDeliveredWRTSrc(
+        DTNBundle bundle, DTNTimeInstant nowWRTDest
+    ) {
+        if (!isValid(bundle)) return DTNTimeInstant.ZERO;
+        
+        DTNTimeInstant cts = bundle.primaryBlock.bundleID.creationTimestamp;
+        CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+        if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
+            AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+            doAging(ageBlock, nowWRTDest);
+            return cts.plus(ageBlock.age);
         } else return DTNTimeInstant.ZERO;
     }
     

@@ -245,13 +245,8 @@ final class RadDaemon
                 ageBlock.agePrime = DTNTimeDuration.ZERO;
                 ageBlock.T = DTNTimeInstant.copyOf(bundleCreationTimestamp);
             }
-    
-            // NOTE general equation for bundle aging, where now == sendingTimestamp
-            ageBlock.age = ageBlock.agePrime.plus(
-                DTNTimeDuration.between(ageBlock.T, getCurrentTime()).scale(
-                    DTNUtils.getMaxCPUFrequencyInKHz() / (double) ageBlock.sourceCPUSpeedInKHz
-                )
-            );
+            // now == sendingTimestamp
+            DTNUtils.doAging(ageBlock, getCurrentTime());
         }
     }
     

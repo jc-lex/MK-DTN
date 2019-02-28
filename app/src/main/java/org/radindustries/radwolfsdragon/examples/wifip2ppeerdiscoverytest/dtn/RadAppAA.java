@@ -201,7 +201,8 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
                 = bundle.primaryBlock.bundleID.creationTimestamp.toString();
             deliveryReportText.receivedTimestamp
                 = DTNUtils.getTimeReceivedWRTRx(bundle).toString();
-            deliveryReportText.deliveryTimestamp = clock.getCurrentTime().toString();
+            deliveryReportText.deliveryTimestamp
+                = DTNUtils.getTimeDeliveredWRTSrc(bundle, clock.getCurrentTime()).toString();
             deliveryReportText.sendingTimestamp = DTNUtils.getTimeSentWRTRx(bundle).toString();
             
             return deliveryReportText;
@@ -224,7 +225,8 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             msgFromSender.creationTimestamp
                 = bundle.primaryBlock.bundleID.creationTimestamp.toString();
             msgFromSender.receivedTimestamp = DTNUtils.getTimeReceivedWRTRx(bundle).toString();
-            msgFromSender.deliveryTimestamp = clock.getCurrentTime().toString();
+            msgFromSender.deliveryTimestamp
+                = DTNUtils.getTimeDeliveredWRTSrc(bundle, clock.getCurrentTime()).toString();
             msgFromSender.sendingTimestamp = DTNUtils.getTimeSentWRTRx(bundle).toString();
             
             return msgFromSender;

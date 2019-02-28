@@ -30,7 +30,7 @@ public final class DTNTimeInstant implements Serializable, Comparable<DTNTimeIns
         return at(new BigInteger(timeString));
     }
     
-    private DTNTimeInstant plus(DTNTimeDuration duration) {
+    public DTNTimeInstant plus(DTNTimeDuration duration) {
         return at(this.instant.add(duration.getDuration()));
     }
     

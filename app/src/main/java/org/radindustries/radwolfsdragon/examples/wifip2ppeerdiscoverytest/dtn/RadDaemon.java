@@ -352,7 +352,7 @@ final class RadDaemon
             
             processAgeAtReceipt(bundle);
     
-            if (DTNUtils.expired(bundle)) {
+            if (!isForUs(bundle) && DTNUtils.expired(bundle)) {
                 if (DTNUtils.isBundleDeletionReportRequested(bundle)) {
                     DTNBundle statusReport = adminAA.makeStatusReport(
                         bundle, StatusReport.StatusFlags.BUNDLE_DELETED,

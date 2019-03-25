@@ -27,9 +27,14 @@ public final class DTNUtils {
     
     static synchronized String toMillis(DTNTimeInstant t, long cpuSpeedInKHz) {
         return DTNTimeDuration.between(DTNTimeInstant.ZERO, t)
-            .scale(1.0 / cpuSpeedInKHz).toString();
+            .scale(1_000.0 / cpuSpeedInKHz).toString();
     }
     
+//    static synchronized String toNanos(DTNTimeInstant t, long cpuSpeedInKHz) {
+//        return DTNTimeDuration.between(DTNTimeInstant.ZERO, t)
+//            .scale(1_000_000.0 / cpuSpeedInKHz).toString();
+//    }
+//
     static synchronized long getSpeed(DTNBundle bundle) {
         if (!isValid(bundle)) return DEFAULT_CPU_SPEED_IN_KHZ;
         

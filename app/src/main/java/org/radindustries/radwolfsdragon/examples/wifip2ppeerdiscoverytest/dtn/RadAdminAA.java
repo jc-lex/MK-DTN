@@ -6,6 +6,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConst
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AdminAA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AdminRecord;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
@@ -14,6 +15,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.math.BigInteger;
@@ -206,12 +208,14 @@ final class RadAdminAA implements Daemon2AdminAA {
         
         CanonicalBlock adminCBlock = makeAdminCBlock(adminRecord);
         
-        CanonicalBlock ageBlock = DTNUtils.makeAgeCBlock();
+        CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock();
+        AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+        ageBlock.T = DTNTimeInstant.copyOf(primaryBlock.bundleID.creationTimestamp);
     
         DTNBundle adminBundle = new DTNBundle();
         adminBundle.primaryBlock = primaryBlock;
         adminBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.ADMIN_RECORD, adminCBlock);
-        adminBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageBlock);
+        adminBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
         
         return adminBundle;
     }

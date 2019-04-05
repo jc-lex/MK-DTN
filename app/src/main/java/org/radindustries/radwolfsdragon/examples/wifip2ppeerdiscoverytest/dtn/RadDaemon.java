@@ -232,8 +232,8 @@ final class RadDaemon
         }
         
         private void setSendingTime(DTNBundle bundle) {
-            DTNTimeInstant bundleCreationTimestamp
-                = bundle.primaryBlock.bundleID.creationTimestamp;
+//            DTNTimeInstant bundleCreationTimestamp
+//                = bundle.primaryBlock.bundleID.creationTimestamp;
     
             CanonicalBlock ageCBlock
                 = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
@@ -241,10 +241,10 @@ final class RadDaemon
     
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
     
-            if (isFromUs(bundle)) { // initial conditions from bundle's src
-                ageBlock.agePrime = DTNTimeDuration.ZERO;
-                ageBlock.T = DTNTimeInstant.copyOf(bundleCreationTimestamp);
-            }
+//            if (isFromUs(bundle)) { // initial conditions from bundle's src
+//                ageBlock.agePrime = DTNTimeDuration.ZERO;
+//                ageBlock.T = DTNTimeInstant.copyOf(bundleCreationTimestamp);
+//            }
             // now == sendingTimestamp
             DTNUtils.doBundleAging(ageBlock, getCurrentTime());
         }

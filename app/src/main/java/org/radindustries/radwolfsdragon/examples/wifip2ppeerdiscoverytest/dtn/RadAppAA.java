@@ -5,6 +5,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AppAA2Daemon;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
@@ -55,6 +56,8 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         PrimaryBlock primaryBlock = makePrimaryBlock(recipient, priorityClass, lifetime);
     
         CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock();
+        AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+        ageBlock.T = DTNTimeInstant.copyOf(primaryBlock.bundleID.creationTimestamp);
         
         CanonicalBlock payloadCBlock = makePayloadCBlock(message);
     
@@ -229,7 +232,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         msg.creationTimestamp
             = cts.toString() + " osc / " + DTNUtils.toMillis(cts, srcSpeed) + " ms";
     
-        DTNTimeInstant dt = DTNUtils.getTimeDeliveredWRTSrc(bundle, clock.getCurrentTime());
+        DTNTimeInstant dt = DTNUtils.getTimeDeliveredWRTSrc(bundle/*, clock.getCurrentTime()*/);
         msg.deliveryTimestamp
             = dt.toString() + " osc / " + DTNUtils.toMillis(dt, srcSpeed) + " ms";
     

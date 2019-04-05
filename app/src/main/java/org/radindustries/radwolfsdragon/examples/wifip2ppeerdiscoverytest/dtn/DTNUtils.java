@@ -101,7 +101,7 @@ public final class DTNUtils {
     }
     
     static synchronized DTNTimeInstant getTimeDeliveredWRTSrc(
-        DTNBundle bundle, DTNTimeInstant nowWRTDest
+        DTNBundle bundle/*, DTNTimeInstant nowWRTDest*/
     ) {
         if (!isValid(bundle)) return DTNTimeInstant.ZERO;
         
@@ -109,7 +109,7 @@ public final class DTNUtils {
         CanonicalBlock ageCBlock = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
         if (ageCBlock != null && ageCBlock.blockTypeSpecificDataFields instanceof AgeBlock) {
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-            doBundleAging(ageBlock, nowWRTDest);
+//            doBundleAging(ageBlock, nowWRTDest);
             return cts.plus(ageBlock.age);
         } else return DTNTimeInstant.ZERO;
     }

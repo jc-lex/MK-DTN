@@ -38,12 +38,13 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.pe
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2PRoPHETRoutingTable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MKDTNService;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MKDTNService;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -72,11 +73,7 @@ final class RadDaemon
     private Daemon2PRoPHETRoutingTable prophetRoutingTable;
     private Daemon2Managable[] managables;
     
-    private static final DTNEndpointID BUNDLE_NODE_EID = makeEID();
-    private static DTNEndpointID makeEID() {
-        String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
-        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 4));
-    }
+//    private static final DTNEndpointID BUNDLE_NODE_EID = makeEID();
     
     private Daemon2Router.RoutingProtocol currentProtocol;
     private Thread bundleTransmitter;
@@ -460,8 +457,15 @@ final class RadDaemon
     
     @Override
     public List<DTNBundle> getDeliveredMessages() {
-        // TODO get them from storage, sort by received timestamp DESC
-        return Collections.unmodifiableList(DummyStorage.DELIVERED_BUNDLES_QUEUE);
+        List<DTNBundle> messages = new ArrayList<>();
+        int head = 0;
+    
+        synchronized (DummyStorage.DELIVERED_BUNDLES_QUEUE) {
+            for (DTNBundle bundle : DummyStorage.DELIVERED_BUNDLES_QUEUE)
+                messages.add(head, bundle);
+        }
+    
+        return Collections.unmodifiableList(messages);
     }
     
     private Context context;
@@ -608,40 +612,32 @@ final class RadDaemon
     
     @Override
     public DTNEndpointID getThisNodezEID() {
-        // TODO if we have one, get it. else, make one and keep it, then get it.
-        return BUNDLE_NODE_EID;
+        String eidStr = readEID();
+        writeEID(eidStr);
+        return DTNEndpointID.parse(eidStr);
     }
     
     @Override
     public boolean isForUs(DTNBundle bundle) {
-        if (bundle != null) {
-            PrimaryBlock primaryBlock = bundle.primaryBlock;
-            if (primaryBlock != null) {
-                DTNEndpointID dest = primaryBlock.destinationEID;
-                return dest != null && dest.equals(BUNDLE_NODE_EID);
-            }
+        if (DTNUtils.isValid(bundle)) {
+            DTNEndpointID dest = bundle.primaryBlock.destinationEID;
+            return dest != null && dest.equals(getThisNodezEID());
         }
         return false;
     }
     
     @Override
     public boolean isFromUs(DTNBundle bundle) {
-        if (bundle != null) {
-            PrimaryBlock primaryBlock = bundle.primaryBlock;
-            if (primaryBlock != null) {
-                DTNBundleID bundleID = primaryBlock.bundleID;
-                if (bundleID != null) {
-                    DTNEndpointID src = bundleID.sourceEID;
-                    return src != null && src.equals(BUNDLE_NODE_EID);
-                }
-            }
+        if (DTNUtils.isValid(bundle)) {
+            DTNEndpointID src = bundle.primaryBlock.bundleID.sourceEID;
+            return src != null && src.equals(getThisNodezEID());
         }
         return false;
     }
     
     @Override
     public boolean isUs(DTNEndpointID eid) {
-        return eid != null && eid.equals(BUNDLE_NODE_EID);
+        return getThisNodezEID().equals(eid);
     }
     
     @Override
@@ -744,6 +740,128 @@ final class RadDaemon
                     }
                 }
             }
+        }
+    }
+    
+    private synchronized void readDB() {
+        read(DummyStorage.OUTBOUND_BUNDLES_QUEUE, DummyStorage.OUTBOUND_BUNDLES_DB);
+        read(DummyStorage.DELIVERED_BUNDLES_QUEUE, DummyStorage.DELIVERED_BUNDLES_DB);
+        read(DummyStorage.DELIVERED_FRAGMENTS_QUEUE, DummyStorage.DELVIERED_FRAGMENTS_DB);
+        read(DummyStorage.TRANSMITTED_BUNDLES_QUEUE, DummyStorage.TRANSMITTED_BUNDLES_DB);
+    }
+    
+    private synchronized void writeDB() {
+        write(DummyStorage.OUTBOUND_BUNDLES_QUEUE, DummyStorage.OUTBOUND_BUNDLES_DB);
+        write(DummyStorage.DELIVERED_BUNDLES_QUEUE, DummyStorage.DELIVERED_BUNDLES_DB);
+        write(DummyStorage.DELIVERED_FRAGMENTS_QUEUE, DummyStorage.DELVIERED_FRAGMENTS_DB);
+        write(DummyStorage.TRANSMITTED_BUNDLES_QUEUE, DummyStorage.TRANSMITTED_BUNDLES_DB);
+    }
+    
+    private synchronized String readEID() {
+        try {
+            return (String) DummyStorage.read(context.openFileInput(DummyStorage.NODE_EID_DB));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return makeEID().toString();
+        }
+    }
+    
+    private synchronized DTNEndpointID makeEID() {
+        String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
+        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 4));
+    }
+    
+    private synchronized void read(List<DTNBundle> bundleList, String fileName) {
+        try {
+            bundleList.clear();
+            
+            DTNBundle[] bundles = (DTNBundle[]) DummyStorage.read(context.openFileInput(fileName));
+            
+            if (bundles != null) {
+                bundleList.addAll(Arrays.asList(bundles));
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private synchronized void writeEID(String eid) {
+        try {
+            if (!DummyStorage.write(
+                eid, context.openFileOutput(DummyStorage.NODE_EID_DB, Context.MODE_PRIVATE)
+            )) {
+                Log.e(LOG_TAG, "writing to " + DummyStorage.NODE_EID_DB + " failed");
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private synchronized void write(List<DTNBundle> bundles, String fileName) {
+        try {
+            if (!DummyStorage.write(
+                bundles.toArray(new DTNBundle[0]),
+                context.openFileOutput(fileName, Context.MODE_PRIVATE)
+            )) {
+                Log.e(LOG_TAG, "writing to " + fileName + " failed");
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private class BundleAgingTask implements Runnable {
+        private BundleAgingTask() {}
+        
+        @Override
+        public void run() {
+            Log.i(LOG_TAG, "bundle aging started");
+            try {
+                while (!Thread.interrupted()) {
+                    if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty()) {
+                        synchronized (DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
+                            for (DTNBundle bundle : DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
+                                int i = DummyStorage.OUTBOUND_BUNDLES_QUEUE.indexOf(bundle);
+                                
+                                // extraction
+                                CanonicalBlock cBlock = bundle.canonicalBlocks.get(
+                                    DTNBundle.CBlockNumber.AGE
+                                );
+                                assert cBlock != null;
+                                AgeBlock ageBlock = (AgeBlock) cBlock.blockTypeSpecificDataFields;
+                                
+                                // aging
+                                DTNUtils.doBundleAging(ageBlock, getCurrentTime());
+                                
+                                //expiry
+                                if (DTNUtils.expired(bundle)) {
+                                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(i);
+                                }
+                                
+                                // debugging
+                                if (DTNUtils.isFragment(bundle)) {
+                                    String fragOffset = bundle.primaryBlock.detailsIfFragment.get(
+                                        PrimaryBlock.FragmentField.FRAGMENT_OFFSET
+                                    );
+                                    Log.d(LOG_TAG, bundle.primaryBlock.bundleID + ":"
+                                        + fragOffset + "=" + ageBlock.age);
+                                } else {
+                                    Log.d(LOG_TAG, bundle.primaryBlock.bundleID + "="
+                                        + ageBlock.age);
+                                }
+                            }
+                            // updating
+//                            storage.updateAge(outboundBundles.toArray(new DTNBundle[0]));
+                            write(DummyStorage.OUTBOUND_BUNDLES_QUEUE,
+                                DummyStorage.OUTBOUND_BUNDLES_DB);
+                        }
+                    }
+                    Thread.sleep(5_000);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            Log.i(LOG_TAG, "bundle aging stopped");
         }
     }
 }

@@ -122,10 +122,16 @@ public final class DTNUtils {
         
                 if (bundle.primaryBlock.detailsIfFragment != null &&
                     !bundle.primaryBlock.detailsIfFragment.isEmpty()) {
-                 String aduLength = bundle.primaryBlock.detailsIfFragment
-                        .get(PrimaryBlock.FragmentField.TOTAL_ADU_LENGTH);
+                 String aduLength = bundle.primaryBlock.detailsIfFragment.get(
+                     PrimaryBlock.FragmentField.TOTAL_ADU_LENGTH
+                 );
                  
-                 return aduLength != null && Integer.parseInt(aduLength) > 0;
+                 String offset = bundle.primaryBlock.detailsIfFragment.get(
+                     PrimaryBlock.FragmentField.FRAGMENT_OFFSET
+                 );
+                 
+                 return aduLength != null && Integer.parseInt(aduLength) > 0 &&
+                     offset != null && Integer.parseInt(offset) > -1;
                 }
             }
         }
@@ -211,7 +217,7 @@ public final class DTNUtils {
     }
     
     private static synchronized boolean isValidPrimaryBlock(PrimaryBlock primaryBlock) {
-        return primaryBlock.bundleID != null &&
+        return primaryBlock != null && primaryBlock.bundleID != null &&
             primaryBlock.bundleID.creationTimestamp.compareTo(DTNTimeInstant.ZERO) > 0 && // t > 0
             primaryBlock.bundleID.sourceEID != null &&
             primaryBlock.destinationEID != null &&
@@ -267,10 +273,16 @@ public final class DTNUtils {
                 if (adminRecord.isForAFragment) {
                     if (adminRecord.detailsIfForAFragment != null &&
                         !adminRecord.detailsIfForAFragment.isEmpty()) {
-                        String fragmentLength = adminRecord.detailsIfForAFragment
-                            .get(AdminRecord.FragmentField.FRAGMENT_LENGTH);
+                        String fragmentLength = adminRecord.detailsIfForAFragment.get(
+                            AdminRecord.FragmentField.FRAGMENT_LENGTH
+                        );
+                        
+                        String offset = adminRecord.detailsIfForAFragment.get(
+                            AdminRecord.FragmentField.FRAGMENT_OFFSET
+                        );
         
-                        return fragmentLength != null && Integer.parseInt(fragmentLength) > 0;
+                        return fragmentLength != null && Integer.parseInt(fragmentLength) > 0 &&
+                            offset != null && Integer.parseInt(offset) > -1;
                     }
                 }
                 else return true;
@@ -316,7 +328,7 @@ public final class DTNUtils {
             DTNTimeDuration lifetime = bundle.primaryBlock.lifeTime;
             DTNTimeDuration age = ageBlock.age;
             
-            return age.compareTo(lifetime) > 0;
+            return age.compareTo(lifetime) > 0; // age > lifetime
         }
         return true;
     }
@@ -330,13 +342,6 @@ public final class DTNUtils {
         return false;
     }
     
-    /**
-     * (c) 2010 Nicolas Gramlich
-     * (c) 2011 Zynga Inc.
-     *
-     * @author Nicolas Gramlich
-     * @since 15:50:31 - 14.07.2010
-     */
     static synchronized long getMaxCPUFrequencyInKHz() {
         try {
             return readCPUSystemFileAsInt();
@@ -345,6 +350,13 @@ public final class DTNUtils {
         }
     }
     
+    /**
+     * (c) 2010 Nicolas Gramlich
+     * (c) 2011 Zynga Inc.
+     *
+     * @author Nicolas Gramlich
+     * @since 15:50:31 - 14.07.2010
+     */
     private static synchronized int readCPUSystemFileAsInt() throws Exception {
         InputStream in;
         try {

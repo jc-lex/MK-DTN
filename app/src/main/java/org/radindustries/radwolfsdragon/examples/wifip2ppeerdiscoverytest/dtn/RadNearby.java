@@ -135,7 +135,8 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
         ) {
             int status = connectionResolution.getStatus().getStatusCode();
             
-            if (status == ConnectionsStatusCodes.STATUS_OK) {
+            if (status == ConnectionsStatusCodes.STATUS_OK ||
+                status == ConnectionsStatusCodes.STATUS_ALREADY_CONNECTED_TO_ENDPOINT) {
                 if (!isInbound) {
                     connectedNodes.add(nearbyEndpointID);
                     forward(bundle, nearbyEndpointID);

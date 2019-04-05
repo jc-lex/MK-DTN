@@ -194,9 +194,9 @@ public final class DTNUtils {
                     = (StatusReport) statusReportCBlock.blockTypeSpecificDataFields;
     
                 return statusReport.recordType == AdminRecord.RecordType.STATUS_REPORT &&
-                    statusReport.statusTimes != null &&
-                    !statusReport.statusTimes.isEmpty() &&
-                    statusReport.statusFlags != null;
+                    statusReport.status != StatusReport.StatusFlags.INVALID_FLAG_SET &&
+                    statusReport.timeOfStatus != null &&
+                    statusReport.timeOfStatus.compareTo(DTNTimeInstant.ZERO) > 0;
             }
         }
         return false;

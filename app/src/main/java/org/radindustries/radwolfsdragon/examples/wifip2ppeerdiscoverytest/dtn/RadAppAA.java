@@ -188,18 +188,14 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
             DTNTextMessage deliveryReportText = new DTNTextMessage();
             deliveryReportText.sender = bundle.primaryBlock.bundleID.sourceEID.toString();
             
-            if (statusReport.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELIVERED)) {
+            if (statusReport.status == StatusReport.StatusFlags.BUNDLE_DELIVERED) {
+                deliveryReportText.textMessage = "Message received @ "
+                    + statusReport.timeOfStatus;
+            } else if (statusReport.status == StatusReport.StatusFlags.BUNDLE_DELETED) {
                 deliveryReportText.textMessage
-                    = "Message received @ "
-                    + statusReport.statusTimes.get(StatusReport.StatusFlags.BUNDLE_DELIVERED);
-            } else if (statusReport.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELETED)) {
-                deliveryReportText.textMessage
-                    = "Message deleted @ "
-                    + statusReport.statusTimes.get(StatusReport.StatusFlags.BUNDLE_DELETED)
-                    + " because "
-                    + statusReport.reasonCode.toString();
-            } else deliveryReportText.textMessage = bundle
-                .toString();
+                    = "Message deleted @ " + statusReport.timeOfStatus
+                    + " because " + statusReport.reasonCode.toString();
+            } else deliveryReportText.textMessage = bundle.toString();
             setTimestamps(deliveryReportText, bundle);
             
             return deliveryReportText;

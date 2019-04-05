@@ -96,14 +96,14 @@ final class RadAdminAA implements Daemon2AdminAA {
     private synchronized void processStatusReport(StatusReport report, DTNEndpointID recipient) {
         if (!report.isForAFragment) {
             if (daemon.isUs(report.subjectBundleID.sourceEID)) {
-                if (report.statusFlags.testBit(StatusReport.StatusFlags.INVALID_FLAG_SET))
+                if (report.status == StatusReport.StatusFlags.INVALID_FLAG_SET)
                     return;
                 DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
                 
                 String msg = "";
-                if (report.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELIVERED)) {
+                if (report.status == StatusReport.StatusFlags.BUNDLE_DELIVERED) {
                     msg = "BUNDLE_DELIVERED";
-                } else if (report.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELETED)) {
+                } else if (report.status == StatusReport.StatusFlags.BUNDLE_DELETED) {
                     msg = "BUNDLE_DELETED";
                 }
                 
@@ -160,8 +160,8 @@ final class RadAdminAA implements Daemon2AdminAA {
         
         report.recordType = AdminRecord.RecordType.STATUS_REPORT;
         report.reasonCode = reasonCode;
-        report.statusFlags = report.statusFlags.setBit(statusCode);
-        report.statusTimes.put(statusCode, clock.getCurrentTime());
+        report.status = statusCode;
+        report.timeOfStatus = clock.getCurrentTime();
         
         return processOtherAdminRecordDetails(userBundle, report);
     }

@@ -1,7 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
 import android.content.Context;
-import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
 import com.google.android.gms.nearby.Nearby;
@@ -35,6 +34,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.pe
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -289,30 +290,42 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
     }
     
     private void forward(final DTNBundle bundle, String claAddress) {
-        try {
-            final ParcelFileDescriptor[] payloadPipe = ParcelFileDescriptor.createPipe();
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream out = new ObjectOutputStream(bos)) {
+            out.writeObject(bundle);
+            out.flush();
+    
+            ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+            Payload p = Payload.fromStream(bis);
             
-            connectionsClient.sendPayload(
-                claAddress,
-                Payload.fromStream(payloadPipe[0]) // reading side
-            ).addOnSuccessListener(new OnSuccessListener<Void>() {
-                @Override
-                public void onSuccess(Void aVoid) {
-                    try (
-                        ObjectOutputStream out = new ObjectOutputStream(
-                            new ParcelFileDescriptor
-                                .AutoCloseOutputStream(payloadPipe[1]) // writing side
-                        )
-                    ) {
-                        out.writeObject(bundle);
-                    } catch (IOException e) {
-                        Log.e(LOG_TAG, "Could not create or write to output stream.", e);
-                    }
-                }
-            });
+            connectionsClient.sendPayload(claAddress, p);
         } catch (IOException e) {
-            Log.e(LOG_TAG, "Could not create pipe to transfer data.", e);
+            Log.e(LOG_TAG, "error creating output stream", e);
         }
+//        try {
+//            final ParcelFileDescriptor[] payloadPipe = ParcelFileDescriptor.createPipe();
+//
+//            connectionsClient.sendPayload(
+//                claAddress,
+//                Payload.fromStream(payloadPipe[0]) // reading side
+//            ).addOnSuccessListener(new OnSuccessListener<Void>() {
+//                @Override
+//                public void onSuccess(Void aVoid) {
+//                    try (
+//                        ObjectOutputStream out = new ObjectOutputStream(
+//                            new ParcelFileDescriptor
+//                                .AutoCloseOutputStream(payloadPipe[1]) // writing side
+//                        )
+//                    ) {
+//                        out.writeObject(bundle);
+//                    } catch (IOException e) {
+//                        Log.e(LOG_TAG, "Could not create or write to output stream.", e);
+//                    }
+//                }
+//            });
+//        } catch (IOException e) {
+//            Log.e(LOG_TAG, "Could not create pipe to transfer data.", e);
+//        }
     }
     
     private void advertise(String serviceId) {

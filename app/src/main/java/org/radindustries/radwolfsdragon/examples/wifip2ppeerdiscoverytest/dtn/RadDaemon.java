@@ -44,14 +44,12 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.ti
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.ui.MKDTNService;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -77,6 +75,7 @@ final class RadDaemon
     
     private Daemon2Router.RoutingProtocol currentProtocol;
     private Thread bundleTransmitter;
+    private Thread bundleAger;
     private ExecutorService bundleProcessor;
     private RadWallClock wallClock;
     
@@ -137,7 +136,8 @@ final class RadDaemon
         currentProtocol = routingProtocol;
         
         DTNBundle[] fragments = fragmentManager.fragment(bundle);
-        DummyStorage.OUTBOUND_BUNDLES_QUEUE.addAll(Arrays.asList(fragments));
+        MiBStorage.OBQ.addAll(Arrays.asList(fragments));
+        MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
     }
     
     private abstract class TransmitOutboundBundlesTask implements Runnable {
@@ -178,15 +178,17 @@ final class RadDaemon
             Log.i(LOG_TAG, "entering SOURCE mode");
             discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
             long stopTime = System.currentTimeMillis() + onCycleDurationMillis;
-            int head = 0;
+//            int head = 0;
     
             while (System.currentTimeMillis() < stopTime) {
                 // get what to send
-                DTNBundle bundle = null;
+                DTNBundle bundle/* = null*/;
                 do {
-                    if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty())
-                        bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
-                } while (bundle == null && System.currentTimeMillis() < stopTime);
+//                    if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty())
+//                        bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
+                    bundle = MiBStorage.next();
+                } while (/*bundle == null */DTNUtils.isValid(bundle) &&
+                    System.currentTimeMillis() < stopTime);
                 if (System.currentTimeMillis() >= stopTime) break;
                 
                 assert bundle != null;
@@ -205,10 +207,15 @@ final class RadDaemon
                 setSendingTime(bundle);
 
                 // send bundle
-                if (cla.transmit(bundle, nextHops) == 0) {
-                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(head, bundle);
-                } else {
-                    DummyStorage.TRANSMITTED_BUNDLES_QUEUE.add(bundle);
+                if (cla.transmit(bundle, nextHops) > 0) {
+//                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(head, bundle);
+                    MiBStorage.OBQ.remove(bundle);
+                    MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+                    
+                    MiBStorage.TBQ.add(bundle);
+                    MiBStorage.writeQueue(context, MiBStorage.TRANSMITTED_BUNDLES_QUEUE);
+//                } else {
+//                    DummyStorage.TRANSMITTED_BUNDLES_QUEUE.add(bundle);
                 }
             }
     
@@ -366,7 +373,9 @@ final class RadDaemon
                 
                 if (isForUs(bundle)) {
                     if (DTNUtils.isFragment(bundle)) {
-                        DummyStorage.DELIVERED_FRAGMENTS_QUEUE.add(bundle);
+//                        DummyStorage.DELIVERED_FRAGMENTS_QUEUE.add(bundle);
+                        MiBStorage.DFQ.add(bundle);
+                        MiBStorage.writeQueue(context, MiBStorage.DELIVERED_FRAGMENTS_QUEUE);
                         
                         DTNBundle[] similarFragments
                             = getSimilarFragments(bundle.primaryBlock.bundleID);
@@ -375,8 +384,10 @@ final class RadDaemon
                             DTNBundle wholeBundle
                                 = fragmentManager.defragment(similarFragments);
                             insertNewMessage(wholeBundle);
-                            DummyStorage.DELIVERED_FRAGMENTS_QUEUE
-                                .removeAll(Arrays.asList(similarFragments));
+//                            DummyStorage.DELIVERED_FRAGMENTS_QUEUE
+//                                .removeAll(Arrays.asList(similarFragments));
+                            MiBStorage.DFQ.removeAll(Arrays.asList(similarFragments));
+                            MiBStorage.writeQueue(context, MiBStorage.DELIVERED_FRAGMENTS_QUEUE);
                         }
                     } else {
                         insertNewMessage(bundle);
@@ -407,7 +418,10 @@ final class RadDaemon
         private void insertNewMessage(DTNBundle bundle) {
             boolean weCan = canAcceptCustody(bundle);
             if (weCan) {
-                DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
+//                DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
+                MiBStorage.DBQ.add(bundle);
+                MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+                
                 appAA.deliver(bundle);
                 makeDeliveryReport(bundle);
             }
@@ -445,8 +459,8 @@ final class RadDaemon
         private DTNBundle[] getSimilarFragments(DTNBundleID id) {
             List<DTNBundle> similarFragments = new ArrayList<>();
             
-            synchronized (DummyStorage.DELIVERED_FRAGMENTS_QUEUE) {
-                for (DTNBundle bundle : DummyStorage.DELIVERED_FRAGMENTS_QUEUE) {
+            synchronized (/*DummyStorage.DELIVERED_FRAGMENTS_QUEUE*/MiBStorage.DFQ) {
+                for (DTNBundle bundle : /*DummyStorage.DELIVERED_FRAGMENTS_QUEUE*/MiBStorage.DFQ) {
                     if (bundle.primaryBlock.bundleID.equals(id)) similarFragments.add(bundle);
                 }
             }
@@ -460,8 +474,8 @@ final class RadDaemon
         List<DTNBundle> messages = new ArrayList<>();
         int head = 0;
     
-        synchronized (DummyStorage.DELIVERED_BUNDLES_QUEUE) {
-            for (DTNBundle bundle : DummyStorage.DELIVERED_BUNDLES_QUEUE)
+        synchronized (/*DummyStorage.DELIVERED_BUNDLES_QUEUE*/MiBStorage.DBQ) {
+            for (DTNBundle bundle : /*DummyStorage.DELIVERED_BUNDLES_QUEUE*/MiBStorage.DBQ)
                 messages.add(head, bundle);
         }
     
@@ -499,11 +513,7 @@ final class RadDaemon
         }
         
         // REDUNDANT RECEPTION
-        if (DummyStorage.OUTBOUND_BUNDLES_QUEUE.contains(bundle) ||
-            DummyStorage.DELIVERED_BUNDLES_QUEUE.contains(bundle) ||
-            DummyStorage.DELIVERED_FRAGMENTS_QUEUE.contains(bundle) ||
-            DummyStorage.TRANSMITTED_BUNDLES_QUEUE.contains(bundle)
-        ) {
+        if (alreadyHas(bundle)) {
 //            Log.i(LOG_TAG, "redundant reception");
             setCustodySignalReason(CustodySignal.Reason.REDUNDANT_RECEPTION);
             return false;
@@ -542,6 +552,15 @@ final class RadDaemon
         return freeSpacePercentage < MKDTN_MIN_FREE_SPACE_PERCENTAGE;
     }
     
+    private synchronized boolean alreadyHas(DTNBundle bundle) {
+        /*return DummyStorage.OUTBOUND_BUNDLES_QUEUE.contains(bundle) ||
+            DummyStorage.DELIVERED_BUNDLES_QUEUE.contains(bundle) ||
+            DummyStorage.DELIVERED_FRAGMENTS_QUEUE.contains(bundle) ||
+            DummyStorage.TRANSMITTED_BUNDLES_QUEUE.contains(bundle);*/
+        return MiBStorage.OBQ.contains(bundle) || MiBStorage.DBQ.contains(bundle) ||
+            MiBStorage.DFQ.contains(bundle) || MiBStorage.TBQ.contains(bundle);
+    }
+    
     private CustodySignal.Reason custodySignalReason;
     
     private synchronized CustodySignal.Reason getCustodySignalReason() {
@@ -556,65 +575,87 @@ final class RadDaemon
     public boolean start() {
         boolean state = wallClock.start() & startExecutors();
         for (Daemon2Managable managable : managables) state &= managable.start();
+        MiBStorage.readDB(context);
         return state;
     }
     
     private boolean startExecutors() {
-        if (bundleTransmitter == null && bundleProcessor == null) {
+        boolean started = true;
+        if (bundleTransmitter == null) {
             if (MKDTNService.configFileDoesNotExist(context)) {
                 MKDTNService.writeDefaultConfig(context);
             }
             MKDTNService.DTNConfig config = MKDTNService.getConfig(context);
-            
+    
             if (config.enableManualMode) {
                 Daemon2PeerDiscoverer.ServiceMode transmissionMode
                     = Daemon2PeerDiscoverer.ServiceMode.valueOf(config.transmissionMode);
-                
+        
                 bundleTransmitter = new Thread(new ManualTransmitTask(transmissionMode));
             } else {
                 bundleTransmitter = new Thread(new AutomaticTransmitTask());
             }
             bundleTransmitter.start();
-    
+            started = bundleTransmitter.isAlive();
+        }
+        
+        if (bundleProcessor == null) {
 //            bundleProcessor = Executors.newCachedThreadPool();
             bundleProcessor = Executors.newSingleThreadExecutor();
-    
-            return bundleTransmitter.isAlive();
-        } else return true;
+        }
+        
+        if (bundleAger == null) {
+            bundleAger = new Thread(new BundleAgingTask());
+            bundleAger.start();
+            started &= bundleAger.isAlive();
+        }
+        
+        return started;
     }
     
     @Override
     public boolean stop() {
         boolean state = wallClock.stop() & stopExecutors();
         for (Daemon2Managable managable : managables) state &= managable.stop();
+        MiBStorage.writeDB(context);
         return state;
     }
     
     private boolean stopExecutors() {
-        if (bundleTransmitter != null && bundleProcessor != null) {
+        boolean stopped = true;
+        if (bundleTransmitter != null) {
             bundleTransmitter.interrupt();
+            stopped = bundleTransmitter.isInterrupted();
+            bundleTransmitter = null;
+        }
+        
+        if (bundleAger != null) {
+            bundleAger.interrupt();
+            stopped &= bundleAger.isInterrupted();
+            bundleAger = null;
+        }
+        
+        if (bundleProcessor != null) {
             bundleProcessor.shutdown();
             
-            boolean done;
             try {
-                done = bundleTransmitter.isInterrupted() &&
-                    bundleProcessor.awaitTermination(5L, TimeUnit.SECONDS);
+                stopped &= bundleProcessor.awaitTermination(5L, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
-                done = false;
+                stopped = false;
             }
             
-            bundleTransmitter = null;
             bundleProcessor = null;
-            
-            return done;
-        } else return true;
+        }
+        
+        return stopped;
     }
     
     @Override
     public DTNEndpointID getThisNodezEID() {
-        String eidStr = readEID();
-        writeEID(eidStr);
-        return DTNEndpointID.parse(eidStr);
+//        String eidStr = readEID();
+//        writeEID(eidStr);
+//        return DTNEndpointID.parse(eidStr);
+        return MiBStorage.getNodeEID(context);
     }
     
     @Override
@@ -709,20 +750,22 @@ final class RadDaemon
     @Override
     public void delete(DTNBundleID bundleID) {
         if (currentProtocol != Daemon2Router.RoutingProtocol.EPIDEMIC) {
-            synchronized (DummyStorage.TRANSMITTED_BUNDLES_QUEUE) {
-                for (DTNBundle bundle : DummyStorage.TRANSMITTED_BUNDLES_QUEUE) {
+            synchronized (/*DummyStorage.TRANSMITTED_BUNDLES_QUEUE*/MiBStorage.TBQ) {
+                for (DTNBundle bundle : /*DummyStorage.TRANSMITTED_BUNDLES_QUEUE*/MiBStorage.TBQ) {
                     if (bundle.primaryBlock.bundleID.equals(bundleID))
-                        DummyStorage.TRANSMITTED_BUNDLES_QUEUE.remove(bundle);
+                        MiBStorage.TBQ.remove(bundle);
+//                        DummyStorage.TRANSMITTED_BUNDLES_QUEUE.remove(bundle);
                 }
             }
+            MiBStorage.writeQueue(context, MiBStorage.TRANSMITTED_BUNDLES_QUEUE);
         }
     }
     
     @Override
     public void delete(DTNBundleID bundleID, int fragmentOffset) {
         if (currentProtocol != Daemon2Router.RoutingProtocol.EPIDEMIC) {
-            synchronized (DummyStorage.TRANSMITTED_BUNDLES_QUEUE) {
-                for (DTNBundle bundle : DummyStorage.TRANSMITTED_BUNDLES_QUEUE) {
+            synchronized (/*DummyStorage.TRANSMITTED_BUNDLES_QUEUE*/MiBStorage.TBQ) {
+                for (DTNBundle bundle : /*DummyStorage.TRANSMITTED_BUNDLES_QUEUE*/MiBStorage.TBQ) {
                     if (DTNUtils.isFragment(bundle)) {
                         
                         String fragOffsetStr
@@ -735,80 +778,81 @@ final class RadDaemon
                         
                         if (bundle.primaryBlock.bundleID.equals(bundleID) &&
                             fragmentOffset == fragOffset)
-                            
-                            DummyStorage.TRANSMITTED_BUNDLES_QUEUE.remove(bundle);
+                            MiBStorage.TBQ.remove(bundle);
+//                            DummyStorage.TRANSMITTED_BUNDLES_QUEUE.remove(bundle);
                     }
                 }
             }
+            MiBStorage.writeQueue(context, MiBStorage.TRANSMITTED_BUNDLES_QUEUE);
         }
     }
     
-    private synchronized void readDB() {
-        read(DummyStorage.OUTBOUND_BUNDLES_QUEUE, DummyStorage.OUTBOUND_BUNDLES_DB);
-        read(DummyStorage.DELIVERED_BUNDLES_QUEUE, DummyStorage.DELIVERED_BUNDLES_DB);
-        read(DummyStorage.DELIVERED_FRAGMENTS_QUEUE, DummyStorage.DELVIERED_FRAGMENTS_DB);
-        read(DummyStorage.TRANSMITTED_BUNDLES_QUEUE, DummyStorage.TRANSMITTED_BUNDLES_DB);
-    }
-    
-    private synchronized void writeDB() {
-        write(DummyStorage.OUTBOUND_BUNDLES_QUEUE, DummyStorage.OUTBOUND_BUNDLES_DB);
-        write(DummyStorage.DELIVERED_BUNDLES_QUEUE, DummyStorage.DELIVERED_BUNDLES_DB);
-        write(DummyStorage.DELIVERED_FRAGMENTS_QUEUE, DummyStorage.DELVIERED_FRAGMENTS_DB);
-        write(DummyStorage.TRANSMITTED_BUNDLES_QUEUE, DummyStorage.TRANSMITTED_BUNDLES_DB);
-    }
-    
-    private synchronized String readEID() {
-        try {
-            return (String) DummyStorage.read(context.openFileInput(DummyStorage.NODE_EID_DB));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return makeEID().toString();
-        }
-    }
-    
-    private synchronized DTNEndpointID makeEID() {
-        String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
-        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 4));
-    }
-    
-    private synchronized void read(List<DTNBundle> bundleList, String fileName) {
-        try {
-            bundleList.clear();
-            
-            DTNBundle[] bundles = (DTNBundle[]) DummyStorage.read(context.openFileInput(fileName));
-            
-            if (bundles != null) {
-                bundleList.addAll(Arrays.asList(bundles));
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    private synchronized void writeEID(String eid) {
-        try {
-            if (!DummyStorage.write(
-                eid, context.openFileOutput(DummyStorage.NODE_EID_DB, Context.MODE_PRIVATE)
-            )) {
-                Log.e(LOG_TAG, "writing to " + DummyStorage.NODE_EID_DB + " failed");
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    private synchronized void write(List<DTNBundle> bundles, String fileName) {
-        try {
-            if (!DummyStorage.write(
-                bundles.toArray(new DTNBundle[0]),
-                context.openFileOutput(fileName, Context.MODE_PRIVATE)
-            )) {
-                Log.e(LOG_TAG, "writing to " + fileName + " failed");
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
+//    private synchronized void readDB() {
+//        read(DummyStorage.OUTBOUND_BUNDLES_QUEUE, DummyStorage.OUTBOUND_BUNDLES_DB);
+//        read(DummyStorage.DELIVERED_BUNDLES_QUEUE, DummyStorage.DELIVERED_BUNDLES_DB);
+//        read(DummyStorage.DELIVERED_FRAGMENTS_QUEUE, DummyStorage.DELVIERED_FRAGMENTS_DB);
+//        read(DummyStorage.TRANSMITTED_BUNDLES_QUEUE, DummyStorage.TRANSMITTED_BUNDLES_DB);
+//    }
+//
+//    private synchronized void writeDB() {
+//        write(DummyStorage.OUTBOUND_BUNDLES_QUEUE, DummyStorage.OUTBOUND_BUNDLES_DB);
+//        write(DummyStorage.DELIVERED_BUNDLES_QUEUE, DummyStorage.DELIVERED_BUNDLES_DB);
+//        write(DummyStorage.DELIVERED_FRAGMENTS_QUEUE, DummyStorage.DELVIERED_FRAGMENTS_DB);
+//        write(DummyStorage.TRANSMITTED_BUNDLES_QUEUE, DummyStorage.TRANSMITTED_BUNDLES_DB);
+//    }
+//
+//    private synchronized String readEID() {
+//        try {
+//            return (String) DummyStorage.read(context.openFileInput(DummyStorage.NODE_EID_DB));
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//            return makeEID().toString();
+//        }
+//    }
+//
+//    private synchronized DTNEndpointID makeEID() {
+//        String eid = Long.toHexString(UUID.randomUUID().getMostSignificantBits());
+//        return DTNEndpointID.from(DTNEndpointID.DTN_SCHEME, eid.substring(0, 4));
+//    }
+//
+//    private synchronized void read(List<DTNBundle> bundleList, String fileName) {
+//        try {
+//            bundleList.clear();
+//
+//            DTNBundle[] bundles = (DTNBundle[]) DummyStorage.read(context.openFileInput(fileName));
+//
+//            if (bundles != null) {
+//                bundleList.addAll(Arrays.asList(bundles));
+//            }
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        }
+//    }
+//
+//    private synchronized void writeEID(String eid) {
+//        try {
+//            if (!DummyStorage.write(
+//                eid, context.openFileOutput(DummyStorage.NODE_EID_DB, Context.MODE_PRIVATE)
+//            )) {
+//                Log.e(LOG_TAG, "writing to " + DummyStorage.NODE_EID_DB + " failed");
+//            }
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        }
+//    }
+//
+//    private synchronized void write(List<DTNBundle> bundles, String fileName) {
+//        try {
+//            if (!DummyStorage.write(
+//                bundles.toArray(new DTNBundle[0]),
+//                context.openFileOutput(fileName, Context.MODE_PRIVATE)
+//            )) {
+//                Log.e(LOG_TAG, "writing to " + fileName + " failed");
+//            }
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        }
+//    }
     
     private class BundleAgingTask implements Runnable {
         private BundleAgingTask() {}
@@ -818,10 +862,13 @@ final class RadDaemon
             Log.i(LOG_TAG, "bundle aging started");
             try {
                 while (!Thread.interrupted()) {
-                    if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty()) {
-                        synchronized (DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
-                            for (DTNBundle bundle : DummyStorage.OUTBOUND_BUNDLES_QUEUE) {
-                                int i = DummyStorage.OUTBOUND_BUNDLES_QUEUE.indexOf(bundle);
+                    if (!/*DummyStorage.OUTBOUND_BUNDLES_QUEUE*/MiBStorage.OBQ.isEmpty()) {
+                        synchronized (/*DummyStorage.OUTBOUND_BUNDLES_QUEUE*/MiBStorage.OBQ) {
+                            for (DTNBundle bundle : /*DummyStorage.OUTBOUND_BUNDLES_QUEUE*/
+                                MiBStorage.OBQ
+                            ) {
+//                                int i = DummyStorage.OUTBOUND_BUNDLES_QUEUE.indexOf(bundle);
+                                int i = MiBStorage.OBQ.indexOf(bundle);
                                 
                                 // extraction
                                 CanonicalBlock cBlock = bundle.canonicalBlocks.get(
@@ -835,7 +882,8 @@ final class RadDaemon
                                 
                                 //expiry
                                 if (DTNUtils.expired(bundle)) {
-                                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(i);
+//                                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(i);
+                                    MiBStorage.OBQ.remove(i);
                                 }
                                 
                                 // debugging
@@ -852,9 +900,11 @@ final class RadDaemon
                             }
                             // updating
 //                            storage.updateAge(outboundBundles.toArray(new DTNBundle[0]));
-                            write(DummyStorage.OUTBOUND_BUNDLES_QUEUE,
-                                DummyStorage.OUTBOUND_BUNDLES_DB);
+//                            write(DummyStorage.OUTBOUND_BUNDLES_QUEUE,
+//                                DummyStorage.OUTBOUND_BUNDLES_DB);
                         }
+                        // updating
+                        MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
                     }
                     Thread.sleep(5_000);
                 }

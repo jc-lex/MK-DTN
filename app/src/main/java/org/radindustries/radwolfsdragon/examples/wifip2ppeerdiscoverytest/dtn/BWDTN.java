@@ -96,7 +96,7 @@ public final class BWDTN {
             
             radDaemon.setCLA(getNearbyService(context));
             radDaemon.setDiscoverer(getNearbyService(context));
-            radDaemon.setAdminAA(getAdminAA());
+            radDaemon.setAdminAA(getAdminAA(context));
             radDaemon.setFragmentManager(getFragmentManager());
             radDaemon.setRouter(getRouter());
             radDaemon.setNECTARRoutingTable(getNECTARRoutingTable(context));
@@ -123,8 +123,8 @@ public final class BWDTN {
         return radFragMgr;
     }
     
-    private static Daemon2AdminAA getAdminAA() {
-        if (radAppAA == null) radAdminAA = new RadAdminAA(radDaemon, radDaemon);
+    private static Daemon2AdminAA getAdminAA(@NonNull Context context) {
+        if (radAppAA == null) radAdminAA = new RadAdminAA(radDaemon, radDaemon, context);
         return radAdminAA;
     }
     

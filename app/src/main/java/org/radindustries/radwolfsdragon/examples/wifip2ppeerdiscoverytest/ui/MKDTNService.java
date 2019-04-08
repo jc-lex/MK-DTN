@@ -111,7 +111,7 @@ public class MKDTNService extends Service implements DTNUI {
     
     private NotificationCompat.Builder makeNotification(Spanned text) {
         return new NotificationCompat.Builder(this, MK_DTN_NOTIFICATION_TAG)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_mkdtn_notification)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setGroup(getString(R.string.notification_group_key))
@@ -336,7 +336,7 @@ public class MKDTNService extends Service implements DTNUI {
         // make notification builder
         NotificationCompat.Builder notificationBuilder
             = new NotificationCompat.Builder(this, MK_DTN_NOTIFICATION_TAG)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_mkdtn_notification)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.dtn_service_started))
             .setTicker(getString(R.string.dtn_service_started))

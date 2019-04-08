@@ -290,7 +290,8 @@ final class RadDaemon
                     sinkPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
                 }
             } catch (InterruptedException e) {
-                Log.e(LOG_TAG, "transmission interrupted", e);
+//                Log.e(LOG_TAG, "transmission interrupted", e);
+                Thread.currentThread().interrupt();
                 discoverer.stop();
             }
             Log.i(LOG_TAG, "transmission stopped");
@@ -323,7 +324,8 @@ final class RadDaemon
                     }
                 }
             } catch (InterruptedException e) {
-                Log.e(LOG_TAG, "transmission interrupted", e);
+//                Log.e(LOG_TAG, "transmission interrupted", e);
+                Thread.currentThread().interrupt();
                 discoverer.stop();
             }
             Log.i(LOG_TAG, "transmission stopped");
@@ -615,6 +617,7 @@ final class RadDaemon
                 bundleTransmitter = new Thread(new AutomaticTransmitTask());
             }
             bundleTransmitter.start();
+            bundleTransmitter.setName("Bundle Transmission Task");
             started = bundleTransmitter.isAlive();
         }
         
@@ -625,6 +628,7 @@ final class RadDaemon
         
         if (bundleAger == null) {
             bundleAger = new Thread(new BundleAgingTask());
+            bundleAger.setName("Bundle Aging Task");
             bundleAger.start();
             started &= bundleAger.isAlive();
         }

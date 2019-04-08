@@ -42,14 +42,15 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
                                 dp.getProbability() * (1 / (1 + lambda))
                             );
                         }
-            
+                        Log.d(LOG_TAG, "DPs: " + dps);
                         routerDBHandler.update(dps);
                     }
         
-                    Thread.sleep(1000); // one second
+                    Thread.sleep(1_000); // one second
                 }
             } catch (InterruptedException e) {
-                Log.e(LOG_TAG, "DP aging interrupted", e);
+//                Log.e(LOG_TAG, "DP aging interrupted", e);
+                Thread.currentThread().interrupt();
             }
             Log.i(LOG_TAG, "DP aging ended");
         }
@@ -144,6 +145,7 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
     public boolean start() {
         if (dpAgingExecutor == null) {
             dpAgingExecutor = new Thread(new AgeDeliveryPredictabilityTask());
+            dpAgingExecutor.setName("DP Aging Task");
             dpAgingExecutor.start();
             return dpAgingExecutor.isAlive();
         } else return true;

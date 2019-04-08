@@ -51,6 +51,7 @@ final class RadWallClock implements WallClock, Daemon2Managable {
         readTime();
         if (ticker == null) {
             ticker = new Thread(new TickingTask());
+            ticker.setName("Ticking Wallclock Task");
             ticker.start();
         }
         return true;

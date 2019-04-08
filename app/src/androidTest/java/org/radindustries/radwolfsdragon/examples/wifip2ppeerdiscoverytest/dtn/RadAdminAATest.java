@@ -3,6 +3,7 @@ package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AdminAA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
@@ -14,13 +15,15 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
-import java.math.BigInteger;
+import androidx.test.InstrumentationRegistry;
+import androidx.test.runner.AndroidJUnit4;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(AndroidJUnit4.class)
 public class RadAdminAATest {
     private static Daemon2AdminAA radAdminAA;
     
@@ -32,7 +35,8 @@ public class RadAdminAATest {
                 return DTNTimeInstant.at(System.currentTimeMillis());
             }
         };
-        radAdminAA = new RadAdminAA(new AdminAA2Daemon() {
+        radAdminAA = new RadAdminAA(
+            new AdminAA2Daemon() {
     
             @Override
             public boolean isUs(DTNEndpointID eid) {
@@ -73,7 +77,9 @@ public class RadAdminAATest {
             public DTNEndpointID getThisNodezEID() {
                 return TestUtilities.makeDTNEID();
             }
-        }, clock);
+        },
+            clock, InstrumentationRegistry.getTargetContext()
+        );
     }
     
     @Test
@@ -165,8 +171,9 @@ public class RadAdminAATest {
         assertNotNull(report.detailsIfForAFragment);
         assertEquals(0, report.detailsIfForAFragment.size());
         
-        assertTrue(report.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELIVERED));
-        assertFalse(report.statusTimes.isEmpty());
+        assertEquals(StatusReport.StatusFlags.BUNDLE_DELIVERED, report.status);
+        assertNotNull(report.timeOfStatus);
+        assertTrue(report.timeOfStatus.compareTo(DTNTimeInstant.ZERO) > 0);
         assertEquals(StatusReport.Reason.NO_OTHER_INFO, report.reasonCode);
     }
     
@@ -197,8 +204,9 @@ public class RadAdminAATest {
         assertNotNull(report.detailsIfForAFragment);
         assertTrue(report.detailsIfForAFragment.size() > 0);
     
-        assertTrue(report.statusFlags.testBit(StatusReport.StatusFlags.BUNDLE_DELIVERED));
-        assertFalse(report.statusTimes.isEmpty());
+        assertEquals(StatusReport.StatusFlags.BUNDLE_DELIVERED, report.status);
+        assertNotNull(report.timeOfStatus);
+        assertTrue(report.timeOfStatus.compareTo(DTNTimeInstant.ZERO) > 0);
         assertEquals(StatusReport.Reason.NO_OTHER_INFO, report.reasonCode);
     }
     
@@ -220,8 +228,8 @@ public class RadAdminAATest {
         assertTrue(adminCBlock.blockTypeSpecificDataFields instanceof StatusReport);
     
         StatusReport report = (StatusReport) adminCBlock.blockTypeSpecificDataFields;
-        
-        assertTrue(report.statusFlags.testBit(StatusReport.StatusFlags.INVALID_FLAG_SET));
+    
+        assertEquals(StatusReport.StatusFlags.INVALID_FLAG_SET, report.status);
         assertEquals(report.reasonCode, StatusReport.Reason.NO_OTHER_INFO);
     }
     

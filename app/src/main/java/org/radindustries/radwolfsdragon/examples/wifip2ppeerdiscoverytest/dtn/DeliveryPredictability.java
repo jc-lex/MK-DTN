@@ -33,4 +33,12 @@ final class DeliveryPredictability {
     void setProbability(float probability) {
         this.probability = probability;
     }
+    
+    @Override
+    public String toString() {
+        return "DeliveryPredictability{" +
+            "nodeEID=" + nodeEID +
+            ",probability=" + probability +
+            '}';
+    }
 }

@@ -197,16 +197,20 @@ final class RadDaemon
             Log.i(LOG_TAG, "entering SOURCE mode");
             discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
             long stopTime = System.currentTimeMillis() + onCycleDurationMillis;
-//            int head = 0;
+            int head = 0;
     
             while (System.currentTimeMillis() < stopTime) {
                 // get what to send
-                DTNBundle bundle/* = null*/;
+                DTNBundle bundle = null;
                 do {
 //                    if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty())
 //                        bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
-                    bundle = MiBStorage.next();
-                } while (/*bundle == null */DTNUtils.isValid(bundle) &&
+//                    bundle = MiBStorage.next();
+                    if (!MiBStorage.OBQ.isEmpty()) {
+                        bundle = MiBStorage.OBQ.remove(head);
+                        MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+                    }
+                } while (bundle == null /*DTNUtils.isValid(bundle)*/ &&
                     System.currentTimeMillis() < stopTime);
                 if (System.currentTimeMillis() >= stopTime) break;
                 
@@ -228,13 +232,15 @@ final class RadDaemon
                 // send bundle
                 if (cla.transmit(bundle, nextHops) > 0) {
 //                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(head, bundle);
-                    MiBStorage.OBQ.remove(bundle);
-                    MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+//                    MiBStorage.OBQ.remove(bundle);
+//                    MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
                     
                     MiBStorage.TBQ.add(bundle);
                     MiBStorage.writeQueue(context, MiBStorage.TRANSMITTED_BUNDLES_QUEUE);
-//                } else {
+                } else {
 //                    DummyStorage.TRANSMITTED_BUNDLES_QUEUE.add(bundle);
+                    MiBStorage.OBQ.add(/*head, */bundle);
+                    MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
                 }
             }
     
@@ -441,7 +447,7 @@ final class RadDaemon
             if (weCan) {
 //                DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
                 MiBStorage.DBQ.add(bundle);
-                MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+                MiBStorage.writeQueue(context, MiBStorage.DELIVERED_BUNDLES_QUEUE);
                 
                 appAA.deliver(bundle);
                 makeDeliveryReport(bundle);
@@ -533,9 +539,8 @@ final class RadDaemon
             return false;
         }
         
-        // REDUNDANT RECEPTION
         if (alreadyHas(bundle)) {
-//            Log.i(LOG_TAG, "redundant reception");
+            Log.i(LOG_TAG, "redundant reception");
             setCustodySignalReason(CustodySignal.Reason.REDUNDANT_RECEPTION);
             return false;
         }
@@ -552,7 +557,7 @@ final class RadDaemon
             int maximum = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
         
             float batteryLevelPercentage = (current / (float) maximum) * 100;
-//            Log.i(LOG_TAG, "Battery level = " + batteryLevelPercentage);
+            Log.i(LOG_TAG, "Battery level = " + batteryLevelPercentage);
             
             return batteryLevelPercentage < MKDTN_MIN_BATTERY_LEVEL_PERCENTAGE;
         }
@@ -568,7 +573,7 @@ final class RadDaemon
         long totalSpace = dir.getTotalSpace();
     
         float freeSpacePercentage = (freeSpace / (float) totalSpace) * 100;
-//        Log.i(LOG_TAG, "Free space = " + freeSpacePercentage);
+        Log.i(LOG_TAG, "Free space = " + freeSpacePercentage);
         
         return freeSpacePercentage < MKDTN_MIN_FREE_SPACE_PERCENTAGE;
     }

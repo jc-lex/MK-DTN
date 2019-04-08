@@ -25,19 +25,19 @@ public final class PrimaryBlock implements Serializable {
     public enum PriorityClass {EXPEDITED, NORMAL, BULK}
     
     public enum LifeTime {
-        THREE_DAYS(DTNTimeDuration.ofDays(3)),
-        ONE_WEEK(DTNTimeDuration.ofWeeks(1)),
-        THREE_WEEKS(DTNTimeDuration.ofWeeks(3)),
-        TWO_MONTHS(DTNTimeDuration.ofMonths(2));
+        FIVE_HOURS(DTNTimeDuration.ofHours(5)),
+        FIFTEEN_HOURS(DTNTimeDuration.ofHours(15)),
+        THIRTY_FIVE_HOURS(DTNTimeDuration.ofHours(35));
+//        TWO_MONTHS(DTNTimeDuration.ofMonths(2));
         
-        private DTNTimeDuration period;
+        private DTNTimeDuration duration;
         
-        LifeTime(DTNTimeDuration period) {
-            this.period = period;
+        LifeTime(DTNTimeDuration duration) {
+            this.duration = duration;
         }
         
-        public DTNTimeDuration getPeriod() {
-            return this.period;
+        public DTNTimeDuration getDuration() {
+            return this.duration;
         }
     }
     

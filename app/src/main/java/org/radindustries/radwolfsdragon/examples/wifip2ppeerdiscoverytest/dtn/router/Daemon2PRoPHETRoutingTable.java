@@ -8,7 +8,7 @@ public interface Daemon2PRoPHETRoutingTable {
     float P_ENC_FIRST = 0.5F;
     float P_FIRST_THRESHOLD = 0.1F;
     float BETA = 0.9F;
-    long HALF_LIFE_IN_SECONDS = 259_200L; // 3 days
+    long HALF_LIFE_IN_SECONDS = 126_000L; // 1.5 days
     float DELTA = 0.01F;
     
     void updateDeliveryPredictability(DTNEndpointID nodeEID);

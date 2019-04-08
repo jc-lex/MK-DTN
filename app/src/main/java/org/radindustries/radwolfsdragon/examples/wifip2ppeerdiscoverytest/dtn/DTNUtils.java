@@ -22,8 +22,10 @@ public final class DTNUtils {
     
     private static final long DEFAULT_CPU_SPEED_IN_KHZ = 1_100_000L;
     
-    public static final BigInteger DAY = BigInteger.valueOf(getMaxCPUFrequencyInKHz())
-        .multiply(BigInteger.valueOf(1_000 * 60 * 60 * 24));
+    public static final BigInteger HOUR = BigInteger.valueOf(getMaxCPUFrequencyInKHz())
+        .multiply(BigInteger.valueOf(1_000 * 60 * 60));
+    
+    public static final BigInteger DAY = HOUR.multiply(BigInteger.valueOf(24));
     
     static synchronized String toMillis(DTNTimeInstant t, long cpuSpeedInKHz) {
         return DTNTimeDuration.between(DTNTimeInstant.ZERO, t)

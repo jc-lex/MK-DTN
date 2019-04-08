@@ -431,13 +431,6 @@ public class MKDTNService extends Service implements DTNUI {
     }
     
     public static void updateConfig(@NonNull Context context, @NonNull DTNConfig updatedConfig) {
-        for (String fileName : context.fileList()) {
-            if (fileName.equals(MK_DTN_CONFIGURATION_FILE)) {
-                context.deleteFile(MK_DTN_CONFIGURATION_FILE);
-                break;
-            }
-        }
-        
         try (PrintWriter writer = new PrintWriter(
             context.openFileOutput(MK_DTN_CONFIGURATION_FILE, Context.MODE_PRIVATE))) {
             writer.println(updatedConfig.routingProtocol);
@@ -477,7 +470,7 @@ public class MKDTNService extends Service implements DTNUI {
         DTNConfig() {
             routingProtocol = Daemon2Router.RoutingProtocol.PER_HOP.toString();
             priorityClass = PrimaryBlock.PriorityClass.NORMAL.toString();
-            lifetime = PrimaryBlock.LifeTime.THREE_DAYS.toString();
+            lifetime = PrimaryBlock.LifeTime.FIVE_HOURS.toString();
             enableManualMode = false; // auto mode
             transmissionMode = Daemon2PeerDiscoverer.ServiceMode.SOURCE.toString();
         }

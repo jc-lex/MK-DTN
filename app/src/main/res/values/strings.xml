@@ -12,7 +12,7 @@
     <string name="pref_default_priority_class">NORMAL</string>
     <string name="pref_lifetime_key">bundle_lifetime</string>
     <string name="lifetime_title">Bundle Lifetime</string>
-    <string name="pref_default_lifetime">THREE_DAYS</string>
+    <string name="pref_default_lifetime">FIVE_HOURS</string>
     <array name="pref_routing_protocol_entries">
         <item>Per Hop (Default)</item>
         <item>NECTAR</item>
@@ -42,16 +42,14 @@
         <item>BULK</item>
     </array>
     <array name="pref_lifetime_entries">
-        <item>3 days (Default)</item>
-        <item>1 week</item>
-        <item>3 weeks</item>
-        <item>2 months</item>
+        <item>5 hours (Default)</item>
+        <item>15 hours</item>
+        <item>35 hours</item>
     </array>
     <array name="pref_lifetime_entry_values">
-        <item>THREE_DAYS</item>
-        <item>ONE_WEEK</item>
-        <item>THREE_WEEKS</item>
-        <item>TWO_MONTHS</item>
+        <item>FIVE_HOURS</item>
+        <item>FIFTEEN_HOURS</item>
+        <item>THIRTY_FIVE_HOURS</item>
     </array>
 
     <array name="pref_transmission_mode_entries">

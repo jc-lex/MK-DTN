@@ -79,7 +79,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         primaryBlock.priorityClass = priorityClass;
         primaryBlock.bundleID
             = DTNBundleID.from(daemon.getThisNodezEID(), clock.getCurrentTime());
-        primaryBlock.lifeTime = lifeTime.getPeriod();
+        primaryBlock.lifeTime = lifeTime.getDuration();
         primaryBlock.destinationEID = recipient;
         primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);

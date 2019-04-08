@@ -8,9 +8,10 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 
 public final class DTNTimeDuration implements Serializable, Comparable<DTNTimeDuration> {
-    private static final DTNTimeDuration DAY = of(DTNUtils.DAY);
-    private static final DTNTimeDuration WEEK = of(DTNUtils.DAY.multiply(BigInteger.valueOf(7)));
-    private static final DTNTimeDuration MONTH = of(DTNUtils.DAY.multiply(BigInteger.valueOf(28)));
+    private static final DTNTimeDuration HOUR = of(DTNUtils.HOUR);
+//    private static final DTNTimeDuration DAY = of(DTNUtils.DAY);
+//    private static final DTNTimeDuration WEEK = of(DTNUtils.DAY.multiply(BigInteger.valueOf(7)));
+//    private static final DTNTimeDuration MONTH = of(DTNUtils.DAY.multiply(BigInteger.valueOf(28)));
     public static final DTNTimeDuration ZERO = of(BigInteger.ZERO);
     
     private BigInteger duration;
@@ -33,22 +34,26 @@ public final class DTNTimeDuration implements Serializable, Comparable<DTNTimeDu
         return of(new BigInteger(timeString));
     }
     
-    public static DTNTimeDuration ofDays(long days) {
-        return of(DAY.getDuration().multiply(BigInteger.valueOf(days)));
+    public static DTNTimeDuration ofHours(long hours) {
+        return of(HOUR.getDuration().multiply(BigInteger.valueOf(hours)));
     }
+    
+//    public static DTNTimeDuration ofDays(long days) {
+//        return of(DAY.getDuration().multiply(BigInteger.valueOf(days)));
+//    }
     
     public float inDays() {
         BigDecimal factor = BigDecimal.ONE.divide(new BigDecimal(DTNUtils.DAY), RoundingMode.UP);
         return factor.multiply(new BigDecimal(this.getDuration())).floatValue();
     }
     
-    public static DTNTimeDuration ofWeeks(long weeks) {
-        return of(WEEK.getDuration().multiply(BigInteger.valueOf(weeks)));
-    }
-    
-    public static DTNTimeDuration ofMonths(long months) {
-        return of(MONTH.getDuration().multiply(BigInteger.valueOf(months)));
-    }
+//    public static DTNTimeDuration ofWeeks(long weeks) {
+//        return of(WEEK.getDuration().multiply(BigInteger.valueOf(weeks)));
+//    }
+//
+//    public static DTNTimeDuration ofMonths(long months) {
+//        return of(MONTH.getDuration().multiply(BigInteger.valueOf(months)));
+//    }
     
     public static DTNTimeDuration between(DTNTimeInstant from, DTNTimeInstant to) {
         BigInteger t1 = from.getInstant();

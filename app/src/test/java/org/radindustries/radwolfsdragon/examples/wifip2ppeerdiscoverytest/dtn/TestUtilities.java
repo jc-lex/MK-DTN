@@ -23,7 +23,7 @@ final class TestUtilities {
     
     static final String TEST_SENDER = "dtn:b111";
     static final String TEST_RECIPIENT = "dtn:f1b1";
-    static final PrimaryBlock.LifeTime TEST_LIFETIME = PrimaryBlock.LifeTime.THREE_DAYS;
+    static final PrimaryBlock.LifeTime TEST_LIFETIME = PrimaryBlock.LifeTime.FIVE_HOURS;
     static final PrimaryBlock.PriorityClass TEST_PRIORITY
         = PrimaryBlock.PriorityClass.NORMAL;
     static final Daemon2Router.RoutingProtocol TEST_PROTOCOL
@@ -114,7 +114,7 @@ final class TestUtilities {
             DTNEndpointID.parse(TEST_SENDER),
             DTNTimeInstant.at(System.currentTimeMillis())
         );
-        primaryBlock.lifeTime = TEST_LIFETIME.getPeriod();
+        primaryBlock.lifeTime = TEST_LIFETIME.getDuration();
         primaryBlock.destinationEID = makeDTNEID();
         primaryBlock.custodianEID = makeDTNEID();
         primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);

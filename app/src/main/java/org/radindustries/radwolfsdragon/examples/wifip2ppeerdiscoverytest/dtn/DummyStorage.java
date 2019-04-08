@@ -98,29 +98,29 @@ final class DummyStorage {
         int l = -1;
         do {
             l++;
-            if (l > 3) break;
+            if (l > 2) break;
             for (DTNBundle dtnBundle : highestPriorityBundles) {
                 DTNTimeDuration lifeTime = dtnBundle.primaryBlock.lifeTime;
                 if (l == 0) {
-                    if (lifeTime.equals(PrimaryBlock.LifeTime.THREE_DAYS.getPeriod())) {
+                    if (lifeTime.equals(PrimaryBlock.LifeTime.FIVE_HOURS.getDuration())) {
                         shortestLivingBundles.add(dtnBundle);
                     }
                 } else if (l == 1) {
-                    if (lifeTime.equals(PrimaryBlock.LifeTime.ONE_WEEK.getPeriod())) {
+                    if (lifeTime.equals(PrimaryBlock.LifeTime.FIFTEEN_HOURS.getDuration())) {
                         shortestLivingBundles.add(dtnBundle);
                     }
                 } else if (l == 2) {
-                    if (lifeTime.equals(PrimaryBlock.LifeTime.THREE_WEEKS.getPeriod())) {
+                    if (lifeTime.equals(PrimaryBlock.LifeTime.THIRTY_FIVE_HOURS.getDuration())) {
                         shortestLivingBundles.add(dtnBundle);
                     }
-                } else if (l == 3) {
-                    if (lifeTime.equals(PrimaryBlock.LifeTime.TWO_MONTHS.getPeriod())) {
+                }/* else if (l == 3) {
+                    if (lifeTime.equals(PrimaryBlock.LifeTime.TWO_MONTHS.getDuration())) {
                         shortestLivingBundles.add(dtnBundle);
                     }
-                }
+                }*/
             }
         } while (shortestLivingBundles.isEmpty());
-        if (l > 3) return new DTNBundle();
+        if (l > 2) return new DTNBundle();
         else if (shortestLivingBundles.size() == 1) {
             DTNBundle[] theOnlyOne = shortestLivingBundles.toArray(new DTNBundle[0]);
             return theOnlyOne[0];

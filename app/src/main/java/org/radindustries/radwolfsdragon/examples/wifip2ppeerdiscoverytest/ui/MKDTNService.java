@@ -26,6 +26,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNTextMessenger;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
@@ -267,7 +268,7 @@ public class MKDTNService extends Service implements DTNUI {
             if (theirMessengers.get(msg.arg1) != null)
                 theirMessengers.get(msg.arg1).send(peerList);
         }
-        
+        private static final int MAX_TXT_SIZE = 34;
         private void sendOutboundMessage(Bundle messageBundle) {
             String recipient = messageBundle.getString(RECIPIENT_KEY,
                 context.getString(R.string.mkdtn_null_endpoint_id));
@@ -275,8 +276,13 @@ public class MKDTNService extends Service implements DTNUI {
             
             String text = messageBundle.getString(TEXT_KEY,
                 context.getString(R.string.mkdtn_hello_message));
-            if (text.equals(context.getString(R.string.long_text_indicator)))
-                text = context.getString(R.string.mkdtn_long_hello_message);
+            if (text.equals(context.getString(R.string.long_text_indicator))) {
+                StringBuilder textBuilder = new StringBuilder(text);
+                for (int i = 0; i < MAX_TXT_SIZE; i++) {
+                    textBuilder.append(context.getString(R.string.mkdtn_long_hello_message));
+                }
+                text = textBuilder.toString();
+            }
             
             Daemon2Router.RoutingProtocol protocol
                 = Daemon2Router.RoutingProtocol.valueOf(
@@ -397,7 +403,7 @@ public class MKDTNService extends Service implements DTNUI {
     
     private static final String MK_DTN_CONFIGURATION_FILE = "mkdtn.conf";
     
-    public static boolean configFileDoesNotExist(@NonNull Context context) {
+    public synchronized static boolean configFileDoesNotExist(@NonNull Context context) {
         if (context.fileList().length == 0) {
 //            Log.e(LOG_TAG, "no config file");
             return true;
@@ -413,7 +419,7 @@ public class MKDTNService extends Service implements DTNUI {
         return true;
     }
     
-    public static void writeDefaultConfig(@NonNull Context context) {
+    public synchronized static void writeDefaultConfig(@NonNull Context context) {
         try (PrintWriter writer = new PrintWriter(
             context.openFileOutput(MK_DTN_CONFIGURATION_FILE, Context.MODE_PRIVATE))) {
             
@@ -422,6 +428,7 @@ public class MKDTNService extends Service implements DTNUI {
             writer.println(defaultConfig.routingProtocol);
             writer.println(defaultConfig.priorityClass);
             writer.println(defaultConfig.lifetime);
+            writer.println(defaultConfig.maxFragmentPayloadSize);
             writer.println(defaultConfig.enableManualMode);
             writer.println(defaultConfig.transmissionMode);
 //            Log.i(LOG_TAG, "default config = " + defaultConfig);
@@ -430,12 +437,15 @@ public class MKDTNService extends Service implements DTNUI {
         }
     }
     
-    public static void updateConfig(@NonNull Context context, @NonNull DTNConfig updatedConfig) {
+    public synchronized static void updateConfig(
+        @NonNull Context context, @NonNull DTNConfig updatedConfig
+    ) {
         try (PrintWriter writer = new PrintWriter(
             context.openFileOutput(MK_DTN_CONFIGURATION_FILE, Context.MODE_PRIVATE))) {
             writer.println(updatedConfig.routingProtocol);
             writer.println(updatedConfig.priorityClass);
             writer.println(updatedConfig.lifetime);
+            writer.println(updatedConfig.maxFragmentPayloadSize);
             writer.println(updatedConfig.enableManualMode);
             writer.println(updatedConfig.transmissionMode);
 //            Log.i(LOG_TAG, "updated config = " + updatedConfig);
@@ -444,12 +454,13 @@ public class MKDTNService extends Service implements DTNUI {
         }
     }
     
-    public static DTNConfig getConfig(@NonNull Context context) {
+    public synchronized static DTNConfig getConfig(@NonNull Context context) {
         try (Scanner scanner = new Scanner(context.openFileInput(MK_DTN_CONFIGURATION_FILE))) {
             DTNConfig config = new DTNConfig();
             config.routingProtocol = scanner.nextLine();
             config.priorityClass = scanner.nextLine();
             config.lifetime = scanner.nextLine();
+            config.maxFragmentPayloadSize = scanner.nextLine();
             config.enableManualMode = Boolean.parseBoolean(scanner.nextLine());
             config.transmissionMode = scanner.nextLine();
 //            Log.i(LOG_TAG, "read config = " + config);
@@ -464,6 +475,7 @@ public class MKDTNService extends Service implements DTNUI {
         public String routingProtocol;
         public String priorityClass;
         public String lifetime;
+        public String maxFragmentPayloadSize;
         public boolean enableManualMode;
         public String transmissionMode;
         
@@ -471,6 +483,7 @@ public class MKDTNService extends Service implements DTNUI {
             routingProtocol = Daemon2Router.RoutingProtocol.PROPHET.toString();
             priorityClass = PrimaryBlock.PriorityClass.NORMAL.toString();
             lifetime = PrimaryBlock.LifeTime.FIVE_HOURS.toString();
+            maxFragmentPayloadSize = Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[0];
             enableManualMode = false; // auto mode
             transmissionMode = Daemon2PeerDiscoverer.ServiceMode.SOURCE.toString();
         }
@@ -482,6 +495,7 @@ public class MKDTNService extends Service implements DTNUI {
                 "routingProtocol=" + routingProtocol +
                 ",priorityClass=" + priorityClass +
                 ",lifetime=" + lifetime +
+                ",maxFragmentPayloadSize=" + maxFragmentPayloadSize +
                 ",enableManualMode=" + enableManualMode +
                 ",transmissionMode=" + transmissionMode +
                 '}';

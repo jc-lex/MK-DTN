@@ -17,6 +17,8 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
         = "bundle_priority_class";
     private static final String PREF_LIFETIME_KEY
         = "bundle_lifetime";
+    private static final String PREF_MAX_FRAGMENT_PAYLOAD_SIZE_KEY
+        = "maximum_fragment_payload_size";
     private static final String PREF_TRANSMISSION_MODE_KEY
         = "transmission_mode";
     
@@ -39,6 +41,9 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
             ));
             findPreference(PREF_LIFETIME_KEY).setSummary(prefs.getString(
                 PREF_LIFETIME_KEY, getString(R.string.pref_default_lifetime)
+            ));
+            findPreference(PREF_MAX_FRAGMENT_PAYLOAD_SIZE_KEY).setSummary(prefs.getString(
+                PREF_MAX_FRAGMENT_PAYLOAD_SIZE_KEY, getString(R.string.pref_default_max_fragment_payload_size)
             ));
             findPreference(PREF_TRANSMISSION_MODE_KEY).setSummary(prefs.getString(
                 PREF_TRANSMISSION_MODE_KEY, getString(R.string.pref_default_transmission_mode)
@@ -83,6 +88,11 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
                 case PREF_LIFETIME_KEY:
                     pref.setSummary(sharedPreferences.getString(
                         key, getString(R.string.pref_default_lifetime)
+                    ));
+                    break;
+                case PREF_MAX_FRAGMENT_PAYLOAD_SIZE_KEY:
+                    pref.setSummary(sharedPreferences.getString(
+                        key, getString(R.string.pref_default_max_fragment_payload_size)
                     ));
                     break;
                 case PREF_TRANSMISSION_MODE_KEY:

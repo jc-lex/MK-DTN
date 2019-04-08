@@ -67,6 +67,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             getString(R.string.pref_lifetime_key),
             getString(R.string.pref_default_lifetime)
         );
+        
+        config.maxFragmentPayloadSize = prefs.getString(
+            getString(R.string.pref_max_fragment_payload_size_key),
+            getString(R.string.pref_default_max_fragment_payload_size)
+        );
     
         config.routingProtocol = prefs.getString(
             getString(R.string.pref_routing_protocol_key),

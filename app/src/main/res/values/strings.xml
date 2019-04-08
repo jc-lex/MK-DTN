@@ -57,6 +57,21 @@
     <string name="pref_transmission_mode_title">Transmission Mode</string>
     <string name="pref_enable_manual_transmission_key">enable_manual_transmission</string>
     <string name="pref_enable_manual_transmission_title">Enable Manual Transmission</string>
+
+    <array name="pref_max_fragment_payload_size_entries">
+        <item>1 KiB (Default)</item>
+        <item>250 KiB</item>
+        <item>500 KiB</item>
+    </array>
+    <array name="pref_max_fragment_payload_size_values">
+        <item>1_KIB</item>
+        <item>250_KIB</item>
+        <item>500_KIB</item>
+    </array>
+    <string name="pref_default_max_fragment_payload_size">1_KIB</string>
+    <string name="pref_max_fragment_payload_size_key">maximum_fragment_payload_size</string>
+    <string name="pref_max_fragment_payload_size_title">Maximum Fragment Payload Size</string>
+
     <string name="pref_enable_manual_transmission_summary">
         Takes effect after (re)starting MK-DTN
     </string>

@@ -134,10 +134,29 @@ final class RadDaemon
     @Override
     public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
         currentProtocol = routingProtocol;
+    
+        int size = getPrefMaxFragmentSize();
+        DTNBundle[] fragments = fragmentManager.fragment(bundle, size);
         
-        DTNBundle[] fragments = fragmentManager.fragment(bundle);
         MiBStorage.OBQ.addAll(Arrays.asList(fragments));
         MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+    }
+    
+    private int getPrefMaxFragmentSize() {
+        if (MKDTNService.configFileDoesNotExist(context)) {
+            MKDTNService.writeDefaultConfig(context);
+        }
+        MKDTNService.DTNConfig config = MKDTNService.getConfig(context);
+        
+        String sizeStr = config.maxFragmentPayloadSize;
+        int size;
+        if (sizeStr.equals(Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[1]))
+            size = 250 * Daemon2FragmentManager.KIBI_BYTE;
+        else if (sizeStr.equals(Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[2]))
+            size = 500 * Daemon2FragmentManager.KIBI_BYTE;
+        else size = Daemon2FragmentManager.DEFAULT_FRAGMENT_PAYLOAD_SIZE_IN_BYTES;
+        
+        return size;
     }
     
     private abstract class TransmitOutboundBundlesTask implements Runnable {

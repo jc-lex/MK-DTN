@@ -6,7 +6,7 @@
     <string name="send_btn_text">SEND</string>
     <string name="pref_routing_protocol_key">dtn_routing_protocol</string>
     <string name="routing_protocol_title">DTN Routing Protocol</string>
-    <string name="pref_default_routing_protocol">PER_HOP</string>
+    <string name="pref_default_routing_protocol">PROPHET</string>
     <string name="pref_priority_class_key">bundle_priority_class</string>
     <string name="priority_class_title">Bundle Priority Class</string>
     <string name="pref_default_priority_class">NORMAL</string>
@@ -14,22 +14,14 @@
     <string name="lifetime_title">Bundle Lifetime</string>
     <string name="pref_default_lifetime">FIVE_HOURS</string>
     <array name="pref_routing_protocol_entries">
-        <item>Per Hop (Default)</item>
-        <item>NECTAR</item>
-        <item>PRoPHET</item>
-        <item>Epidemic</item>
+        <item>PRoPHET (Default)</item>
         <item>Spray and Wait</item>
-        <item>Direct Contact</item>
-        <item>Two Hop</item>
+        <item>Per Hop</item>
     </array>
     <array name="pref_routing_protocol_entry_values">
-        <item>PER_HOP</item>
-        <item>NECTAR</item>
         <item>PROPHET</item>
-        <item>EPIDEMIC</item>
         <item>SPRAY_AND_WAIT</item>
-        <item>DIRECT_CONTACT</item>
-        <item>TWO_HOP</item>
+        <item>PER_HOP</item>
     </array>
     <array name="pref_priority_class_entries">
         <item>Expedited</item>

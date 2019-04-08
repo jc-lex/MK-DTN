@@ -82,7 +82,7 @@ final class RadDaemon
     RadDaemon(@NonNull Context context) {
         this.context = context;
         wallClock = new RadWallClock(context);
-        this.currentProtocol = Daemon2Router.RoutingProtocol.PER_HOP;
+        this.currentProtocol = Daemon2Router.RoutingProtocol.PROPHET;
     }
     
     @Override

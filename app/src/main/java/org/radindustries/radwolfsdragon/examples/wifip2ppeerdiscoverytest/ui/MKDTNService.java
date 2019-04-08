@@ -468,7 +468,7 @@ public class MKDTNService extends Service implements DTNUI {
         public String transmissionMode;
         
         DTNConfig() {
-            routingProtocol = Daemon2Router.RoutingProtocol.PER_HOP.toString();
+            routingProtocol = Daemon2Router.RoutingProtocol.PROPHET.toString();
             priorityClass = PrimaryBlock.PriorityClass.NORMAL.toString();
             lifetime = PrimaryBlock.LifeTime.FIVE_HOURS.toString();
             enableManualMode = false; // auto mode

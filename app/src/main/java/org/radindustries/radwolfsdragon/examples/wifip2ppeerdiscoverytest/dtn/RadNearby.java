@@ -18,7 +18,6 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.cla.Daemon2CLA;
@@ -30,8 +29,8 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.da
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleNode;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.Daemon2Managable;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.io.ByteArrayInputStream;
@@ -39,19 +38,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 import androidx.annotation.NonNull;
 import androidx.collection.SimpleArrayMap;
 
-final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
+final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer, Daemon2Managable {
     private static final String LOG_TAG
         = DConstants.MAIN_LOG_TAG + "_" + RadNearby.class.getSimpleName();
     
-    private static final Strategy STRATEGY = Strategy.P2P_POINT_TO_POINT;
+    private static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
     private static final AdvertisingOptions ADVERTISING_OPTIONS
         = new AdvertisingOptions.Builder().setStrategy(STRATEGY).build();
     private static final DiscoveryOptions DISCOVERY_OPTIONS
@@ -64,9 +65,9 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
     private PRoPHETCLA2Daemon prophetCLA2Daemon;
     private ConnectionsClient connectionsClient;
     private WallClock clock;
-    private DTNTimeInstant rxSendTime;
+//    private DTNTimeInstant rxSendTime;
     
-    private boolean isInbound;
+//    private boolean isInbound;
     private final EndpointDiscoveryCallback endpointDiscoveryCallback
         = new EndpointDiscoveryCallback() {
         @Override
@@ -74,22 +75,33 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
             @NonNull String nearbyEndpointID,
             @NonNull DiscoveredEndpointInfo discoveredEndpointInfo
         ) {
-            String bundleNodeEID = discoveredEndpointInfo.getEndpointName();
+            final String bundleNodeEID = discoveredEndpointInfo.getEndpointName();
             String serviceId = discoveredEndpointInfo.getServiceId();
-            String targetServiceId
-                = mode.equals(ServiceMode.SOURCE) ? SINK_SERVICE : SOURCE_SERVICE;
+//            String targetServiceId
+//                = mode.equals(ServiceMode.SOURCE) ? SINK_SERVICE : SOURCE_SERVICE;
     
-            DTNBundleNode foundNode = DTNBundleNode.from(bundleNodeEID, nearbyEndpointID);
-    
-            if (serviceId.equals(targetServiceId)) {
+            if (serviceId.equals(DTN_SERVICE_ID)) {
                 DTNEndpointID eid = DTNEndpointID.parse(bundleNodeEID);
                 nectarPeerDiscoverer2Daemon.incrementMeetingCount(eid);
                 prophetPeerDiscoverer2Daemon.updateDeliveryPredictability(eid);
-        
+                
+                DTNBundleNode foundNode = DTNBundleNode.from(bundleNodeEID, nearbyEndpointID);
                 if (discoveredNodes.contains(foundNode))
                     updateCLAAddress(foundNode, nearbyEndpointID);
                 else discoveredNodes.add(foundNode);
-                peerDiscoverer2Daemon.notifyPeerListChanged();
+//                peerDiscoverer2Daemon.notifyPeerListChanged();
+    
+                connectionsClient.requestConnection(
+                    cla2Daemon.getThisNodezEID().toString(), // from us...
+                    bundleNodeEID, // ...to them
+                    connectionLifecycleCallback
+                ).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.e(LOG_TAG, "connection request to " + bundleNodeEID
+                            + " failed", e);
+                    }
+                });
             }
         }
     
@@ -106,7 +118,7 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
         @Override
         public void onEndpointLost(@NonNull String nearbyEndpointID) {
             forgetDTNNode(nearbyEndpointID);
-            peerDiscoverer2Daemon.notifyPeerListChanged();
+//            peerDiscoverer2Daemon.notifyPeerListChanged();
         }
     
         private void forgetDTNNode(String CLAAddress) {
@@ -125,7 +137,7 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
         public void onConnectionInitiated(
             @NonNull String nearbyEndpointID, @NonNull ConnectionInfo connectionInfo
         ) {
-            isInbound = connectionInfo.isIncomingConnection();
+//            isInbound = connectionInfo.isIncomingConnection();
             connectionsClient.acceptConnection(nearbyEndpointID, payloadCallback);
         }
     
@@ -137,12 +149,15 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
             
             if (status == ConnectionsStatusCodes.STATUS_OK ||
                 status == ConnectionsStatusCodes.STATUS_ALREADY_CONNECTED_TO_ENDPOINT) {
-                if (!isInbound) {
-                    connectedNodes.add(nearbyEndpointID);
-                    forward(bundle, nearbyEndpointID);
-                } else {
-                    rxSendTime = clock.getCurrentTime();
-                }
+                markAsUpContact(nearbyEndpointID);
+                peerDiscoverer2Daemon.notifyPeerListChanged();
+                
+//                if (!isInbound) {
+//                    connectedNodes.add(nearbyEndpointID);
+//                    forward(bundle, nearbyEndpointID);
+//                } else {
+//                    rxSendTime = clock.getCurrentTime();
+//                }
             } else {
                 Log.e(LOG_TAG, "Connection was not OK");
             }
@@ -150,13 +165,15 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
     
         @Override
         public void onDisconnected(@NonNull String nearbyEndpointID) {
-            if (isInbound) {
-                isInbound = false;
-                Log.i(LOG_TAG, "onDisconnect(): inbound = false");
-            } else {
-                Log.i(LOG_TAG, "onDisconnect(): disconnected from " + nearbyEndpointID);
-                connectedNodes.remove(nearbyEndpointID);
-            }
+            markAsDownContact(nearbyEndpointID);
+            peerDiscoverer2Daemon.notifyPeerListChanged();
+//            if (isInbound) {
+//                isInbound = false;
+//                Log.i(LOG_TAG, "onDisconnect(): inbound = false");
+//            } else {
+//                Log.i(LOG_TAG, "onDisconnect(): disconnected from " + nearbyEndpointID);
+//                connectedNodes.remove(nearbyEndpointID);
+//            }
         }
     };
     private final PayloadCallback payloadCallback = new PayloadCallback() {
@@ -176,47 +193,49 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
         ) {
             int status = payloadTransferUpdate.getStatus();
             long payloadId = payloadTransferUpdate.getPayloadId();
-    
-            switch (status) {
-                case PayloadTransferUpdate.Status.SUCCESS:
-                    if (isInbound) {
-                        Payload payload = inboundPayloads.remove(payloadId);
-                        assert payload != null;
-                        
-                        try (
-                            ObjectInputStream in = new ObjectInputStream(
-                                Objects.requireNonNull(payload.asStream()).asInputStream()
-                            )
-                        ) {
-                            DTNBundle receivedBundle = (DTNBundle) in.readObject();
-                            DTNUtils.setTransmissionAgeWRTRx(
-                                receivedBundle, rxSendTime, clock.getCurrentTime()
-                            );
-                    
-                            prophetCLA2Daemon.calculateDPTransitivity(receivedBundle);
-                            cla2Daemon.onBundleReceived(receivedBundle);
-                        } catch (Exception e) {
-                            Log.e(LOG_TAG, "Could not open or read from input stream.", e);
-                        }
-                        
-                        connectionsClient.disconnectFromEndpoint(nearbyEndpointID);
-                    } else {
-                        Log.i(LOG_TAG, "bundle sent");
-                        sent = true;
+            Payload payload = inboundPayloads.remove(payloadId);
+            
+            if (status == PayloadTransferUpdate.Status.SUCCESS) {
+                if (payload != null) {
+                    try (ObjectInputStream in = new ObjectInputStream(
+                            Objects.requireNonNull(payload.asStream()).asInputStream()
+                    )) {
+                        DTNBundle receivedBundle = (DTNBundle) in.readObject();
+                        DTNUtils.setTransmissionAgeWRTRx(
+                            receivedBundle, clock.getCurrentTime(), clock.getCurrentTime()
+                        );
+                        prophetCLA2Daemon.calculateDPTransitivity(receivedBundle);
+                        cla2Daemon.onBundleReceived(receivedBundle);
+                    } catch (Exception e) {
+                        Log.e(LOG_TAG, "Could not open or read from input stream.", e);
                     }
-                    break;
-                case PayloadTransferUpdate.Status.FAILURE:
-                    if (isInbound) {
-                        inboundPayloads.remove(payloadId);
-                        connectionsClient.disconnectFromEndpoint(nearbyEndpointID);
-                    }
-                    else {
-                        Log.e(LOG_TAG, "bundle sending failed");
-                    }
-                    break;
-                default:
-                    break;
-            }
+                }
+            }/* else if (status == PayloadTransferUpdate.Status.FAILURE) {
+                inboundPayloads.remove(payloadId);
+                Log.e(LOG_TAG, "bundle sending failed");
+            }*/
+//            switch (status) {
+//                case PayloadTransferUpdate.Status.SUCCESS:
+//                    if (isInbound) {
+//
+////                        connectionsClient.disconnectFromEndpoint(nearbyEndpointID);
+//                    } else {
+//                        Log.i(LOG_TAG, "bundle sent");
+////                        sent = true;
+//                    }
+//                    break;
+//                case PayloadTransferUpdate.Status.FAILURE:
+//                    if (isInbound) {
+//                        inboundPayloads.remove(payloadId);
+////                        connectionsClient.disconnectFromEndpoint(nearbyEndpointID);
+//                    }
+//                    else {
+//                        Log.e(LOG_TAG, "bundle sending failed");
+//                    }
+//                    break;
+//                default:
+//                    break;
+//            }
         }
     };
     
@@ -242,99 +261,133 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
         connectedNodes = new HashSet<>();
     }
     
-    private boolean sent;
-    private DTNBundle bundle;
+//    private boolean sent;
+//    private DTNBundle bundle;
     
     @Override
-    public int transmit(DTNBundle bundle, Set<DTNBundleNode> destinations)
-        throws InterruptedException {
-        this.bundle = bundle;
-//        Log.i(LOG_TAG, "bundle to send = " + bundle);
-        
+    public synchronized int transmit(DTNBundle bundle, Set<DTNBundleNode> destinations)
+        /*throws InterruptedException */{
+//        this.bundle = bundle;
+////        Log.i(LOG_TAG, "bundle to send = " + bundle);
+//
         int numSent = 0;
+//        for (DTNBundleNode node : destinations) {
+////            Log.i(LOG_TAG, "sending to " + node);
+//            if (transmit(bundle, node)) numSent++;
+//        }
+//        return numSent;
+        List<String> nextHops = new ArrayList<>();
         for (DTNBundleNode node : destinations) {
-//            Log.i(LOG_TAG, "sending to " + node);
-            if (transmit(bundle, node)) numSent++;
-        }
-        return numSent;
-    }
-    
-    private static final long CONTACT_WINDOW_MILLIS = 10_000L;
-    
-    @Override
-    public boolean transmit(DTNBundle bundle, final DTNBundleNode destination)
-        throws InterruptedException {
-        sent = false;
-        
-        String claAddress = destination.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
-        assert claAddress != null;
-        
-        if (connectedNodes.contains(claAddress)) {
-            forward(bundle, claAddress);
-        } else {
-            connectionsClient.requestConnection(
-                cla2Daemon.getThisNodezEID().toString(),
-                claAddress,
-                connectionLifecycleCallback
-            ).addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception e) {
-                    Log.e(LOG_TAG, "connection request to " + destination + " failed", e);
-                }
-            });
+            String addr = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
+            nextHops.add(addr);
         }
         
-        Thread.sleep(CONTACT_WINDOW_MILLIS);
-        
-        Log.i(LOG_TAG, "transmit(): sent = " + sent);
-        return sent;
-    }
-    
-    private void forward(final DTNBundle bundle, String claAddress) {
         try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream out = new ObjectOutputStream(bos)) {
+             ObjectOutputStream out = new ObjectOutputStream(bos)) {
             out.writeObject(bundle);
             out.flush();
-    
+        
             ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
             Payload p = Payload.fromStream(bis);
-            
-            connectionsClient.sendPayload(claAddress, p);
+        
+            if (connectionsClient.sendPayload(nextHops, p).isSuccessful()) numSent++;
         } catch (IOException e) {
             Log.e(LOG_TAG, "error creating output stream", e);
         }
-//        try {
-//            final ParcelFileDescriptor[] payloadPipe = ParcelFileDescriptor.createPipe();
-//
-//            connectionsClient.sendPayload(
-//                claAddress,
-//                Payload.fromStream(payloadPipe[0]) // reading side
-//            ).addOnSuccessListener(new OnSuccessListener<Void>() {
-//                @Override
-//                public void onSuccess(Void aVoid) {
-//                    try (
-//                        ObjectOutputStream out = new ObjectOutputStream(
-//                            new ParcelFileDescriptor
-//                                .AutoCloseOutputStream(payloadPipe[1]) // writing side
-//                        )
-//                    ) {
-//                        out.writeObject(bundle);
-//                    } catch (IOException e) {
-//                        Log.e(LOG_TAG, "Could not create or write to output stream.", e);
-//                    }
-//                }
-//            });
-//        } catch (IOException e) {
-//            Log.e(LOG_TAG, "Could not create pipe to transfer data.", e);
-//        }
+        
+        return numSent;
     }
     
-    private void advertise(String serviceId) {
-        final String service = serviceId.equals(SOURCE_SERVICE) ? "SOURCE" : "SINK";
+//    private static final long CONTACT_WINDOW_MILLIS = 10_000L;
+    
+    @Override
+    public synchronized boolean transmit(DTNBundle bundle, /*final*/ DTNBundleNode destination)
+        /*throws InterruptedException */{
+//        sent = false;
+
+        String nextHop = destination.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
+        assert nextHop != null;
+//
+//        if (connectedNodes.contains(claAddress)) {
+//            forward(bundle, claAddress);
+//        } else {
+//            connectionsClient.requestConnection(
+//                cla2Daemon.getThisNodezEID().toString(),
+//                claAddress,
+//                connectionLifecycleCallback
+//            ).addOnFailureListener(new OnFailureListener() {
+//                @Override
+//                public void onFailure(@NonNull Exception e) {
+//                    Log.e(LOG_TAG, "connection request to " + destination + " failed", e);
+//                }
+//            });
+//        }
+//
+//        Thread.sleep(CONTACT_WINDOW_MILLIS);
+//
+//        Log.i(LOG_TAG, "transmit(): sent = " + sent);
+//        return sent;
+        boolean sent = false;
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             ObjectOutputStream out = new ObjectOutputStream(bos)) {
+            out.writeObject(bundle);
+            out.flush();
+        
+            ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+            Payload p = Payload.fromStream(bis);
+        
+            sent = connectionsClient.sendPayload(nextHop, p).isSuccessful();
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "error creating output stream", e);
+        }
+        return sent;
+    }
+    
+//    private void forward(final DTNBundle bundle, String claAddress) {
+//        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//        ObjectOutputStream out = new ObjectOutputStream(bos)) {
+//            out.writeObject(bundle);
+//            out.flush();
+//
+//            ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+//            Payload p = Payload.fromStream(bis);
+//
+//            connectionsClient.sendPayload(claAddress, p);
+//        } catch (IOException e) {
+//            Log.e(LOG_TAG, "error creating output stream", e);
+//        }
+////        try {
+////            final ParcelFileDescriptor[] payloadPipe = ParcelFileDescriptor.createPipe();
+////
+////            connectionsClient.sendPayload(
+////                claAddress,
+////                Payload.fromStream(payloadPipe[0]) // reading side
+////            ).addOnSuccessListener(new OnSuccessListener<Void>() {
+////                @Override
+////                public void onSuccess(Void aVoid) {
+////                    try (
+////                        ObjectOutputStream out = new ObjectOutputStream(
+////                            new ParcelFileDescriptor
+////                                .AutoCloseOutputStream(payloadPipe[1]) // writing side
+////                        )
+////                    ) {
+////                        out.writeObject(bundle);
+////                    } catch (IOException e) {
+////                        Log.e(LOG_TAG, "Could not create or write to output stream.", e);
+////                    }
+////                }
+////            });
+////        } catch (IOException e) {
+////            Log.e(LOG_TAG, "Could not create pipe to transfer data.", e);
+////        }
+//    }
+    
+    private void advertise(/*String serviceId*/) {
+//        final String service = serviceId.equals(SOURCE_SERVICE) ? "SOURCE" : "SINK";
         
         connectionsClient.startAdvertising(
             cla2Daemon.getThisNodezEID().toString(),
-            serviceId,
+            DTN_SERVICE_ID,
             connectionLifecycleCallback,
             ADVERTISING_OPTIONS
         ).addOnFailureListener(new OnFailureListener() {
@@ -342,19 +395,19 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
             public void onFailure(@NonNull Exception e) {
                 Log.e(LOG_TAG, "Advertising failed.", e);
             }
-        }).addOnSuccessListener(new OnSuccessListener<Void>() {
+        })/*.addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 Log.i(LOG_TAG, "Advertising " + service + " service");
             }
-        });
+        })*/;
     }
     
-    private void discover(String serviceId) {
-        final String service = serviceId.equals(SOURCE_SERVICE) ? "SOURCE" : "SINK";
+    private void discover(/*String serviceId*/) {
+//        final String service = serviceId.equals(SOURCE_SERVICE) ? "SOURCE" : "SINK";
         
         connectionsClient.startDiscovery(
-            serviceId,
+            DTN_SERVICE_ID,
             endpointDiscoveryCallback,
             DISCOVERY_OPTIONS
         ).addOnFailureListener(new OnFailureListener() {
@@ -362,64 +415,77 @@ final class RadNearby implements Daemon2CLA, Daemon2PeerDiscoverer {
             public void onFailure(@NonNull Exception e) {
                 Log.e(LOG_TAG, "Discovery failed.", e);
             }
-        }).addOnSuccessListener(new OnSuccessListener<Void>() {
+        })/*.addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 Log.i(LOG_TAG, "Discovering " + service + " nodes");
             }
-        });
+        })*/;
     }
     
-    private ServiceMode mode;
+//    private ServiceMode mode;
+    
+//    @Override
+//    public void start(ServiceMode serviceMode) {
+//        mode = serviceMode;
+//
+//        switch (serviceMode) {
+//            case SOURCE: advertise(SOURCE_SERVICE); discover(SINK_SERVICE); break;
+//            case SINK: advertise(SINK_SERVICE); discover(SOURCE_SERVICE); break;
+//            default: break;
+//        }
+//    }
     
     @Override
-    public void start(ServiceMode serviceMode) {
-        mode = serviceMode;
+    public boolean start() {
+        connectedNodes.clear();
+        discoveredNodes.clear();
+        peerDiscoverer2Daemon.notifyPeerListChanged();
         
-        switch (serviceMode) {
-            case SOURCE: advertise(SOURCE_SERVICE); discover(SINK_SERVICE); break;
-            case SINK: advertise(SINK_SERVICE); discover(SOURCE_SERVICE); break;
-            default: break;
-        }
+        advertise();
+        discover();
+        
+        return true;
     }
     
     @Override
-    public void stop() {
+    public boolean stop() {
         connectedNodes.clear();
         discoveredNodes.clear();
         peerDiscoverer2Daemon.notifyPeerListChanged();
     
         connectionsClient.stopAdvertising();
         connectionsClient.stopDiscovery();
-    
         connectionsClient.stopAllEndpoints();
+        
+        return true;
     }
     
     private Set<DTNBundleNode> discoveredNodes;
-    private Set<String> connectedNodes;
+    private Set<DTNBundleNode> connectedNodes;
     
     @Override
     public synchronized Set<DTNBundleNode> getPeerList() {
-        return Collections.unmodifiableSet(discoveredNodes);
+        return Collections.unmodifiableSet(connectedNodes);
     }
 
-//    private void markAsUpContact(String claAddress) {
-//        for (DTNBundleNode node : discoveredContacts) {
-//            String address = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
-//            if (claAddress.equals(address)) {
-//                connectedContacts.add(node);
-//                break;
-//            }
-//        }
-//    }
-//
-//    private void markAsDownContact(String claAddress) {
-//        for (DTNBundleNode node : connectedContacts) {
-//            String address = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
-//            if (claAddress.equals(address)) {
-//                connectedContacts.remove(node);
-//                break;
-//            }
-//        }
-//    }
+    private void markAsUpContact(String claAddress) {
+        for (DTNBundleNode node : discoveredNodes) {
+            String address = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
+            if (claAddress.equals(address)) {
+                connectedNodes.add(node);
+                break;
+            }
+        }
+    }
+
+    private void markAsDownContact(String claAddress) {
+        for (DTNBundleNode node : connectedNodes) {
+            String address = node.CLAAddresses.get(DTNBundleNode.CLAKey.NEARBY);
+            if (claAddress.equals(address)) {
+                connectedNodes.remove(node);
+                break;
+            }
+        }
+    }
 }

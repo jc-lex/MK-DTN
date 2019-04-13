@@ -28,7 +28,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.peerdiscoverer.Daemon2PeerDiscoverer;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
 import java.io.PrintWriter;
@@ -485,7 +484,7 @@ public class MKDTNService extends Service implements DTNUI {
             lifetime = PrimaryBlock.LifeTime.FIVE_HOURS.toString();
             maxFragmentPayloadSize = Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[0];
             enableManualMode = false; // auto mode
-            transmissionMode = Daemon2PeerDiscoverer.ServiceMode.SOURCE.toString();
+//            transmissionMode = Daemon2PeerDiscoverer.ServiceMode.SOURCE.toString();
         }
     
         @NonNull

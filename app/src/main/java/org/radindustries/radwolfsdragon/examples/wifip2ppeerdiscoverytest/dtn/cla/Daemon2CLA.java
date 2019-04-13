@@ -7,7 +7,7 @@ import java.util.Set;
 
 public interface Daemon2CLA {
     int transmit(DTNBundle bundle, Set<DTNBundleNode> destinations)
-        throws InterruptedException;
+        /*throws InterruptedException*/;
     boolean transmit(DTNBundle bundle, DTNBundleNode destination)
-        throws InterruptedException;
+        /*throws InterruptedException*/;
 }

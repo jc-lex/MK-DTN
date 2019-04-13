@@ -102,7 +102,7 @@ public final class BWDTN {
             radDaemon.setNECTARRoutingTable(getNECTARRoutingTable(context));
             radDaemon.setPRoPHETRoutingTable(getPRoPHETRoutingTable(context));
             radDaemon.setManagables(new Daemon2Managable[]{
-                /*radNearby, */radPRoPHETRoutingTable
+                radNearby, radPRoPHETRoutingTable
             });
         }
     }

@@ -74,7 +74,7 @@ final class RadDaemon
 //    private static final DTNEndpointID BUNDLE_NODE_EID = makeEID();
     
     private Daemon2Router.RoutingProtocol currentProtocol;
-    private Thread bundleTransmitter;
+    private ExecutorService bundleTransmitter;
     private Thread bundleAger;
     private ExecutorService bundleProcessor;
     private RadWallClock wallClock;
@@ -127,19 +127,25 @@ final class RadDaemon
     }
     
     @Override
-    public void transmit(DTNBundle bundle) {
+    public synchronized void transmit(DTNBundle bundle) {
         transmit(bundle, currentProtocol);
     }
     
     @Override
-    public void transmit(DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol) {
+    public synchronized void transmit(
+        DTNBundle bundle, Daemon2Router.RoutingProtocol routingProtocol
+    ) {
         currentProtocol = routingProtocol;
-    
-        int size = getPrefMaxFragmentSize();
-        DTNBundle[] fragments = fragmentManager.fragment(bundle, size);
+        
+        DTNBundle[] fragments = fragmentManager.fragment(bundle, getPrefMaxFragmentSize());
         
         MiBStorage.OBQ.addAll(Arrays.asList(fragments));
         MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+        
+        synchronized (MiBStorage.OBQ) {
+            for (DTNBundle fragment : MiBStorage.OBQ)
+                bundleTransmitter.submit(new TransmitOutboundBundleTask(fragment));
+        }
     }
     
     private int getPrefMaxFragmentSize() {
@@ -159,182 +165,230 @@ final class RadDaemon
         return size;
     }
     
-    private abstract class TransmitOutboundBundlesTask implements Runnable {
-        Set<DTNBundleNode> nextHops;
-        TransmitOutboundBundlesTask() {
-            nextHops = new HashSet<>();
-        }
-        
-        static final long ONE_MINUTE_MILLIS = 60_000L;
-        
-        void srcPhase(long onCycleDurationMillis, long offCycleDurationMillis)
-            throws InterruptedException {
-            Log.i(LOG_TAG, "entering ON cycle");
-            doSrcMode(onCycleDurationMillis);
-            Log.i(LOG_TAG, "leaving ON cycle");
-    
-            doSleep(offCycleDurationMillis);
-        }
-        
-        void sinkPhase(long onCycleDurationMillis, long offCycleDurationMillis)
-            throws InterruptedException {
-            Log.i(LOG_TAG, "entering ON cycle");
-            doSinkMode(onCycleDurationMillis);
-            Log.i(LOG_TAG, "leaving ON cycle");
-            
-            doSleep(offCycleDurationMillis);
-        }
-        
-        private void doSleep(long offCycleDurationMillis) throws InterruptedException {
-            Log.i(LOG_TAG, "entering OFF cycle");
-            Thread.sleep(offCycleDurationMillis);
-            Log.i(LOG_TAG, "leaving OFF cycle");
-        }
-        
-        private void doSrcMode(long onCycleDurationMillis) throws InterruptedException {
-            if (insufficientBatteryPower()) return;
-            
-            Log.i(LOG_TAG, "entering SOURCE mode");
-            discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
-            long stopTime = System.currentTimeMillis() + onCycleDurationMillis;
-            int head = 0;
-    
-            while (System.currentTimeMillis() < stopTime) {
-                // get what to send
-                DTNBundle bundle = null;
-                do {
-//                    if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty())
-//                        bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
-//                    bundle = MiBStorage.next();
-                    if (!MiBStorage.OBQ.isEmpty()) {
-                        bundle = MiBStorage.OBQ.remove(head);
-                        MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
-                    }
-                } while (bundle == null /*DTNUtils.isValid(bundle)*/ &&
-                    System.currentTimeMillis() < stopTime);
-                if (System.currentTimeMillis() >= stopTime) break;
-                
-                assert bundle != null;
-                
-                // get who to send to
-                nextHops.clear();
-                do {
-                    nextHops.addAll(
-                        router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
-                    );
-                } while (nextHops.isEmpty() && System.currentTimeMillis() < stopTime);
-                if (System.currentTimeMillis() >= stopTime) break;
-                
-                // update bundle details
-                bundle.primaryBlock.custodianEID = getThisNodezEID();
-                setSendingTime(bundle);
-
-                // send bundle
-                if (cla.transmit(bundle, nextHops) > 0) {
-//                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(head, bundle);
-//                    MiBStorage.OBQ.remove(bundle);
+//    private abstract class TransmitOutboundBundlesTask implements Runnable {
+//        Set<DTNBundleNode> nextHops;
+//        TransmitOutboundBundlesTask() {
+//            nextHops = new HashSet<>();
+//        }
+//
+//        static final long ONE_MINUTE_MILLIS = 60_000L;
+//
+//        void srcPhase(long onCycleDurationMillis, long offCycleDurationMillis)
+//            throws InterruptedException {
+//            Log.i(LOG_TAG, "entering ON cycle");
+//            doSrcMode(onCycleDurationMillis);
+//            Log.i(LOG_TAG, "leaving ON cycle");
+//
+//            doSleep(offCycleDurationMillis);
+//        }
+//
+//        void sinkPhase(long onCycleDurationMillis, long offCycleDurationMillis)
+//            throws InterruptedException {
+//            Log.i(LOG_TAG, "entering ON cycle");
+//            doSinkMode(onCycleDurationMillis);
+//            Log.i(LOG_TAG, "leaving ON cycle");
+//
+//            doSleep(offCycleDurationMillis);
+//        }
+//
+//        private void doSleep(long offCycleDurationMillis) throws InterruptedException {
+//            Log.i(LOG_TAG, "entering OFF cycle");
+//            Thread.sleep(offCycleDurationMillis);
+//            Log.i(LOG_TAG, "leaving OFF cycle");
+//        }
+//
+//        private void doSrcMode(long onCycleDurationMillis) throws InterruptedException {
+//            if (insufficientBatteryPower()) return;
+//
+//            Log.i(LOG_TAG, "entering SOURCE mode");
+//            discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SOURCE);
+//            long stopTime = System.currentTimeMillis() + onCycleDurationMillis;
+//            int head = 0;
+//
+//            while (System.currentTimeMillis() < stopTime) {
+//                // get what to send
+//                DTNBundle bundle = null;
+//                do {
+////                    if (!DummyStorage.OUTBOUND_BUNDLES_QUEUE.isEmpty())
+////                        bundle = DummyStorage.OUTBOUND_BUNDLES_QUEUE.remove(head);
+////                    bundle = MiBStorage.next();
+//                    if (!MiBStorage.OBQ.isEmpty()) {
+//                        bundle = MiBStorage.OBQ.remove(head);
+//                        MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+//                    }
+//                } while (bundle == null /*DTNUtils.isValid(bundle)*/ &&
+//                    System.currentTimeMillis() < stopTime);
+//                if (System.currentTimeMillis() >= stopTime) break;
+//
+//                assert bundle != null;
+//
+//                // get who to send to
+//                nextHops.clear();
+//                do {
+//                    nextHops.addAll(
+//                        router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
+//                    );
+//                } while (nextHops.isEmpty() && System.currentTimeMillis() < stopTime);
+//                if (System.currentTimeMillis() >= stopTime) break;
+//
+//                // update bundle details
+//                bundle.primaryBlock.custodianEID = getThisNodezEID();
+//                setSendingTime(bundle);
+//
+//                // send bundle
+//                if (cla.transmit(bundle, nextHops) > 0) {
+////                    DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(head, bundle);
+////                    MiBStorage.OBQ.remove(bundle);
+////                    MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+//
+//                    MiBStorage.TBQ.add(bundle);
+//                    MiBStorage.writeQueue(context, MiBStorage.TRANSMITTED_BUNDLES_QUEUE);
+//                } else {
+////                    DummyStorage.TRANSMITTED_BUNDLES_QUEUE.add(bundle);
+//                    MiBStorage.OBQ.add(/*head, */bundle);
 //                    MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
-                    
-                    MiBStorage.TBQ.add(bundle);
-                    MiBStorage.writeQueue(context, MiBStorage.TRANSMITTED_BUNDLES_QUEUE);
-                } else {
-//                    DummyStorage.TRANSMITTED_BUNDLES_QUEUE.add(bundle);
-                    MiBStorage.OBQ.add(/*head, */bundle);
-                    MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
-                }
-            }
+//                }
+//            }
+//
+//            Log.i(LOG_TAG, "leaving SOURCE mode");
+//            discoverer.stop();
+//        }
+//
+//        private void doSinkMode(long onCycleDurationMillis) throws InterruptedException {
+//            if (insufficientBatteryPower() && insufficientStorageSpace()) return;
+//
+//            Log.i(LOG_TAG, "entering SINK mode");
+//            discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SINK);
+//
+//            Thread.sleep(onCycleDurationMillis);
+//
+//            Log.i(LOG_TAG, "leaving SINK mode");
+//            discoverer.stop();
+//        }
+//
+//        private void setSendingTime(DTNBundle bundle) {
+////            DTNTimeInstant bundleCreationTimestamp
+////                = bundle.primaryBlock.bundleID.creationTimestamp;
+//
+//            CanonicalBlock ageCBlock
+//                = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
+//            assert ageCBlock != null;
+//
+//            AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
+//
+////            if (isFromUs(bundle)) { // initial conditions from bundle's src
+////                ageBlock.agePrime = DTNTimeDuration.ZERO;
+////                ageBlock.T = DTNTimeInstant.copyOf(bundleCreationTimestamp);
+////            }
+//            // now == sendingTimestamp
+//            DTNUtils.doBundleAging(ageBlock, getCurrentTime());
+//        }
+//    }
+//
+//    private class AutomaticTransmitTask extends TransmitOutboundBundlesTask {
+//        private AutomaticTransmitTask() {
+//            super();
+//        }
+//        private static final long ON_CYCLE_DURATION_MILLIS = 3 * ONE_MINUTE_MILLIS;
+//        private static final long OFF_CYCLE_DURATION_MILLIS = 4 * ONE_MINUTE_MILLIS;
+//
+//        @Override
+//        public void run() {
+//            Log.i(LOG_TAG, "transmission AUTO");
+//            Log.i(LOG_TAG, "transmission started");
+//            try {
+//                while (!Thread.interrupted()) {
+//                    srcPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
+//                    sinkPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
+//                }
+//            } catch (InterruptedException e) {
+////                Log.e(LOG_TAG, "transmission interrupted", e);
+//                Thread.currentThread().interrupt();
+//                discoverer.stop();
+//            }
+//            Log.i(LOG_TAG, "transmission stopped");
+//        }
+//    }
+//
+//    private class ManualTransmitTask extends TransmitOutboundBundlesTask {
+//        private Daemon2PeerDiscoverer.ServiceMode mode;
+//        private ManualTransmitTask(Daemon2PeerDiscoverer.ServiceMode mode) {
+//            super();
+//            this.mode = mode;
+//        }
+//        private static final long ON_CYCLE_DURATION_MILLIS = 10 * ONE_MINUTE_MILLIS;
+//        private static final long OFF_CYCLE_DURATION_MILLIS = 5 * ONE_MINUTE_MILLIS;
+//
+//        @Override
+//        public void run() {
+//            Log.i(LOG_TAG, "transmission MANUAL");
+//            Log.i(LOG_TAG, "transmission started");
+//            try {
+//                while (!Thread.interrupted()) {
+//                    switch (mode) {
+//                        case SOURCE:
+//                            srcPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
+//                            break;
+//                        case SINK:
+//                            sinkPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
+//                            break;
+//                        default: break;
+//                    }
+//                }
+//            } catch (InterruptedException e) {
+////                Log.e(LOG_TAG, "transmission interrupted", e);
+//                Thread.currentThread().interrupt();
+//                discoverer.stop();
+//            }
+//            Log.i(LOG_TAG, "transmission stopped");
+//        }
+//    }
     
-            Log.i(LOG_TAG, "leaving SOURCE mode");
-            discoverer.stop();
+    private class TransmitOutboundBundleTask implements Runnable {
+        private Set<DTNBundleNode> nextHops;
+        private DTNBundle bundle;
+        TransmitOutboundBundleTask(DTNBundle bundle) {
+            nextHops = new HashSet<>();
+            this.bundle = bundle;
         }
         
-        private void doSinkMode(long onCycleDurationMillis) throws InterruptedException {
-            if (insufficientBatteryPower() && insufficientStorageSpace()) return;
-            
-            Log.i(LOG_TAG, "entering SINK mode");
-            discoverer.start(Daemon2PeerDiscoverer.ServiceMode.SINK);
+        @Override
+        public void run() {
+            nextHops.addAll(
+                router.chooseNextHop(discoverer.getPeerList(), currentProtocol, bundle)
+            );
     
-            Thread.sleep(onCycleDurationMillis);
+            // update bundle details
+            bundle.primaryBlock.custodianEID = getThisNodezEID();
+            setSendingTime(bundle);
     
-            Log.i(LOG_TAG, "leaving SINK mode");
-            discoverer.stop();
+            // send bundle
+            if (cla.transmit(bundle, nextHops) > 0) {
+                MiBStorage.TBQ.add(bundle);
+                MiBStorage.OBQ.remove(bundle);
+//                MiBStorage.writeQueue(context, MiBStorage.TRANSMITTED_BUNDLES_QUEUE);
+            } /*else {
+                MiBStorage.OBQ.add(*//*head, *//*bundle);
+                MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+            }*/
         }
-        
+    
         private void setSendingTime(DTNBundle bundle) {
 //            DTNTimeInstant bundleCreationTimestamp
 //                = bundle.primaryBlock.bundleID.creationTimestamp;
-    
+        
             CanonicalBlock ageCBlock
                 = bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
             assert ageCBlock != null;
-    
+        
             AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-    
+
 //            if (isFromUs(bundle)) { // initial conditions from bundle's src
 //                ageBlock.agePrime = DTNTimeDuration.ZERO;
 //                ageBlock.T = DTNTimeInstant.copyOf(bundleCreationTimestamp);
 //            }
             // now == sendingTimestamp
             DTNUtils.doBundleAging(ageBlock, getCurrentTime());
-        }
-    }
-    
-    private class AutomaticTransmitTask extends TransmitOutboundBundlesTask {
-        private AutomaticTransmitTask() {
-            super();
-        }
-        private static final long ON_CYCLE_DURATION_MILLIS = 3 * ONE_MINUTE_MILLIS;
-        private static final long OFF_CYCLE_DURATION_MILLIS = 4 * ONE_MINUTE_MILLIS;
-        
-        @Override
-        public void run() {
-            Log.i(LOG_TAG, "transmission AUTO");
-            Log.i(LOG_TAG, "transmission started");
-            try {
-                while (!Thread.interrupted()) {
-                    srcPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
-                    sinkPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
-                }
-            } catch (InterruptedException e) {
-//                Log.e(LOG_TAG, "transmission interrupted", e);
-                Thread.currentThread().interrupt();
-                discoverer.stop();
-            }
-            Log.i(LOG_TAG, "transmission stopped");
-        }
-    }
-    
-    private class ManualTransmitTask extends TransmitOutboundBundlesTask {
-        private Daemon2PeerDiscoverer.ServiceMode mode;
-        private ManualTransmitTask(Daemon2PeerDiscoverer.ServiceMode mode) {
-            super();
-            this.mode = mode;
-        }
-        private static final long ON_CYCLE_DURATION_MILLIS = 10 * ONE_MINUTE_MILLIS;
-        private static final long OFF_CYCLE_DURATION_MILLIS = 5 * ONE_MINUTE_MILLIS;
-    
-        @Override
-        public void run() {
-            Log.i(LOG_TAG, "transmission MANUAL");
-            Log.i(LOG_TAG, "transmission started");
-            try {
-                while (!Thread.interrupted()) {
-                    switch (mode) {
-                        case SOURCE:
-                            srcPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
-                            break;
-                        case SINK:
-                            sinkPhase(ON_CYCLE_DURATION_MILLIS, OFF_CYCLE_DURATION_MILLIS);
-                            break;
-                        default: break;
-                    }
-                }
-            } catch (InterruptedException e) {
-//                Log.e(LOG_TAG, "transmission interrupted", e);
-                Thread.currentThread().interrupt();
-                discoverer.stop();
-            }
-            Log.i(LOG_TAG, "transmission stopped");
         }
     }
     
@@ -608,34 +662,37 @@ final class RadDaemon
     private boolean startExecutors() {
         boolean started = true;
         if (bundleTransmitter == null) {
-            if (MKDTNService.configFileDoesNotExist(context)) {
-                MKDTNService.writeDefaultConfig(context);
-            }
-            MKDTNService.DTNConfig config = MKDTNService.getConfig(context);
-    
-            if (config.enableManualMode) {
-                Daemon2PeerDiscoverer.ServiceMode transmissionMode
-                    = Daemon2PeerDiscoverer.ServiceMode.valueOf(config.transmissionMode);
-        
-                bundleTransmitter = new Thread(new ManualTransmitTask(transmissionMode));
-            } else {
-                bundleTransmitter = new Thread(new AutomaticTransmitTask());
-            }
-            bundleTransmitter.start();
-            bundleTransmitter.setName("Bundle Transmission Task");
-            started = bundleTransmitter.isAlive();
+//            if (MKDTNService.configFileDoesNotExist(context)) {
+//                MKDTNService.writeDefaultConfig(context);
+//            }
+//            MKDTNService.DTNConfig config = MKDTNService.getConfig(context);
+//
+//            if (config.enableManualMode) {
+//                Daemon2PeerDiscoverer.ServiceMode transmissionMode
+//                    = Daemon2PeerDiscoverer.ServiceMode.valueOf(config.transmissionMode);
+//
+//                bundleTransmitter = new Thread(new ManualTransmitTask(transmissionMode));
+//            } else {
+//                bundleTransmitter = new Thread(new AutomaticTransmitTask());
+//            }
+
+//            bundleTransmitter = new Thread(new TransmitTask());
+//            bundleTransmitter.start();
+//            bundleTransmitter.setName("Bundle Transmission Task");
+//            started = bundleTransmitter.isAlive();
+            bundleTransmitter = Executors.newSingleThreadExecutor();
         }
         
         if (bundleProcessor == null) {
-//            bundleProcessor = Executors.newCachedThreadPool();
-            bundleProcessor = Executors.newSingleThreadExecutor();
+            bundleProcessor = Executors.newCachedThreadPool();
+//            bundleProcessor = Executors.newSingleThreadExecutor();
         }
         
         if (bundleAger == null) {
             bundleAger = new Thread(new BundleAgingTask());
             bundleAger.setName("Bundle Aging Task");
             bundleAger.start();
-            started &= bundleAger.isAlive();
+            started = bundleAger.isAlive();
         }
         
         return started;
@@ -651,28 +708,36 @@ final class RadDaemon
     
     private boolean stopExecutors() {
         boolean stopped = true;
+        int secs = 5;
         if (bundleTransmitter != null) {
-            bundleTransmitter.interrupt();
-            stopped = bundleTransmitter.isInterrupted();
+//            bundleTransmitter.interrupt();
+//            stopped = bundleTransmitter.isInterrupted();
+            bundleTransmitter.shutdown();
+            
+            try {
+                stopped = bundleTransmitter.awaitTermination(secs, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Log.e(LOG_TAG, "transmitter shutdown interrupted", e);
+            }
             bundleTransmitter = null;
+        }
+    
+        if (bundleProcessor != null) {
+            bundleProcessor.shutdown();
+        
+            try {
+                stopped &= bundleProcessor.awaitTermination(secs, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Log.e(LOG_TAG, "processor shutdown interrupted", e);
+            }
+        
+            bundleProcessor = null;
         }
         
         if (bundleAger != null) {
             bundleAger.interrupt();
             stopped &= bundleAger.isInterrupted();
             bundleAger = null;
-        }
-        
-        if (bundleProcessor != null) {
-            bundleProcessor.shutdown();
-            
-            try {
-                stopped &= bundleProcessor.awaitTermination(5L, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                stopped = false;
-            }
-            
-            bundleProcessor = null;
         }
         
         return stopped;

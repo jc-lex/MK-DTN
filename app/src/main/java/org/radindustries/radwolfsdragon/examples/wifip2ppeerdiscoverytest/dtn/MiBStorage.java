@@ -39,10 +39,10 @@ final class MiBStorage {
     static final List<DTNBundle> TBQ = Collections.synchronizedList(new LinkedList<DTNBundle>());
     static final List<DTNBundle> OBQ = Collections.synchronizedList(new LinkedList<DTNBundle>());
     
-    static final int OUTBOUND_BUNDLES_QUEUE = 0;
-    static final int DELIVERED_FRAGMENTS_QUEUE = 1;
-    static final int DELIVERED_BUNDLES_QUEUE = 2;
-    static final int TRANSMITTED_BUNDLES_QUEUE = 3;
+    private static final int OUTBOUND_BUNDLES_QUEUE = 0;
+    private static final int DELIVERED_FRAGMENTS_QUEUE = 1;
+    private static final int DELIVERED_BUNDLES_QUEUE = 2;
+    private static final int TRANSMITTED_BUNDLES_QUEUE = 3;
     
     private MiBStorage() {}
     
@@ -56,7 +56,7 @@ final class MiBStorage {
         try (Scanner scanner = new Scanner(context.openFileInput(NODE_EID_DB))){
             return scanner.nextLine();
         } catch (Exception e) {
-            Log.e(LOG_TAG, "could not read from " + NODE_EID_DB, e);
+            Log.e(LOG_TAG, "could not read from " + NODE_EID_DB);
             return makeEID().toString();
         }
     }
@@ -71,7 +71,7 @@ final class MiBStorage {
                  = new PrintWriter(context.openFileOutput(NODE_EID_DB, Context.MODE_PRIVATE))) {
             writer.println(eid);
         } catch (FileNotFoundException e) {
-            Log.e(LOG_TAG, "could not write to " + NODE_EID_DB, e);
+            Log.e(LOG_TAG, "could not write to " + NODE_EID_DB);
         }
     }
     
@@ -89,7 +89,7 @@ final class MiBStorage {
         writeQueue(context, TRANSMITTED_BUNDLES_QUEUE);
     }
     
-    static synchronized void writeQueue(Context c, int q) {
+    private static synchronized void writeQueue(Context c, int q) {
         List<DTNBundle> queue; String fileName;
         switch (q) {
             case OUTBOUND_BUNDLES_QUEUE: queue = OBQ; fileName = OUTBOUND_BUNDLES_DB; break;
@@ -104,7 +104,7 @@ final class MiBStorage {
             DTNBundle[] data = queue.toArray(new DTNBundle[0]);
             out.writeObject(data);
         } catch (Exception e) {
-            Log.e(LOG_TAG, "could not write to " + fileName, e);
+            Log.e(LOG_TAG, "could not write to " + fileName);
         }
     }
     
@@ -123,7 +123,7 @@ final class MiBStorage {
             DTNBundle[] data = (DTNBundle[]) in.readObject();
             queue.addAll(Arrays.asList(data));
         } catch (Exception e) {
-            Log.e(LOG_TAG, "could not read from " + fileName, e);
+            Log.e(LOG_TAG, "could not read from " + fileName);
         }
     }
 }

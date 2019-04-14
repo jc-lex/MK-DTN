@@ -10,7 +10,6 @@ public final class DTNBundle implements Serializable {
     public interface CBlockNumber {
         int PAYLOAD = 0;
         int ADMIN_RECORD = 1;
-        int AGE = 2;
         int NECTAR_ROUTING_INFO = 3;
         int PROPHET_ROUTING_INFO = 4;
     }
@@ -23,6 +22,8 @@ public final class DTNBundle implements Serializable {
     
     @SuppressLint("UseSparseArrays")
     public HashMap<Integer, CanonicalBlock> canonicalBlocks = new HashMap<>();
+    
+    public long timeOfDelivery;
     
     @Override
     public String toString() {

@@ -40,7 +40,7 @@ public class RouterDBHandlerTest {
     public void setUp() {
         testNI = new NeighbourhoodIndex();
         testNI.setNodeEID(TEST_EXISTING_EID);
-        testNI.setFirstEncounterTimestamp(Long.toString(System.currentTimeMillis()));
+        testNI.setFirstEncounterTimestamp(System.currentTimeMillis());
         testNI.setMeetingCount(1);
 
         repo.insert(testNI);

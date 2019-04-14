@@ -25,13 +25,18 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.BW
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNClient;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNTextMessenger;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
+import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNTextMessage;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.manager.DTNManager;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
 
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 
@@ -230,7 +235,7 @@ public class MKDTNService extends Service implements DTNUI {
             Bundle data = new Bundle();
             Message messages = Message.obtain(msg.getTarget(), MSG_GET_RECEIVED_DTN_MESSAGES);
             data.putSerializable(MESSAGES_KEY,
-                (ArrayList) dtnTextMessenger.getDeliveredTextMessages());
+                dtnTextMessenger.getDeliveredTextMessages().toArray(new DTNTextMessage[0]));
             messages.setData(data);
             if (theirMessengers.get(msg.arg1) != null)
                 theirMessengers.get(msg.arg1).send(messages);
@@ -267,7 +272,7 @@ public class MKDTNService extends Service implements DTNUI {
             if (theirMessengers.get(msg.arg1) != null)
                 theirMessengers.get(msg.arg1).send(peerList);
         }
-        private static final int MAX_TXT_SIZE = 34;
+        
         private void sendOutboundMessage(Bundle messageBundle) {
             String recipient = messageBundle.getString(RECIPIENT_KEY,
                 context.getString(R.string.mkdtn_null_endpoint_id));
@@ -301,13 +306,12 @@ public class MKDTNService extends Service implements DTNUI {
                     context.getString(R.string.pref_default_lifetime))
             );
             
-            dtnClient.send(
-                text.getBytes(),
-                recipient,
-                priority,
-                lifeTime,
-                protocol
-            );
+            dtnClient.send(text.getBytes(), recipient, priority, lifeTime, protocol);
+    
+            String log = new Date() + " |> sent UM to " + recipient + " with " + protocol +
+                " and " + lifeTime + "\n";
+            writeSentLogs(context, log);
+            Log.i(LOG_TAG, log);
         }
     }
     
@@ -368,6 +372,9 @@ public class MKDTNService extends Service implements DTNUI {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         dtnManager.start();
+        texter = new Thread(new SendTextsTask(this));
+        texter.setName("Texting Task");
+        texter.start();
         return Service.START_STICKY;
     }
     
@@ -379,6 +386,8 @@ public class MKDTNService extends Service implements DTNUI {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        texter.interrupt();
+        texter = null;
         dtnManager.stop();
     }
     
@@ -403,18 +412,13 @@ public class MKDTNService extends Service implements DTNUI {
     private static final String MK_DTN_CONFIGURATION_FILE = "mkdtn.conf";
     
     public synchronized static boolean configFileDoesNotExist(@NonNull Context context) {
-        if (context.fileList().length == 0) {
-//            Log.e(LOG_TAG, "no config file");
-            return true;
-        } else {
+        if (context.fileList().length != 0) {
             for (String fileName : context.fileList()) {
                 if (fileName.equals(MK_DTN_CONFIGURATION_FILE)) {
-//                    Log.i(LOG_TAG, "config file exists");
                     return false;
                 }
             }
         }
-//        Log.e(LOG_TAG, "no config file");
         return true;
     }
     
@@ -430,7 +434,6 @@ public class MKDTNService extends Service implements DTNUI {
             writer.println(defaultConfig.maxFragmentPayloadSize);
             writer.println(defaultConfig.enableManualMode);
             writer.println(defaultConfig.transmissionMode);
-//            Log.i(LOG_TAG, "default config = " + defaultConfig);
         } catch (Exception e) {
             Log.e(LOG_TAG, "Could not write default config", e);
         }
@@ -447,7 +450,6 @@ public class MKDTNService extends Service implements DTNUI {
             writer.println(updatedConfig.maxFragmentPayloadSize);
             writer.println(updatedConfig.enableManualMode);
             writer.println(updatedConfig.transmissionMode);
-//            Log.i(LOG_TAG, "updated config = " + updatedConfig);
         } catch (Exception e) {
             Log.e(LOG_TAG, "Could not update config", e);
         }
@@ -462,7 +464,6 @@ public class MKDTNService extends Service implements DTNUI {
             config.maxFragmentPayloadSize = scanner.nextLine();
             config.enableManualMode = Boolean.parseBoolean(scanner.nextLine());
             config.transmissionMode = scanner.nextLine();
-//            Log.i(LOG_TAG, "read config = " + config);
             return config;
         } catch (Exception e) {
             Log.e(LOG_TAG, "Could not read config", e);
@@ -484,7 +485,7 @@ public class MKDTNService extends Service implements DTNUI {
             lifetime = PrimaryBlock.LifeTime.FIVE_HOURS.toString();
             maxFragmentPayloadSize = Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[0];
             enableManualMode = false; // auto mode
-//            transmissionMode = Daemon2PeerDiscoverer.ServiceMode.SOURCE.toString();
+            transmissionMode = "SOURCE";
         }
     
         @NonNull
@@ -498,6 +499,103 @@ public class MKDTNService extends Service implements DTNUI {
                 ",enableManualMode=" + enableManualMode +
                 ",transmissionMode=" + transmissionMode +
                 '}';
+        }
+    }
+    
+    private Thread texter;
+    
+    private static final String[] RECEPIENTS = {
+        "dtn:cd99", // Brian Kakembo
+        "dtn:b91a", // Job Amanya
+        "dtn:cfce", // Methodius Uwizera
+        "dtn:f569", // Phoebe Katwesigye <3 (^ * ^) <3
+        "dtn:9113", // Allan Katamba
+        "dtn:e194", // Joel Tibabwetiza
+        "dtn:421f", // Claire Nakakeeto
+        "dtn:85ce", // William Kibirango
+        "dtn:ccc0", // Brian Musiime
+        "dtn:5e93", // Usama Gajjule
+        "dtn:4757", // Deogratius Okedi
+        "dtn:cee9", // Elton Jim Solomon Muwebwa
+        "dtn:c9aa", // Olivia Nakayima
+        "dtn:cc8d", // Gorret Namulondo
+        "dtn:8e81", // Sulaiman Kagumire
+        "dtn:2b2a", // Maximo Mugisha
+        "dtn:34cb"  // Truth Kabano
+    };
+    
+    private static final int MAX_TXT_SIZE = 501;
+    private static final String SENT_MSG_LOG_FILE = "sent.txt";
+    private synchronized static void writeSentLogs(@NonNull Context context, String msg) {
+        File file = new File(context.getExternalFilesDir(null),
+            dtnClient.getID() + "-" + SENT_MSG_LOG_FILE);
+        try (DataOutputStream out
+                 = new DataOutputStream(new FileOutputStream(file, true))) {
+            out.writeChars(msg);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "error writing to " + SENT_MSG_LOG_FILE, e);
+        }
+    }
+    
+    private class SendTextsTask implements Runnable {
+        private static final int THRESHOLD = 5;
+    
+        Context context;
+        SendTextsTask(Context context) {
+            this.context = context;
+        }
+    
+        @Override
+        public void run() {
+            Log.i(LOG_TAG, "making texts to send");
+            try {
+                while (!Thread.interrupted()) {
+                    int choiceOfDest = (int) (Math.random() * RECEPIENTS.length);
+                    String recipient = RECEPIENTS[choiceOfDest];
+                    if (recipient.equals(dtnClient.getID())) continue;
+    
+                    int choiceOfTxt = (int) (Math.random() * 10);
+                    String text;
+                    if (choiceOfTxt < THRESHOLD) {
+                        StringBuilder textBuilder = new StringBuilder("LT: ");
+                        for (int i = 0; i < MAX_TXT_SIZE; i++) {
+                            textBuilder.append(
+                                context.getString(R.string.mkdtn_long_hello_message)
+                            );
+                        }
+                        text = textBuilder.toString();
+                    } else {
+                        text = "ST: " + context.getString(R.string.mkdtn_long_hello_message);
+                    }
+
+                    if (configFileDoesNotExist(context)) {
+                        writeDefaultConfig(context);
+                    }
+                    DTNConfig config = getConfig(context);
+
+                    Daemon2Router.RoutingProtocol protocol
+                        = Daemon2Router.RoutingProtocol.valueOf(config.routingProtocol);
+
+                    PrimaryBlock.PriorityClass priority
+                        = PrimaryBlock.PriorityClass.valueOf(config.priorityClass);
+
+                    PrimaryBlock.LifeTime lifeTime
+                        = PrimaryBlock.LifeTime.valueOf(config.lifetime);
+
+                    dtnClient.send(text.getBytes(), recipient, priority, lifeTime, protocol);
+
+                    String m = choiceOfTxt < THRESHOLD ? "ST" : "LT";
+                    String str = new Date() + " |> sent " + m + " to " + recipient
+                        + " with " + protocol + " and " + lifeTime + "\n";
+                    writeSentLogs(context, str);
+                    Log.i(LOG_TAG, str);
+
+                    Thread.sleep(300_000); // 5 mins
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            Log.i(LOG_TAG, "stopped making texts to send");
         }
     }
 }

@@ -12,8 +12,8 @@ public final class DTNEndpointID implements Serializable {
     
     public static DTNEndpointID from(String scheme, String ssp) {
         DTNEndpointID endpointID = new DTNEndpointID();
-        endpointID.scheme = new String(scheme.getBytes());
-        endpointID.ssp = new String (ssp.getBytes());
+        endpointID.scheme = scheme;
+        endpointID.ssp = ssp;
         return endpointID;
     }
     

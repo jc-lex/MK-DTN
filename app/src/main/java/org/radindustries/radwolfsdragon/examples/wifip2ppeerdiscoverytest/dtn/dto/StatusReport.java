@@ -1,7 +1,5 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto;
 
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
-
 public final class StatusReport extends AdminRecord {
     
     public enum Reason {
@@ -16,7 +14,7 @@ public final class StatusReport extends AdminRecord {
     
     public Reason reasonCode;
     public int status;
-    public DTNTimeInstant timeOfStatus = DTNTimeInstant.ZERO;
+    public long timeOfStatus;
     
     @Override
     public String toString() {
@@ -40,8 +38,8 @@ public final class StatusReport extends AdminRecord {
         StatusReport report = (StatusReport) o;
         
         if (status != report.status) return false;
-        if (reasonCode != report.reasonCode) return false;
-        return timeOfStatus.equals(report.timeOfStatus);
+        if (timeOfStatus != report.timeOfStatus) return false;
+        return reasonCode == report.reasonCode;
     }
     
     @Override
@@ -49,7 +47,7 @@ public final class StatusReport extends AdminRecord {
         int result = super.hashCode();
         result = 31 * result + reasonCode.hashCode();
         result = 31 * result + status;
-        result = 31 * result + timeOfStatus.hashCode();
+        result = 31 * result + (int) (timeOfStatus ^ (timeOfStatus >>> 32));
         return result;
     }
 }

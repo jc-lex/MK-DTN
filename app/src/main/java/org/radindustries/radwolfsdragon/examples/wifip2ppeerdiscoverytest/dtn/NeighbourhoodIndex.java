@@ -14,7 +14,7 @@ final class NeighbourhoodIndex {
     private String nodeEID = "";
     
     @ColumnInfo(name = RouterDatabase.COL_FIRST_ENCOUNTER_TIMESTAMP)
-    private String firstEncounterTimestamp;
+    private long firstEncounterTimestamp;
     
     @ColumnInfo(name = RouterDatabase.COL_MEETING_COUNT)
     private int meetingCount;
@@ -29,11 +29,11 @@ final class NeighbourhoodIndex {
         this.nodeEID = nodeEID;
     }
     
-    String getFirstEncounterTimestamp() {
+    long getFirstEncounterTimestamp() {
         return firstEncounterTimestamp;
     }
     
-    void setFirstEncounterTimestamp(String firstEncounterTimestamp) {
+    void setFirstEncounterTimestamp(long firstEncounterTimestamp) {
         this.firstEncounterTimestamp = firstEncounterTimestamp;
     }
     

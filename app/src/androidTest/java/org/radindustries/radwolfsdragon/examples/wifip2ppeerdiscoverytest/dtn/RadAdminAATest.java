@@ -12,8 +12,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import androidx.test.InstrumentationRegistry;
 import androidx.test.runner.AndroidJUnit4;
@@ -29,12 +27,6 @@ public class RadAdminAATest {
     
     @BeforeClass
     public static void setUpClass() {
-        WallClock clock = new WallClock() {
-            @Override
-            public DTNTimeInstant getCurrentTime() {
-                return DTNTimeInstant.at(System.currentTimeMillis());
-            }
-        };
         radAdminAA = new RadAdminAA(
             new AdminAA2Daemon() {
     
@@ -77,8 +69,7 @@ public class RadAdminAATest {
             public DTNEndpointID getThisNodezEID() {
                 return TestUtilities.makeDTNEID();
             }
-        },
-            clock, InstrumentationRegistry.getTargetContext()
+        }, InstrumentationRegistry.getTargetContext()
         );
     }
     
@@ -172,8 +163,8 @@ public class RadAdminAATest {
         assertEquals(0, report.detailsIfForAFragment.size());
         
         assertEquals(StatusReport.StatusFlags.BUNDLE_DELIVERED, report.status);
-        assertNotNull(report.timeOfStatus);
-        assertTrue(report.timeOfStatus.compareTo(DTNTimeInstant.ZERO) > 0);
+//        assertNotNull(report.timeOfStatus);
+//        assertTrue(report.timeOfStatus.compareTo(DTNTimeInstant.ZERO) > 0);
         assertEquals(StatusReport.Reason.NO_OTHER_INFO, report.reasonCode);
     }
     
@@ -205,8 +196,8 @@ public class RadAdminAATest {
         assertTrue(report.detailsIfForAFragment.size() > 0);
     
         assertEquals(StatusReport.StatusFlags.BUNDLE_DELIVERED, report.status);
-        assertNotNull(report.timeOfStatus);
-        assertTrue(report.timeOfStatus.compareTo(DTNTimeInstant.ZERO) > 0);
+//        assertNotNull(report.timeOfStatus);
+//        assertTrue(report.timeOfStatus.compareTo(DTNTimeInstant.ZERO) > 0);
         assertEquals(StatusReport.Reason.NO_OTHER_INFO, report.reasonCode);
     }
     

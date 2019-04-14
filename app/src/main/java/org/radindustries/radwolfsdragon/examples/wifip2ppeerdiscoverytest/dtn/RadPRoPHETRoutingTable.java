@@ -41,18 +41,18 @@ final class RadPRoPHETRoutingTable implements Daemon2PRoPHETRoutingTable, Daemon
                             dp.setProbability(
                                 dp.getProbability() * (1 / (1 + lambda))
                             );
+//                            Log.d(LOG_TAG, dp.getNodeEID() + "=" + dp.getProbability());
                         }
-                        Log.d(LOG_TAG, "DPs: " + dps);
+                        
                         routerDBHandler.update(dps);
                     }
         
                     Thread.sleep(1_000); // one second
                 }
             } catch (InterruptedException e) {
-//                Log.e(LOG_TAG, "DP aging interrupted", e);
                 Thread.currentThread().interrupt();
             }
-            Log.i(LOG_TAG, "DP aging ended");
+            Log.i(LOG_TAG, "DP aging stopped");
         }
     }
     

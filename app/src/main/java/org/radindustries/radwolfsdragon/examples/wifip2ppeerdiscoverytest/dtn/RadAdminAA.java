@@ -1,13 +1,11 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import android.content.Context;
 import android.util.Log;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.admin.Daemon2AdminAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AdminAA2Daemon;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AdminRecord;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CustodySignal;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
@@ -16,8 +14,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.math.BigInteger;
 
@@ -29,13 +25,9 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     private AdminAA2Daemon daemon;
     private DTNBundle bundle;
-    private WallClock clock;
-    private Context context;
     
-    RadAdminAA(@NonNull AdminAA2Daemon daemon, @NonNull WallClock clock, @NonNull Context context) {
+    RadAdminAA(@NonNull AdminAA2Daemon daemon) {
         this.daemon = daemon;
-        this.clock = clock;
-        this.context = context;
     }
     
     @Override
@@ -43,9 +35,8 @@ final class RadAdminAA implements Daemon2AdminAA {
         if (!DTNUtils.isAdminRecord(adminRecord)) return;
     
         if (!daemon.isForUs(adminRecord)) {
-//            DummyStorage.OUTBOUND_BUNDLES_QUEUE.add(adminRecord);
             MiBStorage.OBQ.add(adminRecord);
-            MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+//            MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
             return;
         }
     
@@ -103,9 +94,10 @@ final class RadAdminAA implements Daemon2AdminAA {
             if (daemon.isUs(report.subjectBundleID.sourceEID)) {
                 if (report.status == StatusReport.StatusFlags.INVALID_FLAG_SET)
                     return;
-//                DummyStorage.DELIVERED_BUNDLES_QUEUE.add(bundle);
+
+                bundle.timeOfDelivery = System.currentTimeMillis();
                 MiBStorage.DBQ.add(bundle);
-                MiBStorage.writeQueue(context, MiBStorage.DELIVERED_BUNDLES_QUEUE);
+//                MiBStorage.writeQueue(context, MiBStorage.DELIVERED_BUNDLES_QUEUE);
                 
                 String msg = "";
                 if (report.status == StatusReport.StatusFlags.BUNDLE_DELIVERED) {
@@ -138,7 +130,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         signal.recordType = AdminRecord.RecordType.CUSTODY_SIGNAL;
         signal.reasonCode = reasonCode;
         signal.custodyTransferSucceeded = custodyAccepted;
-        signal.timeOfSignal = clock.getCurrentTime();
+        signal.timeOfSignal = System.currentTimeMillis();
         
         return processOtherAdminRecordDetails(userBundle, signal);
     }
@@ -168,7 +160,7 @@ final class RadAdminAA implements Daemon2AdminAA {
         report.recordType = AdminRecord.RecordType.STATUS_REPORT;
         report.reasonCode = reasonCode;
         report.status = statusCode;
-        report.timeOfStatus = clock.getCurrentTime();
+        report.timeOfStatus = System.currentTimeMillis();
         
         return processOtherAdminRecordDetails(userBundle, report);
     }
@@ -214,15 +206,10 @@ final class RadAdminAA implements Daemon2AdminAA {
         PrimaryBlock primaryBlock = makeAdminRecordPrimaryBlock(userBundlePrimaryBlock);
         
         CanonicalBlock adminCBlock = makeAdminCBlock(adminRecord);
-        
-        CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock();
-        AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-        ageBlock.T = DTNTimeInstant.copyOf(primaryBlock.bundleID.creationTimestamp);
     
         DTNBundle adminBundle = new DTNBundle();
         adminBundle.primaryBlock = primaryBlock;
         adminBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.ADMIN_RECORD, adminCBlock);
-        adminBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
         
         return adminBundle;
     }
@@ -235,10 +222,10 @@ final class RadAdminAA implements Daemon2AdminAA {
         primaryBlock.bundleProcessingControlFlags = makeBundlePCFsForAdminRecord();
         primaryBlock.priorityClass = userBundlePrimaryBlock.priorityClass;
         primaryBlock.bundleID
-            = DTNBundleID.from(daemon.getThisNodezEID(), clock.getCurrentTime());
-        primaryBlock.destinationEID = DTNEndpointID.from(userBundlePrimaryBlock.bundleID.sourceEID);
-        primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
-        primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
+            = DTNBundleID.from(daemon.getThisNodezEID(), System.currentTimeMillis());
+        primaryBlock.destinationEID = DTNEndpointID.from(userBundlePrimaryBlock.reportToEID);
+        primaryBlock.custodianEID = daemon.getThisNodezEID();
+        primaryBlock.reportToEID = daemon.getThisNodezEID();
         primaryBlock.lifeTime = userBundlePrimaryBlock.lifeTime;
         
         return primaryBlock;

@@ -1,13 +1,14 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
+import android.content.Context;
+
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
-import android.content.Context;
 
 @Database(
     entities = {NeighbourhoodIndex.class, DeliveryPredictability.class},
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class RouterDatabase extends RoomDatabase {

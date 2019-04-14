@@ -68,7 +68,7 @@ public final class BWDTN {
     
     private static RadAppAA getRadAppAA(@NonNull DTNUI ui) {
         if (radAppAA == null) {
-            radAppAA = new RadAppAA(ui, radDaemon, radDaemon);
+            radAppAA = new RadAppAA(ui, radDaemon);
             radDaemon.setAppAA(radAppAA);
         }
         return radAppAA;
@@ -96,7 +96,7 @@ public final class BWDTN {
             
             radDaemon.setCLA(getNearbyService(context));
             radDaemon.setDiscoverer(getNearbyService(context));
-            radDaemon.setAdminAA(getAdminAA(context));
+            radDaemon.setAdminAA(getAdminAA());
             radDaemon.setFragmentManager(getFragmentManager());
             radDaemon.setRouter(getRouter());
             radDaemon.setNECTARRoutingTable(getNECTARRoutingTable(context));
@@ -112,7 +112,7 @@ public final class BWDTN {
             synchronized (BWDTN.class) {
                 radNearby
                     = new RadNearby(radDaemon, radDaemon, radDaemon,
-                    radDaemon, radDaemon, radDaemon, context);
+                    radDaemon, radDaemon, context);
             }
         }
         return radNearby;
@@ -123,8 +123,8 @@ public final class BWDTN {
         return radFragMgr;
     }
     
-    private static Daemon2AdminAA getAdminAA(@NonNull Context context) {
-        if (radAppAA == null) radAdminAA = new RadAdminAA(radDaemon, radDaemon, context);
+    private static Daemon2AdminAA getAdminAA() {
+        if (radAppAA == null) radAdminAA = new RadAdminAA(radDaemon);
         return radAdminAA;
     }
     
@@ -135,7 +135,7 @@ public final class BWDTN {
     
     private static Daemon2NECTARRoutingTable getNECTARRoutingTable(@NonNull Context context) {
         if (radNECTARRoutingTable == null)
-            radNECTARRoutingTable = new RadNECTARRoutingTable(context, radDaemon, radDaemon);
+            radNECTARRoutingTable = new RadNECTARRoutingTable(context, radDaemon);
         return radNECTARRoutingTable;
     }
     

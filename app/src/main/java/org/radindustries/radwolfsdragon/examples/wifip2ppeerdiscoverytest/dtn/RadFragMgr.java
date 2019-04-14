@@ -1,10 +1,8 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.fragmentmanager.Daemon2FragmentManager;
@@ -78,9 +76,6 @@ final class RadFragMgr implements Daemon2FragmentManager {
             bundleToFragment, fragmentOffset, totalADULength
         );
         
-        CanonicalBlock fragmentAgeCanonicalBlock
-            = generateFragmentAgeBlock(bundleToFragment);
-        
         CanonicalBlock fragmentPayloadCanonicalBlock
             = generateFragmentPayloadBlock(bundleToFragment, start, stop);
         
@@ -88,9 +83,6 @@ final class RadFragMgr implements Daemon2FragmentManager {
         fragment.primaryBlock = fragmentPrimaryBlock;
         fragment.canonicalBlocks.put(
             DTNBundle.CBlockNumber.PAYLOAD, fragmentPayloadCanonicalBlock
-        );
-        fragment.canonicalBlocks.put(
-            DTNBundle.CBlockNumber.AGE, fragmentAgeCanonicalBlock
         );
         
         return fragment;
@@ -128,33 +120,15 @@ final class RadFragMgr implements Daemon2FragmentManager {
         fragmentPrimaryBlock.lifeTime = bundleToFragment.primaryBlock.lifeTime;
         
         fragmentPrimaryBlock.destinationEID
-            = DTNEndpointID.from(bundleToFragment.primaryBlock.destinationEID);
+            = bundleToFragment.primaryBlock.destinationEID;
         
         fragmentPrimaryBlock.custodianEID
-            = DTNEndpointID.from(bundleToFragment.primaryBlock.custodianEID);
+            = bundleToFragment.primaryBlock.custodianEID;
         
         fragmentPrimaryBlock.reportToEID
-            = DTNEndpointID.from(bundleToFragment.primaryBlock.reportToEID);
+            = bundleToFragment.primaryBlock.reportToEID;
         
         return fragmentPrimaryBlock;
-    }
-    
-    private synchronized CanonicalBlock generateFragmentAgeBlock(DTNBundle bundleToFragment) {
-        CanonicalBlock bundleAgeCBlock = bundleToFragment.canonicalBlocks
-            .get(DTNBundle.CBlockNumber.AGE);
-        
-        assert bundleAgeCBlock != null;
-        AgeBlock bundleAgeBlock = (AgeBlock) bundleAgeCBlock.blockTypeSpecificDataFields;
-        AgeBlock fragmentAgeBlock = AgeBlock.from(bundleAgeBlock);
-        
-        CanonicalBlock fragmentAgeCBlock = new CanonicalBlock();
-        
-        fragmentAgeCBlock.blockTypeSpecificDataFields = fragmentAgeBlock;
-        fragmentAgeCBlock.blockType = CanonicalBlock.BlockType.AGE;
-        fragmentAgeCBlock.mustBeReplicatedInAllFragments
-            = bundleAgeCBlock.mustBeReplicatedInAllFragments;
-        
-        return fragmentAgeCBlock;
     }
     
     private synchronized CanonicalBlock generateFragmentPayloadBlock(
@@ -187,15 +161,12 @@ final class RadFragMgr implements Daemon2FragmentManager {
         PrimaryBlock primaryBlock
             = generateDefragmentedBundlePrimaryBlock(template);
         
-        CanonicalBlock ageCBlock = generateDefragmentedBundleAgeCBlock(template);
-        
         CanonicalBlock payloadCBlock
             = generateDefragmentedBundlePayloadCBlock(fragmentsToCombine);
         
         DTNBundle originalBundle = new DTNBundle();
         originalBundle.primaryBlock = primaryBlock;
         originalBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PAYLOAD, payloadCBlock);
-        originalBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
     
         return originalBundle;
     }
@@ -225,16 +196,9 @@ final class RadFragMgr implements Daemon2FragmentManager {
             );
         
         pbForOriginalBundle.lifeTime = fragPrimaryBlock.lifeTime;
-        
-        pbForOriginalBundle.destinationEID
-            = DTNEndpointID.from(fragPrimaryBlock.destinationEID);
-        
-        pbForOriginalBundle.custodianEID
-            = DTNEndpointID.from(fragPrimaryBlock.custodianEID);
-        
-        pbForOriginalBundle.reportToEID
-            = DTNEndpointID.from(fragPrimaryBlock.reportToEID);
-        
+        pbForOriginalBundle.destinationEID = fragPrimaryBlock.destinationEID;
+        pbForOriginalBundle.custodianEID = fragPrimaryBlock.custodianEID;
+        pbForOriginalBundle.reportToEID = fragPrimaryBlock.reportToEID;
         pbForOriginalBundle.priorityClass = fragPrimaryBlock.priorityClass;
         
         pbForOriginalBundle.bundleProcessingControlFlags
@@ -243,23 +207,6 @@ final class RadFragMgr implements Daemon2FragmentManager {
             .clearBit(PrimaryBlock.BundlePCF.BUNDLE_MUST_NOT_BE_FRAGMENTED);
         
         return pbForOriginalBundle;
-    }
-    
-    private synchronized CanonicalBlock generateDefragmentedBundleAgeCBlock(
-        DTNBundle templateFragment
-    ) {
-        CanonicalBlock ageCBlock = new CanonicalBlock();
-        CanonicalBlock fragAgeCBlock
-            = templateFragment.canonicalBlocks.get(DTNBundle.CBlockNumber.AGE);
-        
-        assert fragAgeCBlock != null;
-        ageCBlock.blockType = CanonicalBlock.BlockType.AGE;
-        ageCBlock.mustBeReplicatedInAllFragments
-            = fragAgeCBlock.mustBeReplicatedInAllFragments;
-        ageCBlock.blockTypeSpecificDataFields
-            = AgeBlock.from((AgeBlock) fragAgeCBlock.blockTypeSpecificDataFields);
-        
-        return ageCBlock;
     }
     
     private synchronized CanonicalBlock generateDefragmentedBundlePayloadCBlock(
@@ -331,7 +278,7 @@ final class RadFragMgr implements Daemon2FragmentManager {
                         .equals(first.primaryBlock.bundleID.sourceEID) //come from the same place
                     &&
                     fragment.primaryBlock.bundleID.creationTimestamp //made at the same time
-                        .equals(first.primaryBlock.bundleID.creationTimestamp)
+                        == first.primaryBlock.bundleID.creationTimestamp
             )) {
                 result = false;
                 break;

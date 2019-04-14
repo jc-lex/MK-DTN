@@ -23,6 +23,7 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.R;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNTextMessage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,7 +35,7 @@ public class MessagesActivity extends AppCompatActivity implements View.OnClickL
         = DConstants.MAIN_LOG_TAG + "_" + MessagesActivity.class.getSimpleName();
     
     private static ArrayAdapter<String> senderAdapter;
-    private static ArrayList<DTNTextMessage> messages = new ArrayList<>();
+    private static DTNTextMessage[] messages = new DTNTextMessage[0];
     
     private Messenger dtnServiceMessenger = null;
     private static int regNum;
@@ -54,8 +55,8 @@ public class MessagesActivity extends AppCompatActivity implements View.OnClickL
         }
         
         private void setMessages(Bundle data) {
-            messages = (ArrayList<DTNTextMessage>) data.getSerializable(MKDTNService.MESSAGES_KEY);
-            Log.i(LOG_TAG, "messages = " + messages);
+            messages = (DTNTextMessage[]) data.getSerializable(MKDTNService.MESSAGES_KEY);
+            Log.i(LOG_TAG, "messages = " + Arrays.toString(messages));
             
             ArrayList<String> senderDisplayInfo = new ArrayList<>();
             senderAdapter.clear();
@@ -110,7 +111,7 @@ public class MessagesActivity extends AppCompatActivity implements View.OnClickL
     
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        DTNTextMessage msg = messages.get(position);
+        DTNTextMessage msg = messages[position];
         
         Intent intent = new Intent(this, ViewMessageActivity.class);
         intent.putExtra(DTN_MESSAGE_TAG, msg);

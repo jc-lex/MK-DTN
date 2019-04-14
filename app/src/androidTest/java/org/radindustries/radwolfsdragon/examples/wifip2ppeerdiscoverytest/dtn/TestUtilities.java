@@ -1,14 +1,11 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PayloadADU;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -53,21 +50,6 @@ final class TestUtilities {
     static DTNBundle createTestUserBundle(byte[] message) {
         
         PrimaryBlock primaryBlock = makePrimaryBlockForUserBundle();
-    
-    
-        CanonicalBlock ageCBlock = new CanonicalBlock();
-    
-        AgeBlock ageBlock = new AgeBlock();
-        ageBlock.sourceCPUSpeedInKHz = DTNUtils.getMaxCPUFrequencyInKHz();
-        ageBlock.receivingTimestamp = DTNTimeInstant.at(System.currentTimeMillis());
-        ageBlock.sendingTimestamp = DTNTimeInstant.at(System.currentTimeMillis());
-        ageBlock.agePrime = DTNTimeDuration.ZERO;
-        ageBlock.age = DTNTimeDuration.ZERO;
-        ageBlock.T = DTNTimeInstant.ZERO;
-        
-        ageCBlock.blockTypeSpecificDataFields = ageBlock;
-        ageCBlock.blockType = CanonicalBlock.BlockType.AGE;
-        ageCBlock.mustBeReplicatedInAllFragments = true;
         
         CanonicalBlock payloadCBlock = new CanonicalBlock();
         payloadCBlock.blockTypeSpecificDataFields = makePayloadForUserBundle(message);
@@ -77,7 +59,6 @@ final class TestUtilities {
         DTNBundle userBundle = new DTNBundle();
         userBundle.primaryBlock = primaryBlock;
         userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PAYLOAD, payloadCBlock);
-        userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
         
         return userBundle;
     }
@@ -111,7 +92,7 @@ final class TestUtilities {
         primaryBlock.priorityClass = TEST_PRIORITY;
         primaryBlock.bundleID = DTNBundleID.from(
             DTNEndpointID.parse(TEST_SENDER),
-            DTNTimeInstant.at(System.currentTimeMillis())
+            System.currentTimeMillis()
         );
         primaryBlock.lifeTime = TEST_LIFETIME.getDuration();
         primaryBlock.destinationEID = makeDTNEID();

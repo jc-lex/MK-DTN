@@ -81,6 +81,8 @@ public class NewMessageActivity extends AppCompatActivity implements View.OnClic
             Intent intent = getIntent();
             if (intent.getStringExtra(PeersActivity.TO_EID_TAG) != null) {
                 toTIET.setText(intent.getStringExtra(PeersActivity.TO_EID_TAG));
+            } else {
+                toTIET.setText(R.string.dtn_256);
             }
         }
         

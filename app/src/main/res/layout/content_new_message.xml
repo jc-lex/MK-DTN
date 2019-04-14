@@ -13,22 +13,31 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <com.google.android.material.textfield.TextInputEditText
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/to_eid_hint"
-            android:padding="@dimen/main_list_item_padding"
-            android:inputType="text"
+            android:hint="@string/to_eid_hint">
 
-            android:id="@+id/to_eid_tiet"/>
+            <com.google.android.material.textfield.TextInputEditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/main_list_item_padding"
+                android:inputType="text"
+                android:id="@+id/to_eid_tiet"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputEditText
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/msg_hint"
-            android:padding="@dimen/main_list_item_padding"
-            android:inputType="textMultiLine|textAutoCorrect|textCapSentences|textLongMessage"
-            android:id="@+id/msg_tiet"/>
+            android:hint="@string/msg_hint">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/main_list_item_padding"
+                android:inputType="textMultiLine|textAutoCorrect|textCapSentences|textLongMessage"
+                android:id="@+id/msg_tiet"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 

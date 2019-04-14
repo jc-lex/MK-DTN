@@ -5,7 +5,6 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.DTNUI;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.aa.app.Daemon2AppAA;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.AppAA2Daemon;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.AgeBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.CanonicalBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundle;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNBundleID;
@@ -15,12 +14,9 @@ import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dt
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.PrimaryBlock;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.StatusReport;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2Router;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -29,12 +25,10 @@ import androidx.annotation.NonNull;
 final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     private DTNUI ui;
     private AppAA2Daemon daemon;
-    private WallClock clock;
     
-    RadAppAA(@NonNull DTNUI ui, @NonNull AppAA2Daemon daemon, @NonNull WallClock clock) {
+    RadAppAA(@NonNull DTNUI ui, @NonNull AppAA2Daemon daemon) {
         this.ui = ui;
         this.daemon = daemon;
-        this.clock = clock;
     }
     
     @Override
@@ -54,17 +48,12 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         PrimaryBlock.LifeTime lifetime
     ) {
         PrimaryBlock primaryBlock = makePrimaryBlock(recipient, priorityClass, lifetime);
-    
-        CanonicalBlock ageCBlock = DTNUtils.makeAgeCBlock();
-        AgeBlock ageBlock = (AgeBlock) ageCBlock.blockTypeSpecificDataFields;
-        ageBlock.T = DTNTimeInstant.copyOf(primaryBlock.bundleID.creationTimestamp);
         
         CanonicalBlock payloadCBlock = makePayloadCBlock(message);
     
         DTNBundle userBundle = new DTNBundle();
         userBundle.primaryBlock = primaryBlock;
         userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.PAYLOAD, payloadCBlock);
-        userBundle.canonicalBlocks.put(DTNBundle.CBlockNumber.AGE, ageCBlock);
     
         return userBundle;
     }
@@ -78,11 +67,11 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
         primaryBlock.bundleProcessingControlFlags = makeBundlePCFs();
         primaryBlock.priorityClass = priorityClass;
         primaryBlock.bundleID
-            = DTNBundleID.from(daemon.getThisNodezEID(), clock.getCurrentTime());
+            = DTNBundleID.from(daemon.getThisNodezEID(), System.currentTimeMillis());
         primaryBlock.lifeTime = lifeTime.getDuration();
         primaryBlock.destinationEID = recipient;
-        primaryBlock.custodianEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
-        primaryBlock.reportToEID = DTNEndpointID.from(primaryBlock.bundleID.sourceEID);
+        primaryBlock.custodianEID = daemon.getThisNodezEID();
+        primaryBlock.reportToEID = daemon.getThisNodezEID();
         
         return primaryBlock;
     }
@@ -110,7 +99,7 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     private synchronized PayloadADU makePayloadADU(byte[] message) {
         
         PayloadADU payload = new PayloadADU();
-        payload.ADU = Arrays.copyOf(message, message.length);
+        payload.ADU = message;
         
         return payload;
     }
@@ -221,26 +210,8 @@ final class RadAppAA implements DTNClient, DTNTextMessenger, Daemon2AppAA {
     }
     
     private synchronized void setTimestamps(DTNTextMessage msg, DTNBundle bundle) {
-        long srcSpeed = DTNUtils.getSpeed(bundle);
-        
         // from src to dest (overall net delay)
-        DTNTimeInstant cts = bundle.primaryBlock.bundleID.creationTimestamp;
-        msg.creationTimestamp
-            = cts.toString() + " osc / " + DTNUtils.toMillis(cts, srcSpeed) + " ms";
-    
-        DTNTimeInstant dt = DTNUtils.getTimeDeliveredWRTSrc(bundle/*, clock.getCurrentTime()*/);
-        msg.deliveryTimestamp
-            = dt.toString() + " osc / " + DTNUtils.toMillis(dt, srcSpeed) + " ms";
-    
-        // from Tx to Rx (link delay)
-        DTNTimeInstant rt = DTNUtils.getTimeReceivedWRTRx(bundle);
-        msg.receivedTimestamp
-            = rt.toString() + " osc / " +
-            DTNUtils.toMillis(rt, DTNUtils.getMaxCPUFrequencyInKHz()) + " ms";
-    
-        DTNTimeInstant st = DTNUtils.getTimeSentWRTRx(bundle);
-        msg.sendingTimestamp
-            = st.toString() + " osc / " +
-            DTNUtils.toMillis(st, DTNUtils.getMaxCPUFrequencyInKHz()) + " ms";
+        msg.creationTimestamp = bundle.primaryBlock.bundleID.creationTimestamp + " ms";
+        msg.deliveryTimestamp = bundle.timeOfDelivery + " ms";
     }
 }

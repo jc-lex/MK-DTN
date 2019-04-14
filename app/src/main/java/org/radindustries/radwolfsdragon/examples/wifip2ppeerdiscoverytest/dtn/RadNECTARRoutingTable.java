@@ -5,9 +5,6 @@ import android.content.Context;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.daemon.EIDProvider;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.dto.DTNEndpointID;
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.router.Daemon2NECTARRoutingTable;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeDuration;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.DTNTimeInstant;
-import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn.time.WallClock;
 
 import androidx.annotation.NonNull;
 
@@ -15,16 +12,12 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
     
     private static RouterDBHandler routerDBHandler;
     private EIDProvider eidProvider;
-    private WallClock clock;
     
     private RadNECTARRoutingTable() {}
     
-    RadNECTARRoutingTable(
-        @NonNull Context context, @NonNull EIDProvider eidProvider, @NonNull WallClock clock
-    ) {
+    RadNECTARRoutingTable(@NonNull Context context, @NonNull EIDProvider eidProvider) {
         routerDBHandler = RouterDBHandler.getHandler(context);
         this.eidProvider = eidProvider;
-        this.clock = clock;
     }
     
     @Override
@@ -34,11 +27,10 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
         NeighbourhoodIndex ni = routerDBHandler.getIndex(nodeEID.toString());
         
         return ni != null ?
-            ni.getMeetingCount() *
-                DTNTimeDuration.between(
-                    DTNTimeInstant.parse(ni.getFirstEncounterTimestamp()),
-                        clock.getCurrentTime()
-                    ).inDays()
+            ni.getMeetingCount() * (
+                (System.currentTimeMillis() - ni.getFirstEncounterTimestamp()) /
+                    (float) DTNUtils.DAY_MILLIS
+            )
             : 0.0F;
     }
     
@@ -53,7 +45,7 @@ final class RadNECTARRoutingTable implements Daemon2NECTARRoutingTable {
         } else { // inserting
             NeighbourhoodIndex newNI = new NeighbourhoodIndex();
             newNI.setNodeEID(nodeEID.toString());
-            newNI.setFirstEncounterTimestamp(clock.getCurrentTime().toString());
+            newNI.setFirstEncounterTimestamp(System.currentTimeMillis());
             newNI.setMeetingCount(1);
             routerDBHandler.insert(newNI);
         }

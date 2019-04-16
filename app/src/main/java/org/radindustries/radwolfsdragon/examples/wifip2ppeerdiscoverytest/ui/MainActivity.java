@@ -83,15 +83,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             getString(R.string.pref_default_priority_class)
         );
         
-        config.enableManualMode = prefs.getBoolean(
-            getString(R.string.pref_enable_manual_transmission_key),
-            getResources().getBoolean(R.bool.pref_enable_manual_transmission_default)
-        );
-        
-        config.transmissionMode = prefs.getString(
-            getString(R.string.pref_transmission_mode_key),
-            getString(R.string.pref_default_transmission_mode)
-        );
+//        config.enableManualMode = prefs.getBoolean(
+//            getString(R.string.pref_enable_manual_transmission_key),
+//            getResources().getBoolean(R.bool.pref_enable_manual_transmission_default)
+//        );
+//
+//        config.transmissionMode = prefs.getString(
+//            getString(R.string.pref_transmission_mode_key),
+//            getString(R.string.pref_default_transmission_mode)
+//        );
         
         MKDTNService.updateConfig(this, config);
     }

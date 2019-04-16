@@ -114,6 +114,11 @@ public final class DTNUtils {
                 isValidAdminRecord(bundle.canonicalBlocks.get(DTNBundle.CBlockNumber.ADMIN_RECORD)));
     }
     
+    static synchronized boolean isExpired(DTNBundle bundle) {
+        long age = System.currentTimeMillis() - bundle.primaryBlock.bundleID.creationTimestamp;
+        return age > bundle.primaryBlock.lifeTime;
+    }
+    
     private static synchronized boolean isValidPrimaryBlock(PrimaryBlock primaryBlock) {
         return primaryBlock != null && primaryBlock.bundleID != null &&
             primaryBlock.bundleID.creationTimestamp > 0 &&

@@ -1,5 +1,6 @@
 package org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.dtn;
 
+import android.content.Context;
 import android.util.Log;
 
 import org.radindustries.radwolfsdragon.examples.wifip2ppeerdiscoverytest.DConstants;
@@ -25,9 +26,11 @@ final class RadAdminAA implements Daemon2AdminAA {
     
     private AdminAA2Daemon daemon;
     private DTNBundle bundle;
+    private Context context;
     
-    RadAdminAA(@NonNull AdminAA2Daemon daemon) {
+    RadAdminAA(@NonNull AdminAA2Daemon daemon, @NonNull Context c) {
         this.daemon = daemon;
+        this.context = c;
     }
     
     @Override
@@ -36,7 +39,7 @@ final class RadAdminAA implements Daemon2AdminAA {
     
         if (!daemon.isForUs(adminRecord)) {
             MiBStorage.OBQ.add(adminRecord);
-//            MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+            MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
             return;
         }
     
@@ -97,7 +100,7 @@ final class RadAdminAA implements Daemon2AdminAA {
 
                 bundle.timeOfDelivery = System.currentTimeMillis();
                 MiBStorage.DBQ.add(bundle);
-//                MiBStorage.writeQueue(context, MiBStorage.DELIVERED_BUNDLES_QUEUE);
+                MiBStorage.writeQueue(context, MiBStorage.DELIVERED_BUNDLES_QUEUE);
                 
                 String msg = "";
                 if (report.status == StatusReport.StatusFlags.BUNDLE_DELIVERED) {

@@ -39,10 +39,10 @@ final class MiBStorage {
     static final List<DTNBundle> TBQ = Collections.synchronizedList(new LinkedList<DTNBundle>());
     static final List<DTNBundle> OBQ = Collections.synchronizedList(new LinkedList<DTNBundle>());
     
-    private static final int OUTBOUND_BUNDLES_QUEUE = 0;
-    private static final int DELIVERED_FRAGMENTS_QUEUE = 1;
-    private static final int DELIVERED_BUNDLES_QUEUE = 2;
-    private static final int TRANSMITTED_BUNDLES_QUEUE = 3;
+    static final int OUTBOUND_BUNDLES_QUEUE = 0;
+    static final int DELIVERED_FRAGMENTS_QUEUE = 1;
+    static final int DELIVERED_BUNDLES_QUEUE = 2;
+    static final int TRANSMITTED_BUNDLES_QUEUE = 3;
     
     private MiBStorage() {}
     
@@ -89,7 +89,7 @@ final class MiBStorage {
         writeQueue(context, TRANSMITTED_BUNDLES_QUEUE);
     }
     
-    private static synchronized void writeQueue(Context c, int q) {
+    static synchronized void writeQueue(Context c, int q) {
         List<DTNBundle> queue; String fileName;
         switch (q) {
             case OUTBOUND_BUNDLES_QUEUE: queue = OBQ; fileName = OUTBOUND_BUNDLES_DB; break;

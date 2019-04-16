@@ -78,13 +78,12 @@ public class MKDTNService extends Service implements DTNUI {
             Message msg = Message.obtain(null, MSG_GET_RECEIVED_DTN_MESSAGES);
             Bundle data = new Bundle();
             data.putSerializable(MESSAGES_KEY,
-                (ArrayList) dtnTextMessenger.getDeliveredTextMessages());
+                dtnTextMessenger.getDeliveredTextMessages().toArray(new DTNTextMessage[0]));
             msg.setData(data);
             if (messenger != null) {
                 try {
                     messenger.send(msg);
                 } catch (RemoteException e) {
-//                    e.printStackTrace();
                     theirMessengers.remove(messenger);
                 }
             }
@@ -139,14 +138,6 @@ public class MKDTNService extends Service implements DTNUI {
         // make notification builder
         NotificationCompat.Builder notificationBuilder = makeNotification(text);
         
-        // create intent for opening messages activity
-//        Intent intent = new Intent(this, MessagesActivity.class);
-//        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//        PendingIntent pendingIntent = PendingIntent.getActivity(
-//            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
-//        );
-//        notificationBuilder.setContentIntent(pendingIntent);
-        
         notificationManagerCompat.notify(
             (int) (Math.random() * Integer.MAX_VALUE),
             notificationBuilder.build()
@@ -172,7 +163,6 @@ public class MKDTNService extends Service implements DTNUI {
                 try {
                     messenger.send(msg);
                 } catch (RemoteException e) {
-//                    e.printStackTrace();
                     theirMessengers.remove(messenger);
                 }
             }
@@ -372,9 +362,11 @@ public class MKDTNService extends Service implements DTNUI {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         dtnManager.start();
-        texter = new Thread(new SendTextsTask(this));
-        texter.setName("Texting Task");
-        texter.start();
+        if (texter == null) {
+            texter = new Thread(new SendTextsTask(this));
+            texter.setName("Texting Task");
+            texter.start();
+        }
         return Service.START_STICKY;
     }
     
@@ -386,8 +378,10 @@ public class MKDTNService extends Service implements DTNUI {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        texter.interrupt();
-        texter = null;
+        if (texter != null) {
+            texter.interrupt();
+            texter = null;
+        }
         dtnManager.stop();
     }
     
@@ -432,8 +426,6 @@ public class MKDTNService extends Service implements DTNUI {
             writer.println(defaultConfig.priorityClass);
             writer.println(defaultConfig.lifetime);
             writer.println(defaultConfig.maxFragmentPayloadSize);
-            writer.println(defaultConfig.enableManualMode);
-            writer.println(defaultConfig.transmissionMode);
         } catch (Exception e) {
             Log.e(LOG_TAG, "Could not write default config", e);
         }
@@ -448,8 +440,6 @@ public class MKDTNService extends Service implements DTNUI {
             writer.println(updatedConfig.priorityClass);
             writer.println(updatedConfig.lifetime);
             writer.println(updatedConfig.maxFragmentPayloadSize);
-            writer.println(updatedConfig.enableManualMode);
-            writer.println(updatedConfig.transmissionMode);
         } catch (Exception e) {
             Log.e(LOG_TAG, "Could not update config", e);
         }
@@ -462,8 +452,6 @@ public class MKDTNService extends Service implements DTNUI {
             config.priorityClass = scanner.nextLine();
             config.lifetime = scanner.nextLine();
             config.maxFragmentPayloadSize = scanner.nextLine();
-            config.enableManualMode = Boolean.parseBoolean(scanner.nextLine());
-            config.transmissionMode = scanner.nextLine();
             return config;
         } catch (Exception e) {
             Log.e(LOG_TAG, "Could not read config", e);
@@ -476,36 +464,19 @@ public class MKDTNService extends Service implements DTNUI {
         public String priorityClass;
         public String lifetime;
         public String maxFragmentPayloadSize;
-        public boolean enableManualMode;
-        public String transmissionMode;
         
         DTNConfig() {
             routingProtocol = Daemon2Router.RoutingProtocol.PROPHET.toString();
             priorityClass = PrimaryBlock.PriorityClass.NORMAL.toString();
             lifetime = PrimaryBlock.LifeTime.FIVE_HOURS.toString();
             maxFragmentPayloadSize = Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[0];
-            enableManualMode = false; // auto mode
-            transmissionMode = "SOURCE";
-        }
-    
-        @NonNull
-        @Override
-        public String toString() {
-            return "Config{" +
-                "routingProtocol=" + routingProtocol +
-                ",priorityClass=" + priorityClass +
-                ",lifetime=" + lifetime +
-                ",maxFragmentPayloadSize=" + maxFragmentPayloadSize +
-                ",enableManualMode=" + enableManualMode +
-                ",transmissionMode=" + transmissionMode +
-                '}';
         }
     }
     
     private Thread texter;
     
     private static final String[] RECEPIENTS = {
-        "dtn:cd99", // Brian Kakembo
+        "dtn:e369", // Brian Kakembo
         "dtn:b91a", // Job Amanya
         "dtn:cfce", // Methodius Uwizera
         "dtn:f569", // Phoebe Katwesigye <3 (^ * ^) <3
@@ -550,6 +521,8 @@ public class MKDTNService extends Service implements DTNUI {
             Log.i(LOG_TAG, "making texts to send");
             try {
                 while (!Thread.interrupted()) {
+                    Thread.sleep(300_000); // 5 mins
+                    
                     int choiceOfDest = (int) (Math.random() * RECEPIENTS.length);
                     String recipient = RECEPIENTS[choiceOfDest];
                     if (recipient.equals(dtnClient.getID())) continue;
@@ -584,13 +557,11 @@ public class MKDTNService extends Service implements DTNUI {
 
                     dtnClient.send(text.getBytes(), recipient, priority, lifeTime, protocol);
 
-                    String m = choiceOfTxt < THRESHOLD ? "ST" : "LT";
+                    String m = choiceOfTxt < THRESHOLD ? "LT" : "ST";
                     String str = new Date() + " |> sent " + m + " to " + recipient
                         + " with " + protocol + " and " + lifeTime + "\n";
                     writeSentLogs(context, str);
                     Log.i(LOG_TAG, str);
-
-                    Thread.sleep(300_000); // 5 mins
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

@@ -29,16 +29,16 @@
         <!--android:title="@string/enable_dtn_notifications_title"-->
         <!--android:defaultValue="@bool/pref_enable_dtn_notification_default" />-->
 
-    <SwitchPreferenceCompat
-        android:key="@string/pref_enable_manual_transmission_key"
-        android:title="@string/pref_enable_manual_transmission_title"
-        android:defaultValue="@bool/pref_enable_manual_transmission_default"
-        android:summary="@string/pref_enable_manual_transmission_summary" />
-    <ListPreference
-        android:key="@string/pref_transmission_mode_key"
-        android:title="@string/pref_transmission_mode_title"
-        android:entries="@array/pref_transmission_mode_entries"
-        android:entryValues="@array/pref_transmission_mode_entry_values"
-        android:defaultValue="@string/pref_default_transmission_mode"
-        android:dependency="@string/pref_enable_manual_transmission_key" />
+    <!--<SwitchPreferenceCompat-->
+        <!--android:key="@string/pref_enable_manual_transmission_key"-->
+        <!--android:title="@string/pref_enable_manual_transmission_title"-->
+        <!--android:defaultValue="@bool/pref_enable_manual_transmission_default"-->
+        <!--android:summary="@string/pref_enable_manual_transmission_summary" />-->
+    <!--<ListPreference-->
+        <!--android:key="@string/pref_transmission_mode_key"-->
+        <!--android:title="@string/pref_transmission_mode_title"-->
+        <!--android:entries="@array/pref_transmission_mode_entries"-->
+        <!--android:entryValues="@array/pref_transmission_mode_entry_values"-->
+        <!--android:defaultValue="@string/pref_default_transmission_mode"-->
+        <!--android:dependency="@string/pref_enable_manual_transmission_key" />-->
 </androidx.preference.PreferenceScreen>

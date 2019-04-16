@@ -486,7 +486,7 @@ public class MKDTNService extends Service implements DTNUI {
         "dtn:85ce", // William Kibirango
         "dtn:ccc0", // Brian Musiime
         "dtn:5e93", // Usama Gajjule
-        "dtn:4757", // Deogratius Okedi
+        "dtn:9168", // Deogratius Okedi
         "dtn:cee9", // Elton Jim Solomon Muwebwa
         "dtn:c9aa", // Olivia Nakayima
         "dtn:cc8d", // Gorret Namulondo

@@ -155,8 +155,11 @@ final class RadDaemon
         private static final long SLEEP_TIME_MILLIS = 5_000L;
         
         private Set<DTNBundleNode> nextHops;
+        private int head = 0;
+        
         TransmitOutboundBundlesTask() {
             nextHops = new HashSet<>();
+            head = 0;
         }
     
         @Override
@@ -165,16 +168,10 @@ final class RadDaemon
             try {
                 while (!Thread.interrupted()) {
                     if (!MiBStorage.OBQ.isEmpty()) {
-                        
                         transmit();
-                        
-                        Thread.sleep(SLEEP_TIME_MILLIS);
-                        
-                        age();
-                        
-                        Thread.sleep(SLEEP_TIME_MILLIS);
-                    } else Thread.sleep(2 * SLEEP_TIME_MILLIS);
+                    }
                     Log.d(LOG_TAG, "Outbound bundles: " + MiBStorage.OBQ.size());
+                    Thread.sleep(SLEEP_TIME_MILLIS);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -183,7 +180,6 @@ final class RadDaemon
         }
         
         private void transmit() {
-            int head = 0;
             DTNBundle bundle = MiBStorage.OBQ.remove(head);
             MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
     
@@ -251,16 +247,16 @@ final class RadDaemon
             
             if (!(keepNECTARBundle(bundle) | keepPRoPHETBundle(bundle))) return;
             
-//            if (!isForUs(bundle) && DTNUtils.isExpired(bundle)) {
-//                if (DTNUtils.isBundleDeletionReportRequested(bundle)) {
-//                    DTNBundle statusReport = adminAA.makeStatusReport(
-//                        bundle, StatusReport.StatusFlags.BUNDLE_DELETED,
-//                        StatusReport.Reason.LIFETIME_EXPIRED
-//                    );
-//                    transmit(statusReport);
-//                }
-//                return;
-//            }
+            if (!isForUs(bundle) && DTNUtils.isExpired(bundle)) {
+                if (DTNUtils.isBundleDeletionReportRequested(bundle)) {
+                    DTNBundle statusReport = adminAA.makeStatusReport(
+                        bundle, StatusReport.StatusFlags.BUNDLE_DELETED,
+                        StatusReport.Reason.LIFETIME_EXPIRED
+                    );
+                    transmit(statusReport);
+                }
+                return;
+            }
             
             if (DTNUtils.isAdminRecord(bundle)) adminAA.processAdminRecord(bundle);
             
@@ -629,27 +625,27 @@ final class RadDaemon
         }
     }
     
-    private void age() {
-        synchronized (MiBStorage.OBQ) {
-            for (DTNBundle bundle : MiBStorage.OBQ) {
-                int i = MiBStorage.OBQ.indexOf(bundle);
-            
-                if (DTNUtils.isExpired(bundle)) {
-                    MiBStorage.OBQ.remove(i);
-                
-                    if (!isFromUs(bundle) &&
-                        DTNUtils.isBundleDeletionReportRequested(bundle)) {
-                        DTNBundle statusReport = adminAA.makeStatusReport(
-                            bundle, StatusReport.StatusFlags.BUNDLE_DELETED,
-                            StatusReport.Reason.LIFETIME_EXPIRED
-                        );
-                        transmit(statusReport);
-                    }
-                }
-            }
-            MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
-        }
-    }
+//    private void age() {
+//        synchronized (MiBStorage.OBQ) {
+//            for (DTNBundle bundle : MiBStorage.OBQ) {
+//                int i = MiBStorage.OBQ.indexOf(bundle);
+//
+//                if (DTNUtils.isExpired(bundle)) {
+//                    MiBStorage.OBQ.remove(i);
+//
+//                    if (!isFromUs(bundle) &&
+//                        DTNUtils.isBundleDeletionReportRequested(bundle)) {
+//                        DTNBundle statusReport = adminAA.makeStatusReport(
+//                            bundle, StatusReport.StatusFlags.BUNDLE_DELETED,
+//                            StatusReport.Reason.LIFETIME_EXPIRED
+//                        );
+//                        transmit(statusReport);
+//                    }
+//                }
+//            }
+//            MiBStorage.writeQueue(context, MiBStorage.OUTBOUND_BUNDLES_QUEUE);
+//        }
+//    }
     
 //    private class BundleAgingTask implements Runnable {
 //        @Override

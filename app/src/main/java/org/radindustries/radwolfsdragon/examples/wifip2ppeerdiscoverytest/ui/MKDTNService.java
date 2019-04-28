@@ -490,9 +490,10 @@ public class MKDTNService extends Service implements DTNUI {
         "dtn:cee9", // Elton Jim Solomon Muwebwa
         "dtn:c9aa", // Olivia Nakayima
         "dtn:cc8d", // Gorret Namulondo
-        "dtn:8e81", // Sulaiman Kagumire
+        "dtn:575f", // Sulaiman Kagumire
         "dtn:2b2a", // Maximo Mugisha
-        "dtn:34cb"  // Truth Kabano
+        "dtn:34cb", // Truth Kabano
+        "dtn:41bc"  // Samuel Olwe
     };
     
     private static final int MAX_TXT_SIZE = 501;

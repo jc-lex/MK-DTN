@@ -142,10 +142,10 @@ final class RadDaemon
         
         String sizeStr = config.maxFragmentPayloadSize;
         int size;
-        if (sizeStr.equals(Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[1]))
+        if (sizeStr.equals(Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[0]))
+            size = Daemon2FragmentManager.KIBI_BYTE;
+        else if (sizeStr.equals(Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[1]))
             size = 250 * Daemon2FragmentManager.KIBI_BYTE;
-        else if (sizeStr.equals(Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[2]))
-            size = 500 * Daemon2FragmentManager.KIBI_BYTE;
         else size = Daemon2FragmentManager.DEFAULT_FRAGMENT_PAYLOAD_SIZE_IN_BYTES;
         
         return size;
@@ -155,7 +155,7 @@ final class RadDaemon
         private static final long SLEEP_TIME_MILLIS = 5_000L;
         
         private Set<DTNBundleNode> nextHops;
-        private int head = 0;
+        private int head;
         
         TransmitOutboundBundlesTask() {
             nextHops = new HashSet<>();

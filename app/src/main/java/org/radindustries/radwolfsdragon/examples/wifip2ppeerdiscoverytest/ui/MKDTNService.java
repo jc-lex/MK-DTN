@@ -468,8 +468,8 @@ public class MKDTNService extends Service implements DTNUI {
         DTNConfig() {
             routingProtocol = Daemon2Router.RoutingProtocol.PROPHET.toString();
             priorityClass = PrimaryBlock.PriorityClass.NORMAL.toString();
-            lifetime = PrimaryBlock.LifeTime.FIVE_HOURS.toString();
-            maxFragmentPayloadSize = Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[0];
+            lifetime = PrimaryBlock.LifeTime.THIRTY_FIVE_HOURS.toString();
+            maxFragmentPayloadSize = Daemon2FragmentManager.MAXIMUM_FRAGMENT_PAYLOAD_SIZES[2];
         }
     }
     
